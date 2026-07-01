@@ -33,7 +33,8 @@ const browser = await chromium.launch();
 try {
   await renderPanelShot("readme-panel.png", { preview: false });
   await renderPanelShot("readme-preview.png", { preview: true });
-  await renderShowcase();
+  await renderRecapShot("readme-recap.png");
+  await renderScreenshotShowcase();
 } finally {
   await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
@@ -43,7 +44,7 @@ console.log(`Generated README assets in ${assetDir}`);
 
 async function renderPanelShot(filename, { preview }) {
   const context = await browser.newContext({
-    viewport: { width: 390, height: 560 },
+    viewport: { width: 390, height: 680 },
     deviceScaleFactor: 2,
     colorScheme: "light",
     locale: "zh-CN"
@@ -62,10 +63,27 @@ async function renderPanelShot(filename, { preview }) {
     await waitForPrimaryActionPaint(page, "#applyBtn");
   }
 
-  await page.screenshot({
-    path: resolve(assetDir, filename),
-    clip: { x: 0, y: 0, width: 390, height: 560 }
+  await page.screenshot({ path: resolve(assetDir, filename) });
+  await context.close();
+}
+
+async function renderRecapShot(filename) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 680 },
+    deviceScaleFactor: 2,
+    colorScheme: "light",
+    locale: "zh-CN"
   });
+  const page = await context.newPage();
+  await installChromeMock(page);
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=42`);
+  await page.evaluate(() => document.fonts?.ready);
+  await focusCapturePage(page);
+  await waitForPrimaryActionPaint(page, "#analyzeBtn");
+  await page.getByRole("button", { name: "回顾" }).click();
+  await focusCapturePage(page);
+  await waitForPrimaryActionPaint(page, "#analyzeBtn");
+  await page.screenshot({ path: resolve(assetDir, filename) });
   await context.close();
 }
 
@@ -84,9 +102,9 @@ async function waitForPrimaryActionPaint(page, selector) {
   await page.waitForTimeout(160);
 }
 
-async function renderShowcase() {
+async function renderScreenshotShowcase() {
   const context = await browser.newContext({
-    viewport: { width: 1180, height: 640 },
+    viewport: { width: 1240, height: 780 },
     deviceScaleFactor: 2
   });
   const page = await context.newPage();
@@ -107,32 +125,33 @@ async function renderShowcase() {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Avenir Next", "Segoe UI", sans-serif;
           }
           .showcase {
-            width: 1120px;
-            height: 590px;
+            width: 1180px;
+            height: 720px;
             display: grid;
             grid-template-rows: auto minmax(0, 1fr) auto;
-            gap: 12px;
-            padding: 26px;
+            gap: 14px;
+            padding: 24px;
             border: 2px solid rgba(42, 38, 31, 0.18);
             border-radius: 34px;
             background:
-              radial-gradient(circle at 18% 16%, rgba(201, 255, 74, 0.18), transparent 26%),
-              radial-gradient(circle at 82% 12%, rgba(31, 85, 255, 0.13), transparent 28%),
+              radial-gradient(circle at 14% 18%, rgba(201, 255, 74, 0.16), transparent 24%),
+              radial-gradient(circle at 88% 12%, rgba(31, 85, 255, 0.12), transparent 28%),
               linear-gradient(180deg, #fffdf7, #f7f1e5);
             box-shadow:
               0 30px 70px rgba(42, 38, 31, 0.12),
-              inset 0 1px 0 rgba(255, 255, 255, 0.82);
+              inset 0 1px 0 rgba(255, 255, 255, 0.84);
+            overflow: hidden;
           }
-          .hero-top {
+          .hero {
             display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: start;
-            gap: 24px;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 18px;
           }
           .brand {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
           }
           .brand img {
             width: 54px;
@@ -140,23 +159,8 @@ async function renderShowcase() {
             display: block;
             border-radius: 15px;
           }
-          h1 {
-            margin: 0;
-            max-width: 560px;
-            font-size: 42px;
-            line-height: 1.03;
-            letter-spacing: 0;
-          }
-          p {
-            margin: 0;
-            color: #706755;
-            font-size: 17px;
-            line-height: 1.4;
-            font-weight: 700;
-          }
           .brand-name {
-            margin: 0;
-            font-size: 28px;
+            font-size: 29px;
             line-height: 1;
             font-weight: 950;
           }
@@ -166,192 +170,93 @@ async function renderShowcase() {
             font-size: 14px;
             font-weight: 800;
           }
-          .headline {
+          h1 {
+            margin: 0;
+            font-size: 34px;
+            line-height: 1.05;
+            letter-spacing: 0;
+            font-weight: 950;
+          }
+          .lead {
+            max-width: 390px;
+            margin: 0;
+            color: #706755;
+            font-size: 15px;
+            line-height: 1.35;
+            font-weight: 760;
+          }
+          .shot-grid {
             display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            min-height: 0;
+          }
+          .shot-card {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
             gap: 8px;
-          }
-          .headline p {
-            max-width: 520px;
-          }
-          .workspace {
-            display: grid;
-            grid-template-columns: 1.05fr 1.1fr 1fr;
-            gap: 12px;
-            align-items: stretch;
             min-height: 0;
-          }
-          .module {
-            position: relative;
-            display: grid;
-            grid-template-rows: auto 1fr;
-            gap: 10px;
-            min-height: 0;
-            padding: 15px 16px;
-            border: 1.5px solid rgba(42, 38, 31, 0.18);
-            border-radius: 26px;
-            background: rgba(255, 252, 245, 0.78);
+            padding: 10px;
+            border: 1.5px solid rgba(42, 38, 31, 0.16);
+            border-radius: 28px;
+            background: rgba(255, 252, 245, 0.72);
             box-shadow:
-              0 18px 36px rgba(42, 38, 31, 0.08),
-              inset 0 1px 0 rgba(255, 255, 255, 0.78);
-            overflow: hidden;
+              0 18px 36px rgba(42, 38, 31, 0.09),
+              inset 0 1px 0 rgba(255, 255, 255, 0.86);
           }
-          .module::before {
-            content: "";
-            position: absolute;
-            inset: 0 auto 0 0;
-            width: 5px;
-            background: var(--tone);
-          }
-          .module-head {
+          .shot-title {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-          }
-          .module-title {
-            margin: 0;
-            font-size: 22px;
-            line-height: 1.12;
-            font-weight: 950;
-          }
-          .module-kicker {
-            display: block;
-            margin-bottom: 4px;
-            color: #706755;
-            font-size: 12px;
-            font-weight: 850;
-            letter-spacing: 0.08em;
-          }
-          .pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 28px;
-            padding: 4px 12px;
-            border: 1.5px solid color-mix(in srgb, var(--tone) 44%, #2a261f);
-            border-radius: 999px;
-            color: color-mix(in srgb, var(--tone) 70%, #1c1914);
-            background: color-mix(in srgb, var(--tone) 14%, #ffffff);
-            font-size: 13px;
-            font-weight: 900;
-            white-space: nowrap;
-          }
-          .stack {
-            display: grid;
-            gap: 8px;
-            align-content: start;
-          }
-          .group-row,
-          .cleanup-row,
-          .timeline-row {
-            display: grid;
-            gap: 4px;
-            padding: 9px 10px;
-            border: 1px solid rgba(42, 38, 31, 0.14);
-            border-radius: 16px;
-            background: rgba(255, 250, 240, 0.8);
-          }
-          .group-row {
-            grid-template-columns: auto 1fr auto;
-            align-items: center;
-          }
-          .bar {
-            width: 4px;
-            height: 34px;
-            border-radius: 999px;
-            background: var(--row);
-          }
-          .row-title {
-            color: #1c1914;
-            font-size: 14px;
-            font-weight: 930;
-            line-height: 1.15;
-          }
-          .row-sub {
-            color: #706755;
-            font-size: 11px;
-            font-weight: 760;
-            line-height: 1.2;
-          }
-          .count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 44px;
-            height: 30px;
-            border-radius: 999px;
-            color: #1f55ff;
-            background: #e8eeff;
-            font-size: 13px;
-            font-weight: 950;
-          }
-          .cleanup-row {
-            grid-template-columns: 1fr auto;
-            align-items: start;
-          }
-          .cleanup-actions {
-            display: flex;
-            gap: 6px;
-          }
-          .mini-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            height: 28px;
-            padding: 0 10px;
-            border: 1.5px solid #2b4484;
-            border-radius: 999px;
-            color: #1f55ff;
-            background: #e8eeff;
-            font-size: 12px;
-            font-weight: 920;
-          }
-          .cleanup-reason {
-            grid-column: 1 / -1;
-            padding-left: 10px;
-            border-left: 4px solid var(--tone);
-            color: #1c1914;
-            font-size: 12px;
-            font-weight: 780;
-            line-height: 1.35;
-          }
-          .recap-card {
-            display: grid;
-            gap: 11px;
-            padding: 14px;
-            border-radius: 20px;
-            background: linear-gradient(180deg, #eef3ff, #f7f9ff);
-            border: 1px solid rgba(31, 85, 255, 0.2);
-          }
-          .recap-line {
-            display: grid;
-            grid-template-columns: 70px 1fr;
             gap: 10px;
-            align-items: start;
-            font-size: 13px;
-            line-height: 1.35;
-            font-weight: 800;
-          }
-          .recap-line strong {
-            color: var(--tone);
-            white-space: nowrap;
-          }
-          .timeline-row {
-            grid-template-columns: auto 1fr;
-            align-items: start;
-          }
-          .time {
-            color: #1f55ff;
-            font-size: 12px;
+            min-height: 28px;
+            padding: 0 4px;
+            font-size: 17px;
             font-weight: 950;
+          }
+          .shot-title small {
+            color: #706755;
+            font-size: 12px;
+            font-weight: 800;
             white-space: nowrap;
           }
-          .feature-strip {
+          .shot-title i {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: var(--tone);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 16%, transparent);
+          }
+          .shot-title span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .shot-wrap {
+            display: grid;
+            place-items: center;
+            min-height: 0;
+            overflow: hidden;
+            border-radius: 22px;
+          }
+          .shot {
+            width: 100%;
+            height: 100%;
+            border: 1.5px solid rgba(42, 38, 31, 0.18);
+            border-radius: 22px;
+            background:
+              #f7f1e5
+              var(--shot)
+              center / contain
+              no-repeat;
+            box-shadow: 0 12px 24px rgba(42, 38, 31, 0.12);
+          }
+          .features {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
             align-items: center;
             justify-content: center;
+            gap: 8px;
           }
           .feature {
             display: inline-flex;
@@ -361,14 +266,13 @@ async function renderShowcase() {
             padding: 4px 11px;
             border: 1px solid rgba(42, 38, 31, 0.12);
             border-radius: 999px;
-            background: rgba(255, 250, 240, 0.72);
+            background: rgba(255, 250, 240, 0.76);
             color: #706755;
             font-size: 13px;
             font-weight: 850;
             box-shadow: 0 10px 20px rgba(42, 38, 31, 0.05);
           }
           .feature i {
-            display: block;
             width: 9px;
             height: 9px;
             border-radius: 999px;
@@ -378,136 +282,39 @@ async function renderShowcase() {
       </head>
       <body>
         <main class="showcase">
-          <section class="hero-top">
-            <div class="headline">
-              <div class="brand">
-                <img src="${baseUrl}/icons/icon128.png" alt="" aria-hidden="true" />
-                <div>
-                  <div class="brand-name">TabRecap</div>
-                  <div class="brand-subtitle">AI 标签页整理、清理与工作回顾</div>
-                </div>
-              </div>
-              <h1>从成堆标签页里，找回你的工作脉络。</h1>
-              <p>一次分析同时给出分组方案、清理建议和时间回顾；你先检查，确认后再整理或手动关闭。</p>
-            </div>
-            <div class="recap-card" style="--tone:#1f55ff">
-              <div class="recap-line">
-                <strong>已梳理</strong>
-                <span>252 个标签页，识别 6 个主题，30 个留到待确认。</span>
-              </div>
-              <div class="recap-line">
-                <strong>已参考</strong>
-                <span>打开次数、停留时长、最近活跃、页面摘要和原始顺序。</span>
+          <section class="hero">
+            <div class="brand">
+              <img src="${baseUrl}/icons/icon128.png" alt="" aria-hidden="true" />
+              <div>
+                <div class="brand-name">TabRecap</div>
+                <div class="brand-subtitle">AI 标签页整理、清理与工作回顾</div>
               </div>
             </div>
+            <h1>一个侧边栏，把混乱标签页收拾清楚。</h1>
+            <p class="lead">整理分组、清理复查和近期回顾都先生成方案，确认后再动手。</p>
           </section>
 
-          <section class="workspace" aria-label="TabRecap feature overview">
-            <article class="module" style="--tone:#1f55ff">
-              <div class="module-head">
-                <div>
-                  <span class="module-kicker">ORGANIZE</span>
-                  <h2 class="module-title">整理成主题</h2>
-                </div>
-                <span class="pill">6 组</span>
-              </div>
-              <div class="stack">
-                <div class="group-row" style="--row:#1f55ff">
-                  <i class="bar"></i>
-                  <div>
-                    <div class="row-title">AI 编程与 Agent</div>
-                    <div class="row-sub">MCP、Claude Code、工具链调试</div>
-                  </div>
-                  <span class="count">39</span>
-                </div>
-                <div class="group-row" style="--row:#d94a32">
-                  <i class="bar"></i>
-                  <div>
-                    <div class="row-title">模型与论文研究</div>
-                    <div class="row-sub">LLM、评测、论文和实验记录</div>
-                  </div>
-                  <span class="count">34</span>
-                </div>
-                <div class="group-row" style="--row:#2fa37c">
-                  <i class="bar"></i>
-                  <div>
-                    <div class="row-title">当前项目工作流</div>
-                    <div class="row-sub">Issue、PR、文档和本地调试页</div>
-                  </div>
-                  <span class="count">31</span>
-                </div>
-              </div>
+          <section class="shot-grid" aria-label="TabRecap screenshots">
+            <article class="shot-card" style="--tone:#1f55ff">
+              <div class="shot-title"><span><i></i>整理设置</span><small>范围、摘要、偏好</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-panel.png')" role="img" aria-label="TabRecap 整理设置完整截图"></div></div>
             </article>
-
-            <article class="module" style="--tone:#d94a32">
-              <div class="module-head">
-                <div>
-                  <span class="module-kicker">CLEANUP</span>
-                  <h2 class="module-title">挑出可清理项</h2>
-                </div>
-                <span class="pill">手动关闭</span>
-              </div>
-              <div class="stack">
-                <div class="cleanup-row">
-                  <div>
-                    <div class="row-title">旧搜索结果页</div>
-                    <div class="row-sub">上次打开约 18 天前 · 很少回看</div>
-                  </div>
-                  <div class="cleanup-actions">
-                    <span class="mini-btn">定位</span>
-                    <span class="mini-btn">关闭</span>
-                  </div>
-                  <div class="cleanup-reason">已有更具体页面替代，保留价值低。</div>
-                </div>
-                <div class="cleanup-row">
-                  <div>
-                    <div class="row-title">空白页 / 入口页</div>
-                    <div class="row-sub">信息不足 · 容易重新找到</div>
-                  </div>
-                  <div class="cleanup-actions">
-                    <span class="mini-btn">定位</span>
-                    <span class="mini-btn">关闭</span>
-                  </div>
-                  <div class="cleanup-reason">适合先复查，不会自动清理。</div>
-                </div>
-              </div>
+            <article class="shot-card" style="--tone:#d94a32">
+              <div class="shot-title"><span><i></i>方案预览</span><small>分组与清理建议</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-preview.png')" role="img" aria-label="TabRecap 方案预览完整截图"></div></div>
             </article>
-
-            <article class="module" style="--tone:#2fa37c">
-              <div class="module-head">
-                <div>
-                  <span class="module-kicker">RECAP</span>
-                  <h2 class="module-title">回顾最近在忙什么</h2>
-                </div>
-                <span class="pill">7 天</span>
-              </div>
-              <div class="stack">
-                <div class="recap-line" style="--tone:#1f55ff">
-                  <strong>主要精力</strong>
-                  <span>集中在扩展发布、AI 网关稳定性和侧边栏体验打磨。</span>
-                </div>
-                <div class="recap-line" style="--tone:#d94a32">
-                  <strong>反复回到</strong>
-                  <span>页面摘要、清理建议、README 素材和模型路由验证。</span>
-                </div>
-                <div class="timeline-row">
-                  <span class="time">今天</span>
-                  <div><div class="row-title">发布收口</div><div class="row-sub">构建、测试、release 与截图更新</div></div>
-                </div>
-                <div class="timeline-row">
-                  <span class="time">本周</span>
-                  <div><div class="row-title">产品扩展</div><div class="row-sub">整理 + 清理 + 回顾并行工作流</div></div>
-                </div>
-              </div>
+            <article class="shot-card" style="--tone:#2fa37c">
+              <div class="shot-title"><span><i></i>近期回顾</span><small>时间范围和本机线索</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-recap.png')" role="img" aria-label="TabRecap 近期回顾完整截图"></div></div>
             </article>
           </section>
 
-          <section class="feature-strip" aria-label="TabRecap capabilities">
+          <section class="features" aria-label="TabRecap capabilities">
             <span class="feature" style="--tone:#1f55ff"><i></i>跨窗口整理</span>
-            <span class="feature" style="--tone:#d94a32"><i></i>可回退</span>
-            <span class="feature" style="--tone:#c9ff4a"><i></i>页面摘要增强</span>
-            <span class="feature" style="--tone:#2fa37c"><i></i>本机活动记录</span>
-            <span class="feature" style="--tone:#8b5cf6"><i></i>多语言结果</span>
+            <span class="feature" style="--tone:#d94a32"><i></i>手动清理</span>
+            <span class="feature" style="--tone:#c9ff4a"><i></i>可回退</span>
+            <span class="feature" style="--tone:#2fa37c"><i></i>页面摘要增强</span>
+            <span class="feature" style="--tone:#8b5cf6"><i></i>本机活动回顾</span>
             <span class="feature" style="--tone:#f5b73b"><i></i>自定义 AI 网关</span>
           </section>
         </main>
@@ -541,15 +348,19 @@ async function installChromeMock(page) {
       includePinnedTabs: false,
       includeIncognitoTabs: false,
       collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
       continuousPageSummaries: false,
       minConfidenceToApply: 0.65,
       maxTabsPerGroup: 40,
       languageMode: "zh-CN",
       promptPreset: "conservative",
+      groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
       gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.5",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
       gatewayCustomModel: "",
       gatewayThinkingIntensity: "high",
       gatewayApiKey: "",
@@ -575,6 +386,7 @@ async function installChromeMock(page) {
       preview: {
         languageMode: "zh-CN",
         requiresConfirmation: true,
+        analysisFeatures: { grouping: true, cleanup: true },
         groups: [
           { title: "AI 编程与 Agent", reason: "Claude Code、MCP、工具链和调试材料。", tabCount: 39 },
           { title: "模型与论文研究", reason: "LLM、评测、论文和实验记录。", tabCount: 34 },
@@ -596,6 +408,38 @@ async function installChromeMock(page) {
           ok: 12,
           permissionRequired: 0,
           blocked: 55
+        },
+        cleanup: {
+          summary: "AI 还挑出了可能过期、重复或已经完成任务的标签页，关闭前你可以逐个复查。",
+          candidateCount: 6,
+          candidates: [
+            {
+              tabId: 301,
+              windowId: 42,
+              title: "render bucket - Google 搜索",
+              hostname: "www.google.com",
+              currentGroupTitle: "技术美术与渲染学习",
+              ageMs: 8 * 24 * 60 * 60 * 1000,
+              idleMs: 6 * 24 * 60 * 60 * 1000,
+              activeCount: 0,
+              priority: "medium",
+              reason: "这是一次较泛的搜索结果页，后面已经打开了更具体的渲染学习内容。",
+              evidence: ["搜索结果页", "同组已有更具体页面", "activeCount 为0"]
+            },
+            {
+              tabId: 302,
+              windowId: 42,
+              title: "扩展程序 - TabRecap",
+              hostname: "extensions",
+              currentGroupTitle: "待分类",
+              ageMs: 2 * 24 * 60 * 60 * 1000,
+              idleMs: 1 * 24 * 60 * 60 * 1000,
+              activeCount: 1,
+              priority: "high",
+              reason: "这是浏览器扩展管理页，完成配置后通常不需要长期保留。",
+              evidence: ["浏览器内部页面", "很少回看"]
+            }
+          ]
         },
         warnings: []
       }
