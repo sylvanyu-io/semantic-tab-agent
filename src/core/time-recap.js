@@ -435,7 +435,7 @@ function normalizeTimeRecap(parsed, input, settings) {
 }
 
 async function collectCurrentTabs(chromeApi, settings) {
-  const windows = await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => []);
+  const windows = (await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => [])) || [];
   const groupsById = await collectTabGroupsById(chromeApi, windows);
   return windows
     .flatMap((window) => window.tabs || [])

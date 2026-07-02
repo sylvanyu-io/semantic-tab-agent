@@ -217,7 +217,7 @@ function closeSession(log, session, now, reason) {
 }
 
 async function collectCurrentLifecycleTabs(chromeApi, options = {}) {
-  const windows = await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => []);
+  const windows = (await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => [])) || [];
   return windows
     .flatMap((window) => window.tabs || [])
     .map(normalizeLifecycleTab)
