@@ -1,5 +1,5 @@
 import { getSettings, handleRuntimeMessage } from "../core/controller.js";
-import { rememberOpenTabActivity } from "../core/page-activity-cache.js";
+import { rememberOpenTabActivity, rememberOpenTabsActivity } from "../core/page-activity-cache.js";
 import { capturePageSummaryIfAllowed } from "../core/page-summary-cache.js";
 import { reconcileTabLifecycle, recordTabClosed, rememberTabLifecycle } from "../core/tab-lifecycle-log.js";
 
@@ -149,9 +149,10 @@ async function sweepOpenTabsForSummaries() {
   if (!settings.continuousPageSummaries) return;
   const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }).catch(() => []);
   const tabs = windows.flatMap((window) => window.tabs || []);
+  await rememberOpenTabsActivity(chrome, tabs).catch((error) => console.debug(error));
   for (const tab of tabs) {
-    await rememberOpenTabActivity(chrome, tab).catch((error) => console.debug(error));
-    if (tab?.id) await captureSummaryForTab(tab.id);
+    if (!tab?.id) continue;
+    await capturePageSummaryIfAllowed(chrome, tab, settings).catch((error) => console.debug(error));
   }
 }
 

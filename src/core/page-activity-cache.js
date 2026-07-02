@@ -12,14 +12,37 @@ const OLD_TAB_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function rememberOpenTabActivity(chromeApi, tab, sampleResult = null, options = {}) {
   if (tab?.incognito && !options.includeIncognitoTabs) return null;
-  const rawUrl = activityTabUrl(tab);
-  const key = pageActivityCacheKey(rawUrl);
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
+  const key = upsertActivityEntry(cache, tab, sampleResult, now);
   if (!key) return null;
 
+  const pruned = pruneActivityCache(cache, now);
+  await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruned);
+  return pruned.entries[key];
+}
+
+export async function rememberOpenTabsActivity(chromeApi, tabs = [], options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
+  let stored = 0;
+  for (const tab of tabs) {
+    if (tab?.incognito && !options.includeIncognitoTabs) continue;
+    if (upsertActivityEntry(cache, tab, null, now)) stored += 1;
+  }
+  if (stored) {
+    await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruneActivityCache(cache, now));
+  }
+  return { stored };
+}
+
+function upsertActivityEntry(cache, tab, sampleResult, now) {
+  const rawUrl = activityTabUrl(tab);
+  const key = pageActivityCacheKey(rawUrl);
+  if (!key) return "";
+
   const nowIso = new Date(now).toISOString();
   const urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL);
-  const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
   const existing = cache.entries[key];
   const sample = sampleResult?.status === "ok" ? normalizeActivitySample(sampleResult.sample) : existing?.sample || null;
 
@@ -42,19 +65,7 @@ export async function rememberOpenTabActivity(chromeApi, tab, sampleResult = nul
     },
     ...(sample ? { sample } : {})
   };
-
-  const pruned = pruneActivityCache(cache, now);
-  await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruned);
-  return pruned.entries[key];
-}
-
-export async function rememberOpenTabsActivity(chromeApi, tabs = [], options = {}) {
-  let stored = 0;
-  for (const tab of tabs) {
-    const entry = await rememberOpenTabActivity(chromeApi, tab, null, options);
-    if (entry) stored += 1;
-  }
-  return { stored };
+  return key;
 }
 
 export async function getActivityOverview(chromeApi, options = {}) {
@@ -169,14 +180,14 @@ function latestIso(...values) {
 }
 
 function activityTimeForRange(entry) {
-  const sampledAt = Date.parse(entry.sampledAt || "");
-  const firstSeenAt = Date.parse(entry.firstSeenAt || "");
-  const lastSeenAt = Date.parse(entry.lastSeenAt || "");
-  return [sampledAt, firstSeenAt, lastSeenAt].find(Number.isFinite) || 0;
+  const times = [entry.sampledAt, entry.firstSeenAt, entry.lastSeenAt]
+    .map((value) => Date.parse(value || ""))
+    .filter(Number.isFinite);
+  return times.length ? Math.max(...times) : 0;
 }
 
 async function collectCurrentNormalTabs(chromeApi, options = {}) {
-  const windows = await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => []);
+  const windows = (await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => [])) || [];
   const groupsById = await collectTabGroupsById(chromeApi, windows);
   return windows
     .flatMap((window) =>

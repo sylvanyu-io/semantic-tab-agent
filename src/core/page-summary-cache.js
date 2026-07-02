@@ -16,10 +16,20 @@ const CACHE_MAX_ENTRIES = 800;
 const BACKGROUND_SAMPLE_TIMEOUT_MS = 1800;
 
 export async function cachedPageSampleForTab(chromeApi, tabDescriptor) {
+  const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
+  return cachedSampleFromCache(cache, tabDescriptor);
+}
+
+export async function cachedPageSamplesForTabs(chromeApi, tabDescriptors = []) {
+  if (!tabDescriptors.length) return [];
+  const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
+  return tabDescriptors.map((tabDescriptor) => cachedSampleFromCache(cache, tabDescriptor)).filter(Boolean);
+}
+
+function cachedSampleFromCache(cache, tabDescriptor) {
   const key = pageSummaryCacheKey(tabDescriptor.sanitizedUrl || tabDescriptor.fullUrl || "");
   if (!key) return null;
 
-  const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
   const entry = cache.entries[key];
   if (!isFreshEntry(entry)) return null;
 

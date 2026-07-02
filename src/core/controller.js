@@ -11,7 +11,7 @@ import { localizedText } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { applyValidatedPlan, createRollbackSnapshot, undoFromRollback } from "./chrome-executor.js";
 import { getActivityOverview, rememberOpenTabsActivity } from "./page-activity-cache.js";
-import { cachedPageSampleForTab, rememberPageSummary } from "./page-summary-cache.js";
+import { cachedPageSamplesForTabs, rememberPageSummary } from "./page-summary-cache.js";
 import { requestPageSample } from "./page-sampler.js";
 import { reconcileTabLifecycle, rememberTabsLifecycle } from "./tab-lifecycle-log.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
@@ -111,10 +111,11 @@ export async function handleRuntimeMessage(chromeApi, message) {
       return generateProgressCopy(chromeApi, message);
     case "gateway:testConnection":
       return testGatewayConnection(message.settings || {}, globalThis.fetch, { timeoutMs: message.timeoutMs || 15_000 });
-    case "activity:getOverview":
+    case "activity:getOverview": {
       const settings = await getSettings(chromeApi);
       await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
       return getActivityOverview(chromeApi, { rangeMs: message.rangeMs, includeIncognitoTabs: settings.includeIncognitoTabs });
+    }
     case "activity:generateTimeRecap":
       return generateTimeRecapForMessage(chromeApi, message);
     case "activity:cancelTimeRecap":
@@ -237,8 +238,9 @@ async function closeCleanupCandidatesLocked(chromeApi, message = {}) {
 
   const existingIds = [];
   const skippedIds = [];
-  for (const tabId of allowedIds) {
-    const tab = await chromeApi.tabs?.get?.(tabId).catch(() => null);
+  const liveTabs = await Promise.all(allowedIds.map((tabId) => chromeApi.tabs?.get?.(tabId).catch(() => null)));
+  for (const [position, tabId] of allowedIds.entries()) {
+    const tab = liveTabs[position];
     if (!tab) {
       skippedIds.push(tabId);
       continue;
@@ -1216,14 +1218,13 @@ function pageSamplingDoneMessage(sampledOk, totalTabs) {
 async function attachCachedPageSamples(chromeApi, inventory, settings, options = {}) {
   if (!settings.continuousPageSummaries) return new Set();
 
+  throwIfCanceled(options.signal);
+  const sampleableTabs = (inventory.plannerTabs || []).filter((tab) => tab.sampleable);
+  const cachedSamples = await cachedPageSamplesForTabs(chromeApi, sampleableTabs).catch(() => []);
   const cachedTabIds = new Set();
-  for (const tab of inventory.plannerTabs || []) {
-    throwIfCanceled(options.signal);
-    if (!tab.sampleable) continue;
-    const cached = await cachedPageSampleForTab(chromeApi, tab).catch(() => null);
-    if (!cached) continue;
+  for (const cached of cachedSamples) {
     inventory.pageSamples.push(cached);
-    cachedTabIds.add(tab.tabId);
+    cachedTabIds.add(cached.tabId);
   }
   return cachedTabIds;
 }

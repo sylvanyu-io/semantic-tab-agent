@@ -338,16 +338,16 @@ function planOrderTabIds(plan) {
 
 async function recreateGroup(chromeApi, tabIds, windowId, groupLike, settings, options = {}) {
   const requireAllTabs = options.requireAllTabs !== false;
-  const existingTabIds = [];
-  const missingTabIds = [];
-  for (const tabId of tabIds) {
-    try {
-      await chromeApi.tabs.get(tabId);
-      existingTabIds.push(tabId);
-    } catch {
-      missingTabIds.push(tabId);
-    }
-  }
+  const checks = await Promise.all(
+    tabIds.map((tabId) =>
+      chromeApi.tabs
+        .get(tabId)
+        .then(() => ({ tabId, exists: true }))
+        .catch(() => ({ tabId, exists: false }))
+    )
+  );
+  const existingTabIds = checks.filter((check) => check.exists).map((check) => check.tabId);
+  const missingTabIds = checks.filter((check) => !check.exists).map((check) => check.tabId);
   if (requireAllTabs && missingTabIds.length) {
     throw new Error(`Cannot create group ${groupLike.title || "Untitled"} because tab(s) disappeared: ${missingTabIds.join(", ")}.`);
   }
@@ -396,15 +396,16 @@ async function queryGroupsForWindows(chromeApi, windows) {
 }
 
 async function getExistingTabs(chromeApi, tabIds) {
-  const existing = new Map();
-  for (const tabId of tabIds) {
-    try {
-      existing.set(tabId, await chromeApi.tabs.get(tabId));
-    } catch {
-      // Closed tabs cannot be restored without session restore integration.
-    }
-  }
-  return existing;
+  // Closed tabs cannot be restored without session restore integration.
+  const entries = await Promise.all(
+    tabIds.map((tabId) =>
+      chromeApi.tabs
+        .get(tabId)
+        .then((tab) => [tabId, tab])
+        .catch(() => null)
+    )
+  );
+  return new Map(entries.filter(Boolean));
 }
 
 async function ensureSourceWindow(chromeApi, sourceWindow, sourceTabs, existingTabs) {
