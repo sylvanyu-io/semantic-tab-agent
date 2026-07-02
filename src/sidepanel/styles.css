@@ -1190,6 +1190,34 @@ button:focus-visible {
   opacity: 0.56;
 }
 
+.gateway-test-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 7px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.gateway-test-button {
+  min-height: 30px;
+  padding: 5px 12px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, transparent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 820;
+  box-shadow: inset 0 -1px 0 rgba(42, 38, 31, 0.08);
+}
+
+.gateway-test-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .prompt-field {
   margin-top: 1px;
 }

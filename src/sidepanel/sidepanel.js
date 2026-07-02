@@ -1,4 +1,4 @@
-import { BUILTIN_GATEWAY_BASE_URL, GATEWAY_CUSTOM_MODEL_VALUE } from "../shared/settings.js";
+import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS, GATEWAY_CUSTOM_MODEL_VALUE, GATEWAY_PROVIDER_MODES } from "../shared/settings.js";
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
@@ -38,7 +38,11 @@ const UI_COPY = Object.freeze({
     "status.permissionFirstEnablePageSummary": "需要先打开「页面摘要增强」并完成授权，才能读取页面摘要。",
     "status.unsupportedContinuousSummary": "当前安装包没有开启长期页面摘要。",
     "status.unsupportedPageSummary": "当前安装包没有开启页面摘要。",
-    "status.customModelMissing": "请填写自定义模型名，或者选择一个预设模型。",
+    "status.customModelMissing": "请填写自定义模型名。",
+    "status.gatewayTestUrlMissing": "请先填写自定义 API 地址。",
+    "status.gatewayTesting": "正在测试自定义 API",
+    "status.gatewayTestOk": "自定义 API 可用：{model}",
+    "status.gatewayTimeout": "AI 服务响应超时。请稍后重试；如果使用自定义 API，请先点「测试连接」。",
     "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页{reviewText}",
     "status.applyDone": "已创建 {groupCount} 个分组",
     "status.applyReviewSuffix": "，{reviewCount} 个放进「{reviewTitle}」",
@@ -48,12 +52,15 @@ const UI_COPY = Object.freeze({
     "status.invalidPlan": "当前方案不可用，请重新生成。",
     "status.progressCopyFailed": "提示文案生成失败，请稍后重试。",
     "status.gatewayUnsupportedModel": "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
+    "status.customGatewayUnsupportedModel": "自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。",
     "status.gatewayInvalidOutput": "AI 服务这次返回格式异常。请重新生成，或在更多选项里切换模型。",
     "button.generate": "生成方案",
     "button.regenerate": "返回上级",
     "button.cancel": "停止生成",
     "button.apply": "开始整理",
     "button.undo": "撤销",
+    "button.gatewayTest": "测试连接",
+    "gateway.testHint": "仅检测自定义 API",
     "button.language": "EN",
     "button.languageAria": "切换界面为英文",
     "mode.organize": "整理",
@@ -169,19 +176,22 @@ const UI_COPY = Object.freeze({
     "field.resultLanguage": "结果语言",
     "field.promptPreset": "整理方式",
     "field.groupingGranularity": "分组数量",
+    "field.gatewayProvider": "AI 服务",
     "field.gatewayModel": "AI 模型",
     "field.gatewayAuxiliaryModel": "辅助模型",
     "field.thinking": "思考强度",
     "field.customModel": "自定义模型名",
-    "field.gatewayUrl": "AI 网关地址（可选）",
-    "field.gatewayKey": "AI 网关密钥（可选）",
+    "field.customAuxiliaryModel": "自定义辅助模型（可选）",
+    "field.gatewayUrl": "自定义 API 地址",
+    "field.gatewayKey": "API Key（可选）",
     "field.rememberKey": "记住自定义密钥",
     "field.rememberKeyHint": "只保存在这台电脑",
     "field.minConfidence": "最低置信度",
     "field.maxTabs": "单组最大数量",
     "placeholder.customModel": "例如：glm-5.2、deepseek-v4-pro",
-    "placeholder.gatewayUrl": "不填则使用默认服务",
-    "placeholder.gatewayKey": "默认服务无需填写",
+    "placeholder.customAuxiliaryModel": "留空则跟随主模型",
+    "placeholder.gatewayUrl": "例如：https://api.deepseek.com/v1",
+    "placeholder.gatewayKey": "没有密钥可留空",
     "option.newWindow": "新窗口",
     "option.currentWindow": "当前窗口",
     "option.preserveGroups": "保留",
@@ -209,6 +219,8 @@ const UI_COPY = Object.freeze({
     "option.granularityCompact": "更少分组",
     "option.granularityBalanced": "平衡",
     "option.granularityDetailed": "更多分组",
+    "option.gatewayBuiltin": "默认服务",
+    "option.gatewayCustom": "自定义 API",
     "option.auxSpark": "gpt-5.3-codex-spark",
     "option.auxMini": "gpt-5.4-mini",
     "option.auxPrimary": "跟随主模型",
@@ -275,7 +287,11 @@ const UI_COPY = Object.freeze({
     "status.permissionFirstEnablePageSummary": "Turn on page summaries and grant access before reading page summaries.",
     "status.unsupportedContinuousSummary": "This installation does not include page memory.",
     "status.unsupportedPageSummary": "This installation does not include page summaries.",
-    "status.customModelMissing": "Enter a custom model name, or choose a preset model.",
+    "status.customModelMissing": "Enter a custom model name.",
+    "status.gatewayTestUrlMissing": "Enter a custom API URL first.",
+    "status.gatewayTesting": "Testing custom API",
+    "status.gatewayTestOk": "Custom API connected: {model}",
+    "status.gatewayTimeout": "The AI service timed out. Try again later; if you use a custom API, run Test connection first.",
     "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs{reviewText}",
     "status.applyDone": "Created {groupCount} groups",
     "status.applyReviewSuffix": ", {reviewCount} added to \"{reviewTitle}\"",
@@ -285,12 +301,15 @@ const UI_COPY = Object.freeze({
     "status.invalidPlan": "This plan is not ready to apply. Generate a new one.",
     "status.progressCopyFailed": "Progress captions could not be generated. Try again later.",
     "status.gatewayUnsupportedModel": "The default AI service does not support this model right now. Try again later, or switch models in More options.",
+    "status.customGatewayUnsupportedModel": "The custom API does not support this model. Check the model name or run Test connection first.",
     "status.gatewayInvalidOutput": "The AI service returned an unexpected format. Regenerate, or switch models in More options.",
     "button.generate": "Generate plan",
     "button.regenerate": "Back",
     "button.cancel": "Stop generating",
     "button.apply": "Organize",
     "button.undo": "Undo",
+    "button.gatewayTest": "Test connection",
+    "gateway.testHint": "Only checks the custom API",
     "button.language": "中",
     "button.languageAria": "Switch UI to Chinese",
     "mode.organize": "Organize",
@@ -406,19 +425,22 @@ const UI_COPY = Object.freeze({
     "field.resultLanguage": "Result language",
     "field.promptPreset": "Organization mode",
     "field.groupingGranularity": "Number of groups",
+    "field.gatewayProvider": "AI service",
     "field.gatewayModel": "AI model",
     "field.gatewayAuxiliaryModel": "Auxiliary model",
     "field.thinking": "Reasoning effort",
     "field.customModel": "Custom model name",
-    "field.gatewayUrl": "AI gateway URL (optional)",
-    "field.gatewayKey": "AI gateway key (optional)",
+    "field.customAuxiliaryModel": "Custom auxiliary model (optional)",
+    "field.gatewayUrl": "Custom API URL",
+    "field.gatewayKey": "API key (optional)",
     "field.rememberKey": "Remember custom key",
     "field.rememberKeyHint": "Stored only on this computer",
     "field.minConfidence": "Minimum confidence",
     "field.maxTabs": "Max tabs per group",
     "placeholder.customModel": "Example: glm-5.2, deepseek-v4-pro",
-    "placeholder.gatewayUrl": "Leave blank to use the default service",
-    "placeholder.gatewayKey": "Default service does not need a key",
+    "placeholder.customAuxiliaryModel": "Leave blank to use the primary model",
+    "placeholder.gatewayUrl": "Example: https://api.deepseek.com/v1",
+    "placeholder.gatewayKey": "Leave blank if your API does not need a key",
     "option.newWindow": "New window",
     "option.currentWindow": "Current window",
     "option.preserveGroups": "Preserve",
@@ -446,6 +468,8 @@ const UI_COPY = Object.freeze({
     "option.granularityCompact": "Fewer groups",
     "option.granularityBalanced": "Balanced",
     "option.granularityDetailed": "More groups",
+    "option.gatewayBuiltin": "Default service",
+    "option.gatewayCustom": "Custom API",
     "option.auxSpark": "gpt-5.3-codex-spark",
     "option.auxMini": "gpt-5.4-mini",
     "option.auxPrimary": "Use primary model",
@@ -495,10 +519,12 @@ const fields = {
   promptPreset: document.querySelector("#promptPreset"),
   groupingGranularity: document.querySelector("#groupingGranularity"),
   plannerProvider: document.querySelector("#plannerProvider"),
+  gatewayProviderMode: document.querySelector("#gatewayProviderMode"),
   gatewayBaseUrl: document.querySelector("#gatewayBaseUrl"),
   gatewayModel: document.querySelector("#gatewayModel"),
   gatewayAuxiliaryModel: document.querySelector("#gatewayAuxiliaryModel"),
   gatewayCustomModel: document.querySelector("#gatewayCustomModel"),
+  gatewayCustomAuxiliaryModel: document.querySelector("#gatewayCustomAuxiliaryModel"),
   gatewayThinkingIntensity: document.querySelector("#gatewayThinkingIntensity"),
   gatewayApiKey: document.querySelector("#gatewayApiKey"),
   rememberProviderKeys: document.querySelector("#rememberProviderKeys"),
@@ -563,6 +589,8 @@ const nodes = {
   detailsRoot: document.querySelector("#detailsRoot"),
   detailsText: document.querySelector("#detailsText"),
   gatewayCustomModelField: document.querySelector("#gatewayCustomModelField"),
+  gatewayTestBtn: document.querySelector("#gatewayTestBtn"),
+  gatewayTestHint: document.querySelector("#gatewayTestHint"),
   timeRecapPanel: document.querySelector("#timeRecapPanel"),
   recapCustomRange: document.querySelector("#recapCustomRange"),
   recapResult: document.querySelector("#recapResult"),
@@ -661,9 +689,13 @@ function bindEvents() {
   });
   fields.customPrompt.addEventListener("input", debounce(persistSettings, 250));
   fields.gatewayCustomModel.addEventListener("input", debounce(persistSettings, 250));
+  fields.gatewayCustomAuxiliaryModel.addEventListener("input", debounce(persistSettings, 250));
+  fields.gatewayBaseUrl.addEventListener("input", updateConditionalUi);
+  fields.gatewayApiKey.addEventListener("input", updateConditionalUi);
   fields.pageContextMode.addEventListener("change", updateConditionalUi);
   fields.organizeMode.addEventListener("change", updateConditionalUi);
   fields.plannerProvider.addEventListener("change", updateConditionalUi);
+  fields.gatewayProviderMode.addEventListener("change", updateConditionalUi);
   fields.gatewayModel.addEventListener("change", updateConditionalUi);
   nodes.analysisModeSelect?.addEventListener("change", () => {
     setAnalysisMode(nodes.analysisModeSelect.value || "both", { persist: true });
@@ -673,6 +705,7 @@ function bindEvents() {
   nodes.cancelBtn.addEventListener("click", handleCancelAction);
   nodes.applyBtn.addEventListener("click", applyLastPlan);
   nodes.undoBtn.addEventListener("click", undoLastApply);
+  nodes.gatewayTestBtn?.addEventListener("click", handleGatewayTestClick);
   nodes.uiLanguageToggle?.addEventListener("click", toggleUiLanguage);
   for (const button of nodes.recapQuickButtons || []) {
     button.addEventListener("click", () => setRecapPreset(button.dataset.recapPreset || "7d"));
@@ -753,12 +786,16 @@ function applyUiLanguage() {
   setText('label[for="languageMode"]', t("field.resultLanguage"));
   setText('label[for="promptPreset"]', t("field.promptPreset"));
   setText('label[for="groupingGranularity"]', t("field.groupingGranularity"));
+  setText('label[for="gatewayProviderMode"]', t("field.gatewayProvider"));
   setText('label[for="gatewayModel"]', t("field.gatewayModel"));
   setText('label[for="gatewayAuxiliaryModel"]', t("field.gatewayAuxiliaryModel"));
   setText('label[for="gatewayThinkingIntensity"]', t("field.thinking"));
   setText('label[for="gatewayCustomModel"]', t("field.customModel"));
+  setText('label[for="gatewayCustomAuxiliaryModel"]', t("field.customAuxiliaryModel"));
   setText('label[for="gatewayBaseUrl"]', t("field.gatewayUrl"));
   setText('label[for="gatewayApiKey"]', t("field.gatewayKey"));
+  setButtonLabel(nodes.gatewayTestBtn, t("button.gatewayTest"));
+  setText("#gatewayTestHint", t("gateway.testHint"));
   setText(".secret-remember-row strong", t("field.rememberKey"));
   setText(".secret-remember-row small", t("field.rememberKeyHint"));
   setText('label[for="minConfidenceToApply"]', t("field.minConfidence"));
@@ -778,6 +815,7 @@ function applyUiLanguage() {
   updateRecapRangeHint();
   setText("#recapDetailsRoot > summary", t("recap.evidence"));
   setAttribute("#gatewayCustomModel", "placeholder", t("placeholder.customModel"));
+  setAttribute("#gatewayCustomAuxiliaryModel", "placeholder", t("placeholder.customAuxiliaryModel"));
   setAttribute("#gatewayBaseUrl", "placeholder", t("placeholder.gatewayUrl"));
   setAttribute("#gatewayApiKey", "placeholder", t("placeholder.gatewayKey"));
 
@@ -806,10 +844,11 @@ function applyUiLanguage() {
   setOptionText("#groupingGranularity", "compact", t("option.granularityCompact"));
   setOptionText("#groupingGranularity", "balanced", t("option.granularityBalanced"));
   setOptionText("#groupingGranularity", "detailed", t("option.granularityDetailed"));
+  setOptionText("#gatewayProviderMode", "builtin", t("option.gatewayBuiltin"));
+  setOptionText("#gatewayProviderMode", "custom", t("option.gatewayCustom"));
   setOptionText("#gatewayAuxiliaryModel", "gpt-5.3-codex-spark", t("option.auxSpark"));
   setOptionText("#gatewayAuxiliaryModel", "gpt-5.4-mini", t("option.auxMini"));
   setOptionText("#gatewayAuxiliaryModel", "same_as_primary", t("option.auxPrimary"));
-  setOptionText("#gatewayModel", "custom", t("option.customModel"));
   setOptionText("#gatewayThinkingIntensity", "low", t("option.thinkingLow"));
   setOptionText("#gatewayThinkingIntensity", "medium", t("option.thinkingMedium"));
   setOptionText("#gatewayThinkingIntensity", "high", t("option.thinkingHigh"));
@@ -1013,6 +1052,19 @@ function readSettings(options = {}) {
   const contentAccessAvailable = hasContentAccessFeature();
   const selectedPageContextMode = normalizePanelPageContextMode(fields.pageContextMode.value);
   const pageSummaryEnabled = contentAccessAvailable && fields.ackSampling.checked;
+  const gatewayProviderMode = fields.gatewayProviderMode.value === GATEWAY_PROVIDER_MODES.CUSTOM
+    ? GATEWAY_PROVIDER_MODES.CUSTOM
+    : GATEWAY_PROVIDER_MODES.BUILTIN;
+  const usesCustomGateway = gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM;
+  const gatewayBaseUrl = usesCustomGateway ? fields.gatewayBaseUrl.value : "";
+  const gatewayCustomModel = usesCustomGateway ? fields.gatewayCustomModel.value : "";
+  const gatewayCustomAuxiliaryModel = usesCustomGateway ? fields.gatewayCustomAuxiliaryModel.value : "";
+  const gatewayModel =
+    usesCustomGateway
+      ? GATEWAY_CUSTOM_MODEL_VALUE
+      : fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE
+      ? DEFAULT_SETTINGS.gatewayModel
+      : fields.gatewayModel.value;
   const effectivePageContextMode = effectiveForAnalysis
     ? effectivePageContextModeForRun(selectedPageContextMode, pageSummaryEnabled)
     : selectedPageContextMode;
@@ -1037,13 +1089,15 @@ function readSettings(options = {}) {
     promptPreset: fields.promptPreset.value,
     groupingGranularity: fields.groupingGranularity.value,
     plannerProvider: fields.plannerProvider.value || "gateway",
-    rememberProviderKeys: Boolean(fields.rememberProviderKeys.checked && fields.gatewayBaseUrl.value.trim() && fields.gatewayApiKey.value.trim()),
-    gatewayBaseUrl: fields.gatewayBaseUrl.value,
-    gatewayModel: fields.gatewayModel.value,
-    gatewayAuxiliaryModel: fields.gatewayAuxiliaryModel.value,
-    gatewayCustomModel: fields.gatewayCustomModel.value,
+    gatewayProviderMode,
+    rememberProviderKeys: Boolean(usesCustomGateway && fields.rememberProviderKeys.checked && gatewayBaseUrl.trim() && fields.gatewayApiKey.value.trim()),
+    gatewayBaseUrl,
+    gatewayModel,
+    gatewayAuxiliaryModel: usesCustomGateway ? "same_as_primary" : fields.gatewayAuxiliaryModel.value,
+    gatewayCustomModel,
+    gatewayCustomAuxiliaryModel,
     gatewayThinkingIntensity: fields.gatewayThinkingIntensity.value,
-    gatewayApiKey: fields.gatewayApiKey.value,
+    gatewayApiKey: usesCustomGateway ? fields.gatewayApiKey.value : "",
     customPrompt: fields.customPrompt.value,
     includePinnedTabs: fields.includePinnedTabs.checked,
     includeIncognitoTabs: fields.includeIncognitoTabs.checked,
@@ -1159,8 +1213,18 @@ function updateConditionalUi() {
   nodes.samplingRisk.hidden = !contentAccessAvailable;
   nodes.hostPermissionField.hidden =
     !samplingEnabled || fields.pageContextMode.value === "off";
-  nodes.gatewayCustomModelField.hidden = fields.gatewayModel.value !== GATEWAY_CUSTOM_MODEL_VALUE;
-  const canRememberCustomKey = Boolean(fields.gatewayBaseUrl.value.trim() && fields.gatewayApiKey.value.trim());
+  const usesCustomGateway = fields.gatewayProviderMode.value === GATEWAY_PROVIDER_MODES.CUSTOM;
+  if (!usesCustomGateway && fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE) {
+    fields.gatewayModel.value = DEFAULT_SETTINGS.gatewayModel;
+  }
+  document.querySelectorAll(".builtin-provider-setting").forEach((element) => {
+    element.hidden = usesCustomGateway;
+  });
+  document.querySelectorAll(".custom-provider-setting").forEach((element) => {
+    element.hidden = !usesCustomGateway;
+  });
+  nodes.gatewayCustomModelField.hidden = !usesCustomGateway;
+  const canRememberCustomKey = Boolean(usesCustomGateway && fields.gatewayBaseUrl.value.trim() && fields.gatewayApiKey.value.trim());
   fields.rememberProviderKeys.disabled = !canRememberCustomKey;
   if (!canRememberCustomKey) fields.rememberProviderKeys.checked = false;
   syncChoiceGroups();
@@ -1312,6 +1376,34 @@ async function ensurePageSummaryPermissionsForRun(settings, progress, mode = cur
   updateLocalProgress(t("status.checkingPageSummaryPermissions"), progress, mode);
   await ensurePageSamplingPermissions(settings, { requestMissing: false });
   settings.hostPermissionRequestMode = "never";
+}
+
+async function handleGatewayTestClick() {
+  const settings = readSettings({ effectiveForAnalysis: true });
+  settings.languageMode = effectiveResultLanguageMode(settings.languageMode);
+  try {
+    if (!settings.gatewayBaseUrl) {
+      throw new Error(t("status.gatewayTestUrlMissing"));
+    }
+    validateGatewaySettingsForAnalyze(settings);
+    nodes.gatewayTestBtn.disabled = true;
+    setStatusKey("status.gatewayTesting");
+    await ensurePlannerHostPermission(settings);
+    const result = await sendMessage({
+      type: "gateway:testConnection",
+      settings,
+      timeoutMs: 15_000
+    });
+    const primaryModel = result?.model || settings.gatewayCustomModel || settings.gatewayModel;
+    const auxiliaryModel = result?.auxiliaryModel && result.auxiliaryModel !== primaryModel
+      ? ` / ${result.auxiliaryModel}`
+      : "";
+    setStatusKey("status.gatewayTestOk", { model: `${primaryModel}${auxiliaryModel}` });
+  } catch (error) {
+    setErrorStatus(error, friendlyErrorMessage(error));
+  } finally {
+    nodes.gatewayTestBtn.disabled = false;
+  }
 }
 
 function readRecapRange() {
@@ -1629,7 +1721,11 @@ function formatRecapDateTime(value) {
 }
 
 function validateGatewaySettingsForAnalyze(settings) {
-  if (settings.plannerProvider !== "gateway" || settings.gatewayModel !== GATEWAY_CUSTOM_MODEL_VALUE) return;
+  if (settings.plannerProvider !== "gateway") return;
+  if (settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM && !settings.gatewayBaseUrl.trim()) {
+    throw new Error(t("status.gatewayTestUrlMissing"));
+  }
+  if (settings.gatewayModel !== GATEWAY_CUSTOM_MODEL_VALUE) return;
   if (!settings.gatewayCustomModel.trim()) {
     throw new Error(t("status.customModelMissing"));
   }
@@ -1647,7 +1743,11 @@ function friendlyErrorMessage(error) {
   if (/Cannot apply an invalid plan/i.test(message)) return t("status.invalidPlan");
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
   if (/AI gateway time recap timed out/i.test(message)) return t("status.recapAiUnavailable");
+  if (/AI gateway .* timed out/i.test(message)) return t("status.gatewayTimeout");
   if (/model.*not available.*free gateway|free gateway.*model.*not available|model_not_allowed/i.test(message)) {
+    if (/自定义 AI 网关|自定义 API|custom AI gateway|custom API/i.test(message)) {
+      return t("status.customGatewayUnsupportedModel");
+    }
     return t("status.gatewayUnsupportedModel");
   }
   if (/AI gateway planner returned invalid JSON|Unexpected token|is not valid JSON|invalid JSON/i.test(message)) {
@@ -2795,7 +2895,11 @@ async function ensurePlannerHostPermission(settings) {
   if (settings.plannerProvider !== "gateway") return;
   if (!globalThis.chrome?.permissions?.contains || !globalThis.chrome?.permissions?.request) return;
 
-  const pattern = providerPermissionPattern(settings.gatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL);
+  const gatewayBaseUrl =
+    settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM
+      ? settings.gatewayBaseUrl
+      : BUILTIN_GATEWAY_BASE_URL;
+  const pattern = providerPermissionPattern(gatewayBaseUrl);
   if (!pattern) return;
 
   const hasPermission = await chrome.permissions.contains({ origins: [pattern] });
@@ -3094,11 +3198,13 @@ async function mockMessage(message) {
       promptPreset: "conservative",
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
+      gatewayProviderMode: "builtin",
       rememberProviderKeys: false,
       gatewayBaseUrl: "",
       gatewayModel: "gpt-5.4",
       gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
       gatewayCustomModel: "",
+      gatewayCustomAuxiliaryModel: "",
       gatewayThinkingIntensity: "high",
       gatewayApiKey: "",
       customPrompt: ""
@@ -3143,6 +3249,15 @@ async function mockMessage(message) {
     return { cleared: true };
   }
   if (message.type === "tabs:cancelActiveJob") return { canceled: false, job: mockActiveJob };
+  if (message.type === "gateway:testConnection") {
+    return {
+      ok: true,
+      status: 200,
+      model: message.settings?.gatewayCustomModel || message.settings?.gatewayModel || "gpt-5.4",
+      auxiliaryModel: message.settings?.gatewayCustomAuxiliaryModel || message.settings?.gatewayAuxiliaryModel || "",
+      baseUrl: message.settings?.gatewayBaseUrl || ""
+    };
+  }
   if (message.type === "activity:focusTab") return { focused: true, tabId: message.tabId, windowId: message.windowId };
   if (message.type === "activity:cancelTimeRecap") return { canceled: true, operationId: message.operationId || "mock_recap" };
   if (message.type === "activity:generateTimeRecap") {

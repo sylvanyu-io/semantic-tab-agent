@@ -279,6 +279,14 @@
             </div>
 
             <div class="field setting-select-row">
+              <label for="gatewayProviderMode">AI 服务</label>
+              <select id="gatewayProviderMode">
+                <option value="builtin" selected>默认服务</option>
+                <option value="custom">自定义 API</option>
+              </select>
+            </div>
+
+            <div class="field setting-select-row builtin-provider-setting">
               <label for="gatewayModel">AI 模型</label>
               <select id="gatewayModel">
                 <option value="gpt-5.5">gpt-5.5</option>
@@ -286,11 +294,11 @@
                 <option value="gpt-5.4-mini">gpt-5.4-mini</option>
                 <option value="claude-opus-4-8">claude-opus-4-8</option>
                 <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
-                <option value="custom">自定义模型名</option>
+                <option value="custom" hidden>自定义模型名</option>
               </select>
             </div>
 
-            <div class="field setting-select-row">
+            <div class="field setting-select-row builtin-provider-setting">
               <label for="gatewayAuxiliaryModel">辅助模型</label>
               <select id="gatewayAuxiliaryModel">
                 <option value="gpt-5.3-codex-spark">gpt-5.3-codex-spark</option>
@@ -311,7 +319,7 @@
           </div>
 
           <div class="advanced-list advanced-input-list">
-            <div id="gatewayCustomModelField" class="field setting-input-row" hidden>
+            <div id="gatewayCustomModelField" class="field setting-input-row custom-provider-setting" hidden>
               <label for="gatewayCustomModel">自定义模型名</label>
               <input
                 id="gatewayCustomModel"
@@ -322,16 +330,31 @@
               />
             </div>
 
-            <div class="field setting-input-row">
-              <label for="gatewayBaseUrl">AI 网关地址（可选）</label>
-              <input id="gatewayBaseUrl" type="url" autocomplete="off" placeholder="不填则使用默认服务" />
+            <div id="gatewayCustomAuxiliaryModelField" class="field setting-input-row custom-provider-setting" hidden>
+              <label for="gatewayCustomAuxiliaryModel">自定义辅助模型（可选）</label>
+              <input
+                id="gatewayCustomAuxiliaryModel"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="留空则跟随主模型"
+              />
             </div>
 
-            <div class="field setting-input-row">
-              <label for="gatewayApiKey">AI 网关密钥（可选）</label>
-              <input id="gatewayApiKey" type="password" autocomplete="off" placeholder="默认服务无需填写" />
+            <div class="field setting-input-row custom-provider-setting" hidden>
+              <label for="gatewayBaseUrl">自定义 API 地址</label>
+              <input id="gatewayBaseUrl" type="url" autocomplete="off" placeholder="例如：https://api.deepseek.com/v1" />
             </div>
-            <label class="mini-check secret-remember-row">
+
+            <div class="field setting-input-row custom-provider-setting" hidden>
+              <label for="gatewayApiKey">API Key（可选）</label>
+              <input id="gatewayApiKey" type="password" autocomplete="off" placeholder="没有密钥可留空" />
+            </div>
+            <div class="gateway-test-row custom-provider-setting" hidden>
+              <button id="gatewayTestBtn" type="button" class="gateway-test-button">测试连接</button>
+              <span id="gatewayTestHint">仅检测自定义 API</span>
+            </div>
+            <label class="mini-check secret-remember-row custom-provider-setting" hidden>
               <input id="rememberProviderKeys" type="checkbox" />
               <span>
                 <strong>记住自定义密钥</strong>
