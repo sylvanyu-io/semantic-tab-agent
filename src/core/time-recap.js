@@ -4,6 +4,7 @@ import { localizedText } from "../shared/language.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
   applyThinkingIntensity,
+  attachJsonResponseFormat,
   gatewayChatCompletionsUrl,
   gatewayErrorMessage,
   gatewayHeaders,
@@ -310,9 +311,9 @@ export async function createGatewayTimeRecap(input, rawSettings = {}, fetchImpl 
       { role: "system", content: buildTimeRecapSystemPrompt(settings) },
       { role: "user", content: buildTimeRecapUserPrompt(input) }
     ],
-    response_format: { type: "json_object" },
     max_tokens: 4096
   };
+  attachJsonResponseFormat(body, settings);
   applyThinkingIntensity(body, settings, settings.gatewayThinkingIntensity);
 
   const { response, data } = await fetchJsonWithTimeout(

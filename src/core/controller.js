@@ -15,6 +15,7 @@ import { cachedPageSampleForTab, rememberPageSummary } from "./page-summary-cach
 import { requestPageSample } from "./page-sampler.js";
 import { reconcileTabLifecycle, rememberTabsLifecycle } from "./tab-lifecycle-log.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
+import { testGatewayConnection } from "./gateway-planner.js";
 import { createPlan } from "./planner.js";
 import { normalizePlanForSettings } from "./plan-normalizer.js";
 import { buildPreview } from "./preview.js";
@@ -108,6 +109,8 @@ export async function handleRuntimeMessage(chromeApi, message) {
       return cancelActiveJob(chromeApi, message.windowId);
     case "progressCopy:generate":
       return generateProgressCopy(chromeApi, message);
+    case "gateway:testConnection":
+      return testGatewayConnection(message.settings || {}, globalThis.fetch, { timeoutMs: message.timeoutMs || 15_000 });
     case "activity:getOverview":
       const settings = await getSettings(chromeApi);
       await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);

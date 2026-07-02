@@ -5,6 +5,7 @@ import { STORAGE_KEYS } from "../src/core/storage.js";
 import {
   DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
+  GATEWAY_PROVIDER_MODES,
   GROUPING_GRANULARITIES,
   LANGUAGE_MODES,
   PAGE_SAMPLING_CONSENT_MODES,
@@ -13,6 +14,8 @@ import {
   UNDO_TARGET_WINDOW_MODES
 } from "../src/shared/settings.js";
 import { normalizeSettings } from "../src/shared/settings.js";
+import { resolveGatewayModel } from "../src/shared/settings.js";
+import { resolveGatewayAuxiliaryModel } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
 
 test("session-only page sampling consent is not persisted", async () => {
@@ -130,6 +133,32 @@ test("AI gateway settings normalize safely", () => {
     }).gatewayModel,
     DEFAULT_SETTINGS.gatewayModel
   );
+  const manualCustomGateway = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    gatewayBaseUrl: "https://api.deepseek.com/v1",
+    gatewayModel: "gpt-5.4",
+    gatewayCustomModel: "deepseek-v4"
+  });
+  assert.equal(manualCustomGateway.gatewayProviderMode, GATEWAY_PROVIDER_MODES.CUSTOM);
+  assert.equal(manualCustomGateway.gatewayModel, GATEWAY_CUSTOM_MODEL_VALUE);
+  assert.equal(resolveGatewayModel(manualCustomGateway), "deepseek-v4");
+  const explicitCustomGateway = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+    gatewayCustomModel: "glm-5.2"
+  });
+  assert.equal(explicitCustomGateway.gatewayProviderMode, GATEWAY_PROVIDER_MODES.CUSTOM);
+  assert.equal(resolveGatewayModel(explicitCustomGateway), "glm-5.2");
+  assert.equal(explicitCustomGateway.gatewayAuxiliaryModel, "same_as_primary");
+  assert.equal(resolveGatewayAuxiliaryModel(explicitCustomGateway), "glm-5.2");
+  const explicitCustomGatewayWithAuxiliary = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+    gatewayCustomModel: "glm-5.2",
+    gatewayCustomAuxiliaryModel: "deepseek-v4"
+  });
+  assert.equal(resolveGatewayModel(explicitCustomGatewayWithAuxiliary), "glm-5.2");
+  assert.equal(resolveGatewayAuxiliaryModel(explicitCustomGatewayWithAuxiliary), "deepseek-v4");
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, gatewayModel: "gpt-5.4" }).gatewayModel, "gpt-5.4");
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, gatewayModel: "gpt-5.4-mini" }).gatewayModel, "gpt-5.4-mini");
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, gatewayAuxiliaryModel: "gpt-5.3-codex-spark" }).gatewayAuxiliaryModel, "gpt-5.3-codex-spark");

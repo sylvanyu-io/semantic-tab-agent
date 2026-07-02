@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPlannerSystemPrompt, createGatewayPlan } from "../src/core/gateway-planner.js";
+import { buildPlannerSystemPrompt, createGatewayPlan, testGatewayConnection } from "../src/core/gateway-planner.js";
 import { validatePlan } from "../src/core/plan-validator.js";
 import {
   DEFAULT_SETTINGS,
@@ -559,6 +559,7 @@ test("AI gateway planner sends a custom model name to custom gateways", async ()
     const body = JSON.parse(options.body);
     assert.equal(body.model, "glm-5.2");
     assert.deepEqual(body.thinking, { type: "enabled" });
+    assert.equal(body.response_format, undefined);
     assert.equal(body.reasoning_effort, undefined);
     assert.equal(options.headers.authorization, "Bearer glm-key");
     return {
@@ -579,6 +580,65 @@ test("AI gateway planner sends a custom model name to custom gateways", async ()
       gatewayCustomModel: "glm-5.2",
       gatewayApiKey: "glm-key",
       languageMode: "en-US"
+    },
+    fetchImpl
+  );
+
+  assert.deepEqual(plan, expectedPlan);
+});
+
+test("AI gateway planner prefers manual model names when a custom base URL is set", async () => {
+  const expectedPlan = {
+    schemaVersion: 1,
+    mode: "current_window",
+    scope: { kind: "current_window", windowIds: [1] },
+    targetWindow: { kind: "current_window", windowId: 1, title: "Current Window" },
+    eligibleTabs: [
+      { tabId: 10, windowId: 1 },
+      { tabId: 11, windowId: 1 }
+    ],
+    excludedTabs: [],
+    groups: [
+      {
+        groupKey: "docs",
+        title: "Docs",
+        color: "blue",
+        confidence: 0.9,
+        tabRefs: [
+          { tabId: 10, windowId: 1 },
+          { tabId: 11, windowId: 1 }
+        ],
+        reason: "Documentation tabs."
+      }
+    ],
+    reviewTabs: []
+  };
+
+  const fetchImpl = async (url, options) => {
+    assert.equal(url, "https://api.deepseek.com/v1/chat/completions");
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, "deepseek-v4");
+    assert.equal(body.response_format, undefined);
+    assert.equal(body.reasoning_effort, undefined);
+    assert.equal(body.thinking, undefined);
+    assert.equal(options.headers.authorization, "Bearer deepseek-test-key");
+    return {
+      ok: true,
+      async json() {
+        return { choices: [{ message: { content: JSON.stringify(expectedPlan) } }] };
+      }
+    };
+  };
+
+  const plan = await createGatewayPlan(
+    inventory,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "https://api.deepseek.com/v1",
+      gatewayModel: "gpt-5.4",
+      gatewayCustomModel: "deepseek-v4",
+      gatewayApiKey: "deepseek-test-key"
     },
     fetchImpl
   );
@@ -657,6 +717,47 @@ test("AI gateway planner rejects blank custom model names", async () => {
     ),
     /请填写自定义模型名/
   );
+});
+
+test("AI gateway connection test sends a minimal custom API ping", async () => {
+  const pingedModels = [];
+  const result = await testGatewayConnection(
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "https://api.deepseek.com/v1/",
+      gatewayModel: "gpt-5.4",
+      gatewayCustomModel: "deepseek-v4",
+      gatewayCustomAuxiliaryModel: "glm-5.2",
+      gatewayApiKey: "ping-test-key"
+    },
+    async (url, options) => {
+      assert.equal(url, "https://api.deepseek.com/v1/chat/completions");
+      assert.equal(options.method, "POST");
+      assert.equal(options.headers.authorization, "Bearer ping-test-key");
+      const body = JSON.parse(options.body);
+      assert.deepEqual(Object.keys(body).sort(), ["max_tokens", "messages", "model"]);
+      pingedModels.push(body.model);
+      assert.equal(body.messages[0].content, "Reply with ok.");
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { choices: [{ message: { content: "ok" } }] };
+        }
+      };
+    },
+    { timeoutMs: 1000 }
+  );
+
+  assert.deepEqual(pingedModels, ["deepseek-v4", "glm-5.2"]);
+  assert.deepEqual(result, {
+    ok: true,
+    status: 200,
+    model: "deepseek-v4",
+    auxiliaryModel: "glm-5.2",
+    baseUrl: "https://api.deepseek.com/v1"
+  });
 });
 
 test("AI gateway payload omits excluded tab titles", async () => {

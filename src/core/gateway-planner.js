@@ -1,6 +1,7 @@
 import {
   BUILTIN_GATEWAY_BASE_URL,
   GATEWAY_CUSTOM_MODEL_VALUE,
+  GATEWAY_PROVIDER_MODES,
   GROUPING_GRANULARITIES,
   ORGANIZE_MODES,
   PROMPT_PRESET_TEXT,
@@ -8,6 +9,7 @@ import {
   REVIEW_GROUP_MODES,
   TARGET_WINDOW_MODES,
   THINKING_INTENSITIES,
+  isCustomGatewayProvider,
   normalizeSettings,
   resolveGatewayAuxiliaryModel,
   resolveGatewayModel
@@ -81,9 +83,9 @@ async function createSingleGatewayPlan(inventory, settings, fetchImpl, options =
       { role: "system", content: buildPlannerSystemPrompt(settings) },
       { role: "user", content: buildGatewayUserPrompt(inventory, settings, options) }
     ],
-    response_format: { type: "json_object" },
     max_tokens: 8192
   };
+  attachJsonResponseFormat(body, settings);
   applyThinkingIntensity(body, settings, options.thinkingIntensity || settings.gatewayThinkingIntensity);
 
   const { response, data } = await fetchJsonWithTimeout(
@@ -209,11 +211,15 @@ async function createHierarchicalGatewayPlan(inventory, settings, fetchImpl, opt
 }
 
 export function gatewayChatCompletionsUrl(settings) {
-  return `${effectiveGatewayBaseUrl(settings).replace(/\/+$/, "")}/chat/completions`;
+  const baseUrl = effectiveGatewayBaseUrl(settings);
+  if (!baseUrl) {
+    throw new Error(localizedText(settings.languageMode, "请先填写自定义 API 地址。", "Enter a custom API URL first."));
+  }
+  return `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
 }
 
 export function effectiveGatewayBaseUrl(settings) {
-  return settings.gatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL;
+  return isCustomGatewayProvider(settings) ? settings.gatewayBaseUrl : BUILTIN_GATEWAY_BASE_URL;
 }
 
 export function requireGatewayModel(settings) {
@@ -222,8 +228,8 @@ export function requireGatewayModel(settings) {
     throw new Error(
       localizedText(
         settings.languageMode,
-        "请填写自定义模型名，或者选择一个预设模型。",
-        "Enter a custom model name or choose a preset model."
+        "请填写自定义模型名。",
+        "Enter a custom model name."
       )
     );
   }
@@ -236,16 +242,16 @@ function requireGatewayAuxiliaryModel(settings) {
 
 export function gatewayHeaders(settings, requestMeta = {}) {
   const headers = { "content-type": "application/json" };
-  if (settings.gatewayBaseUrl && settings.gatewayApiKey) {
+  if (isCustomGatewayProvider(settings) && settings.gatewayApiKey) {
     headers.authorization = `Bearer ${settings.gatewayApiKey}`;
   }
   if (requestMeta.requestId) {
     headers["x-tab-recap-request-id"] = requestMeta.requestId;
   }
-  if (!settings.gatewayBaseUrl && requestMeta.installId) {
+  if (!isCustomGatewayProvider(settings) && requestMeta.installId) {
     headers["x-tab-recap-install-id"] = requestMeta.installId;
   }
-  if (!settings.gatewayBaseUrl && requestMeta.hasPageSamples) {
+  if (!isCustomGatewayProvider(settings) && requestMeta.hasPageSamples) {
     headers["x-tab-recap-page-summary"] = "1";
   }
   return headers;
@@ -259,26 +265,83 @@ export function gatewayRequestMeta(inventory, options = {}) {
   };
 }
 
+export function attachJsonResponseFormat(body, settings) {
+  if (shouldRequestJsonResponseFormat(settings)) {
+    body.response_format = { type: "json_object" };
+  }
+  return body;
+}
+
+export function shouldRequestJsonResponseFormat(settings) {
+  return !usesCustomCompatibleGateway(settings);
+}
+
+export async function testGatewayConnection(rawSettings = {}, fetchImpl = globalThis.fetch, options = {}) {
+  const settings = normalizeSettings(rawSettings);
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Fetch is not available in this environment.");
+  }
+  if (!isCustomGatewayProvider(settings) || !settings.gatewayBaseUrl) {
+    throw new Error(localizedText(settings.languageMode, "请先填写自定义 API 地址。", "Enter a custom API URL first."));
+  }
+
+  const model = requireGatewayModel(settings);
+  const auxiliaryModel = requireGatewayAuxiliaryModel(settings);
+  const modelsToTest = [...new Set([model, auxiliaryModel].filter(Boolean))];
+  let lastStatus = 0;
+  for (const testModel of modelsToTest) {
+    const body = {
+      model: testModel,
+      messages: [{ role: "user", content: "Reply with ok." }],
+      max_tokens: 8
+    };
+    const { response, data } = await fetchJsonWithTimeout(
+      fetchImpl,
+      gatewayChatCompletionsUrl(settings),
+      {
+        method: "POST",
+        headers: gatewayHeaders(settings, { requestId: options.requestId || "" }),
+        body: JSON.stringify(body)
+      },
+      "AI gateway connection test",
+      options.timeoutMs ?? 15_000,
+      options.signal
+    );
+    lastStatus = response.status;
+    if (!response.ok) {
+      throw new Error(gatewayErrorMessage(response, data, settings));
+    }
+  }
+  return {
+    ok: true,
+    status: lastStatus || 200,
+    model,
+    auxiliaryModel,
+    baseUrl: effectiveGatewayBaseUrl(settings)
+  };
+}
+
 export function gatewayErrorMessage(response, data, settings) {
   const providerMessage = extractProviderErrorMessage(data);
   const requestId = extractGatewayRequestId(response, data);
   const suffix = requestId ? `（请求号 ${requestId}）` : "";
+  const isCustomProvider = isCustomGatewayProvider(settings);
   if (response.status === 401 || response.status === 403) {
-    return settings.gatewayBaseUrl
+    return isCustomProvider
       ? "AI 服务拒绝访问。请检查自定义网关地址和密钥。"
       : `默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。${suffix}`;
   }
   if (isLocalOriginOffline(response, providerMessage, data)) {
-    return settings.gatewayBaseUrl
+    return isCustomProvider
       ? `自定义 AI 网关的本地源站暂时离线。请检查本机服务、Cloudflare Tunnel 和上游模型。${suffix}`
       : `默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。${suffix}`;
   }
   if (isGatewayInfrastructureError(response, providerMessage)) {
-    return settings.gatewayBaseUrl
+    return isCustomProvider
       ? `自定义 AI 网关暂时连不上。请检查网关地址、隧道或上游服务是否在线。${suffix}`
       : `默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。${suffix}`;
   }
-  if (settings.gatewayBaseUrl) {
+  if (isCustomProvider) {
     return providerMessage
       ? `自定义 AI 网关这次没有完成请求（${response.status}）。${providerMessage}`
       : `自定义 AI 网关这次没有完成请求（${response.status}）。请检查网关服务后重试。`;
@@ -739,9 +802,9 @@ async function createCoarseGatewayBuckets(inventory, settings, fetchImpl, option
       { role: "system", content: buildCoarseSystemPrompt(settings, options) },
       { role: "user", content: buildCoarseUserPrompt(inventory, settings) }
     ],
-    response_format: { type: "json_object" },
     max_tokens: 8192
   };
+  attachJsonResponseFormat(body, settings);
   applyThinkingIntensity(body, settings, THINKING_INTENSITIES.LOW);
   const { response, data } = await fetchJsonWithTimeout(
     fetchImpl,
@@ -768,9 +831,9 @@ async function createCleanupGatewayAnalysis(inventory, settings, fetchImpl, opti
       { role: "system", content: buildCleanupSystemPrompt(settings) },
       { role: "user", content: buildCleanupUserPrompt(inventory, settings, options, groups, reviewTabs) }
     ],
-    response_format: { type: "json_object" },
     max_tokens: cleanupPlannerMaxTokens(inventory)
   };
+  attachJsonResponseFormat(body, settings);
   applyThinkingIntensity(body, settings, THINKING_INTENSITIES.LOW);
   const { response, data } = await fetchJsonWithTimeout(
     fetchImpl,
@@ -1692,6 +1755,10 @@ export function applyThinkingIntensity(body, settings, intensity = settings.gate
     return;
   }
 
+  if (!supportsReasoningEffort(settings)) {
+    return;
+  }
+
   body.reasoning_effort = intensity === THINKING_INTENSITIES.ULTRA ? THINKING_INTENSITIES.HIGH : intensity;
 }
 
@@ -1711,6 +1778,14 @@ function usesGlmThinking(settings) {
   } catch {
     return false;
   }
+}
+
+function supportsReasoningEffort(settings) {
+  return !usesCustomCompatibleGateway(settings);
+}
+
+function usesCustomCompatibleGateway(settings) {
+  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE;
 }
 
 function thinkingIntensityText(value) {
