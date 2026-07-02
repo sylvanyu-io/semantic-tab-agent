@@ -2248,6 +2248,30 @@ test("AI gateway planner runs bucket refinements with bounded concurrency", asyn
   );
 });
 
+test("AI gateway planner reports a friendly error when the gateway returns an empty body", async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    async text() {
+      return "";
+    }
+  });
+
+  await assert.rejects(
+    createGatewayPlan(
+      inventory,
+      {
+        ...DEFAULT_SETTINGS,
+        plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+        gatewayBaseUrl: "http://localhost:8317/v1",
+        gatewayApiKey: "gateway-test-key"
+      },
+      fetchImpl
+    ),
+    /没有生成可用方案/
+  );
+});
+
 function planForRefs(tabIds, title) {
   return {
     schemaVersion: 1,

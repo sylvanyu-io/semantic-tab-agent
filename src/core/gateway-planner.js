@@ -1492,8 +1492,8 @@ export function parsePlanFromGatewayResponse(data, inventory, settings, options 
 function parseGatewayJson(data) {
   const text =
     data?.choices?.[0]?.message?.content ||
-    data.output_text ||
-    (data.output || [])
+    data?.output_text ||
+    (data?.output || [])
       .flatMap((item) => item.content || [])
       .find((content) => content.type === "output_text" || content.type === "text")?.text;
 
@@ -1511,7 +1511,7 @@ function parseGatewayJson(data) {
 }
 
 function findRefusal(data) {
-  return (data.output || [])
+  return (data?.output || [])
     .flatMap((item) => item.content || [])
     .find((content) => content.refusal)?.refusal;
 }
