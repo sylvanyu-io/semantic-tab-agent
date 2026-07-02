@@ -19,7 +19,7 @@ TabRecap 是一个 AI 原生的 Chrome MV3 标签页整理与工作回顾扩展�
 English: TabRecap is an AI tab organizer and private work recap extension for Chrome. It groups messy tabs by task, topic, or project, then helps summarize what you worked on from local tab activity and optional page summaries.
 
 <p align="center">
-  <img src="docs/assets/readme-hero-zh.png" width="920" alt="TabRecap 中文产品截图" />
+  <img src="docs/assets/readme-hero-zh.png" width="1120" alt="TabRecap 中文产品截图" />
 </p>
 
 ## 为什么做
