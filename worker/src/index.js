@@ -420,9 +420,10 @@ async function checkRateLimits(request, env, limits) {
     ]);
   }
 
+  const currentValues = await Promise.all(checks.map(([, key]) => env.RATE_LIMIT_KV.get(key)));
   const currentCounts = [];
-  for (const [kind, key, limit, ttlSeconds] of checks) {
-    const current = Number(await env.RATE_LIMIT_KV.get(key)) || 0;
+  for (const [position, [kind, key, limit, ttlSeconds]] of checks.entries()) {
+    const current = Number(currentValues[position]) || 0;
     if (current + 1 > limit) {
       return {
         ok: false,
@@ -434,9 +435,9 @@ async function checkRateLimits(request, env, limits) {
     currentCounts.push([key, current + 1, ttlSeconds]);
   }
 
-  for (const [key, next, ttlSeconds] of currentCounts) {
-    await env.RATE_LIMIT_KV.put(key, String(next), { expirationTtl: ttlSeconds });
-  }
+  await Promise.all(
+    currentCounts.map(([key, next, ttlSeconds]) => env.RATE_LIMIT_KV.put(key, String(next), { expirationTtl: ttlSeconds }))
+  );
   return { ok: true };
 }
 
