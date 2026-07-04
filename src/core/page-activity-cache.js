@@ -227,10 +227,12 @@ function normalizeActivityCache(value) {
 }
 
 function pruneActivityCache(cache, now = Date.now()) {
-  const freshEntries = Object.values(cache.entries)
-    .filter((entry) => isFreshActivityEntry(entry, now))
-    .sort((left, right) => Date.parse(right.lastSeenAt || 0) - Date.parse(left.lastSeenAt || 0))
-    .slice(0, CACHE_MAX_ENTRIES);
+  let freshEntries = Object.values(cache.entries).filter((entry) => isFreshActivityEntry(entry, now));
+  if (freshEntries.length > CACHE_MAX_ENTRIES) {
+    freshEntries = freshEntries
+      .sort((left, right) => Date.parse(right.lastSeenAt || 0) - Date.parse(left.lastSeenAt || 0))
+      .slice(0, CACHE_MAX_ENTRIES);
+  }
   return {
     version: CACHE_VERSION,
     entries: Object.fromEntries(freshEntries.map((entry) => [entry.key, entry]))

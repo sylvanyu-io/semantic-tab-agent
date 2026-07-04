@@ -278,10 +278,12 @@ async function persistLifecycleLog(chromeApi, log, now) {
 }
 
 function pruneLifecycleLog(log, now) {
-  const sessions = Object.values(log.sessions)
-    .filter((session) => isFreshSession(session, now))
-    .sort((left, right) => Date.parse(right.lastObservedAt || right.closedAt || "") - Date.parse(left.lastObservedAt || left.closedAt || ""))
-    .slice(0, MAX_SESSIONS);
+  let sessions = Object.values(log.sessions).filter((session) => isFreshSession(session, now));
+  if (sessions.length > MAX_SESSIONS) {
+    sessions = sessions
+      .sort((left, right) => Date.parse(right.lastObservedAt || right.closedAt || "") - Date.parse(left.lastObservedAt || left.closedAt || ""))
+      .slice(0, MAX_SESSIONS);
+  }
   const sessionIds = new Set(sessions.map((session) => session.id));
   return {
     version: LOG_VERSION,
