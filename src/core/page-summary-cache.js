@@ -80,13 +80,13 @@ export async function capturePageSummaryIfAllowed(chromeApi, tab, rawSettings = 
   return result;
 }
 
-export async function rememberPageSummary(chromeApi, tab, sampleResult) {
+export async function rememberPageSummary(chromeApi, tab, sampleResult, options = {}) {
   if (sampleResult?.status !== "ok" || !sampleResult.sample) return null;
   const rawUrl = getTabUrl(tab);
   const key = pageSummaryCacheKey(cacheComparableUrl(rawUrl));
   if (!key) return null;
 
-  const now = Date.now();
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
   const cache = pruneCache(normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null)), now);
   const existing = cache.entries[key];
   const nowIso = new Date(now).toISOString();
@@ -127,20 +127,22 @@ function normalizeCache(value) {
 }
 
 function pruneCache(cache, now = Date.now()) {
-  const freshEntries = Object.values(cache.entries)
-    .filter(isFreshEntry)
-    .sort((left, right) => Date.parse(right.lastUsedAt || right.sampledAt || 0) - Date.parse(left.lastUsedAt || left.sampledAt || 0))
-    .slice(0, CACHE_MAX_ENTRIES);
+  let freshEntries = Object.values(cache.entries).filter((entry) => isFreshEntry(entry, now));
+  if (freshEntries.length > CACHE_MAX_ENTRIES) {
+    freshEntries = freshEntries
+      .sort((left, right) => Date.parse(right.lastUsedAt || right.sampledAt || 0) - Date.parse(left.lastUsedAt || left.sampledAt || 0))
+      .slice(0, CACHE_MAX_ENTRIES);
+  }
   return {
     version: CACHE_VERSION,
     entries: Object.fromEntries(freshEntries.map((entry) => [entry.key, entry]))
   };
 }
 
-function isFreshEntry(entry) {
+function isFreshEntry(entry, now = Date.now()) {
   if (!entry?.sample || !entry.key) return false;
   const sampledAt = Date.parse(entry.sampledAt || "");
-  return Number.isFinite(sampledAt) && Date.now() - sampledAt <= CACHE_TTL_MS;
+  return Number.isFinite(sampledAt) && now - sampledAt <= CACHE_TTL_MS;
 }
 
 function isSafeBackgroundTab(tab) {

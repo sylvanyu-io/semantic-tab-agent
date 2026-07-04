@@ -46,6 +46,38 @@ test("page summary cache matches sanitized URL fingerprints without storing full
   assert.equal(cached.sample.contentKind, "discussion");
 });
 
+test("page summary pruning uses the same injected clock as the write", async () => {
+  const chrome = createFakeChrome();
+  const realNow = Date.now();
+  const injectedNow = realNow + 30 * 24 * 60 * 60 * 1000;
+  chrome.__state.storage[STORAGE_KEYS.pageSummaryCache] = {
+    version: 1,
+    entries: {
+      stale: {
+        key: "stale",
+        title: "Stale summary",
+        sampledAt: new Date(realNow - 24 * 60 * 60 * 1000).toISOString(),
+        lastUsedAt: new Date(realNow - 24 * 60 * 60 * 1000).toISOString(),
+        sample: { title: "Stale summary", visibleText: "Old text" }
+      }
+    }
+  };
+
+  await rememberPageSummary(
+    chrome,
+    { id: 11, title: "Fresh page", url: "https://fresh.example/page" },
+    {
+      status: "ok",
+      sample: { title: "Fresh page", visibleText: "Fresh text" }
+    },
+    { now: injectedNow }
+  );
+
+  const cache = chrome.__state.storage[STORAGE_KEYS.pageSummaryCache];
+  assert.equal(cache.entries.stale, undefined);
+  assert.equal(Object.values(cache.entries).some((entry) => entry.title === "Fresh page"), true);
+});
+
 test("continuous summary capture skips sleeping tabs", async () => {
   const chrome = createFakeChrome();
   let sampled = false;
