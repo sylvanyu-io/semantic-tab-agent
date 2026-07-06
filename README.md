@@ -110,13 +110,19 @@ npm test
 npm run test:ui
 ```
 
-运行完整发布检查，会清理旧产物、重新生成图标、跑测试、扫描密钥痕迹，并构建本地包和商店包：
+运行标准发布检查，会清理旧产物、重新生成图标、跑测试、扫描密钥痕迹，并构建本地包和商店包：
 
 ```bash
 npm run release:check
 ```
 
-发布前如果要同时检查默认 AI 服务、隧道、告警配置和真实模型请求，运行 live gate：
+公开发版前运行完整发布检查。它会先跑标准门禁，再启动隔离 Chromium profile 做真实扩展压力测试：
+
+```bash
+npm run release:check:full
+```
+
+如果这次发布依赖内置默认 AI 服务，再运行 live gate。它会包含完整发布检查，并额外检查默认 AI 服务、隧道、告警配置和真实模型请求：
 
 ```bash
 npm run release:check:live

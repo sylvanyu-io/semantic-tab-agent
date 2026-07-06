@@ -16,6 +16,16 @@ test("extension uses a native side panel", async () => {
   assert.deepEqual(manifest.optional_host_permissions, ["https://*/*", "http://*/*"]);
 });
 
+test("release version stays synchronized across package and manifest sources", async () => {
+  const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  const packageLock = JSON.parse(await readFile("package-lock.json", "utf8"));
+
+  assert.equal(manifest.version, packageJson.version);
+  assert.equal(packageLock.version, packageJson.version);
+  assert.equal(packageLock.packages?.[""]?.version, packageJson.version);
+});
+
 test("store extension build strips content-reading permissions", async () => {
   const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-store-build-"));
   try {
