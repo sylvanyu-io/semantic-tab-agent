@@ -22,6 +22,8 @@ Implemented:
   URL-privacy, progress, and cancellation patterns as organization.
 - Recap AI failures fall back to local signals without exposing raw gateway
   timeout or infrastructure errors in the visible product copy.
+- First-run privacy disclosure explains local activity clues, optional page
+  summary access, AI usage, and the no-auto-close boundary.
 - Local schema validation before every browser mutation.
 - Low-confidence groups below the apply threshold are rejected; the planner must
   put uncertain tabs in Review.
@@ -101,7 +103,6 @@ Blocking gates:
 Recommended before public listing:
 
 - Add export/import settings without exporting custom gateway keys by default.
-- Add first-run privacy disclosure.
 - Keep the local-memory clearing control visible before recap history becomes a
   first-class history surface.
 - Add larger real-browser recap benchmarks for 30, 120, and 300 tab sessions.

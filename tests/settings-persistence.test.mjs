@@ -44,6 +44,21 @@ test("invalid undo target window mode falls back to conservative default", () =>
   assert.equal(settings.undoTargetWindowMode, UNDO_TARGET_WINDOW_MODES.LEAVE_EMPTY);
 });
 
+test("first-run privacy disclosure dismissal is persisted as a normal setting", async () => {
+  const chrome = createFakeChrome();
+
+  const saved = await saveSettings(chrome, {
+    ...DEFAULT_SETTINGS,
+    privacyDisclosureDismissed: true
+  });
+  const loaded = await getSettings(chrome);
+
+  assert.equal(saved.privacyDisclosureDismissed, true);
+  assert.equal(loaded.privacyDisclosureDismissed, true);
+  assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, privacyDisclosureDismissed: "yes" }).privacyDisclosureDismissed, true);
+  assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, privacyDisclosureDismissed: "" }).privacyDisclosureDismissed, false);
+});
+
 test("prompt presets accept media type and reject removed preset values", () => {
   assert.equal(
     normalizeSettings({ ...DEFAULT_SETTINGS, promptPreset: PROMPT_PRESETS.MEDIA_TYPE }).promptPreset,

@@ -121,6 +121,20 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#samplingRisk")).toBeVisible();
   await expect(page.locator("#samplingRisk svg")).toBeVisible();
   await expect(page.locator("#samplingRisk")).toHaveAttribute("data-tooltip", /不会读取密码/);
+  await expect(page.locator("#privacyDisclosure")).toBeVisible();
+  await expect(page.locator("#privacyDisclosure")).toContainText("只在需要时读取，始终由你决定");
+  await expect(page.locator("#privacyDisclosure")).toContainText("AI 只生成整理、清理和回顾建议，不会自动关闭标签页");
+  await page.getByRole("button", { name: "知道了" }).click();
+  await expect(page.locator("#privacyDisclosure")).toBeHidden();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const scrollRegion = document.querySelector(".scroll-region")?.getBoundingClientRect();
+        const actions = document.querySelector(".actions")?.getBoundingClientRect();
+        return Boolean(scrollRegion && actions && actions.top >= scrollRegion.bottom - 1 && document.body.scrollHeight <= window.innerHeight);
+      })
+    )
+    .toBe(true);
   await expect(page.locator("#analyzeGrouping")).toBeChecked();
   await expect(page.locator("#analyzeCleanup")).toBeChecked();
   await expect(page.getByRole("button", { name: "整理 + 清理" })).toHaveCount(0);

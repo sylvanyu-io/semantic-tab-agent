@@ -69,6 +69,10 @@ const UI_COPY = Object.freeze({
     "mode.recap": "回顾",
     "mode.organizeSubtitle": "分组与清理",
     "mode.recapSubtitle": "时间线总结",
+    "privacy.aria": "隐私说明",
+    "privacy.title": "只在需要时读取，始终由你决定",
+    "privacy.body": "TabRecap 会在本机保存标签页活动线索；页面正文只有打开「页面摘要增强」并授权后才会读取。AI 只生成整理、清理和回顾建议，不会自动关闭标签页。",
+    "privacy.dismiss": "知道了",
     "status.recapPreparing": "正在准备回顾",
     "status.recapGenerating": "正在生成近期回顾",
     "status.recapCanceling": "正在停止生成回顾",
@@ -323,6 +327,10 @@ const UI_COPY = Object.freeze({
     "mode.recap": "Recap",
     "mode.organizeSubtitle": "Group and clean",
     "mode.recapSubtitle": "Timeline recap",
+    "privacy.aria": "Privacy note",
+    "privacy.title": "Reads only when needed, and you stay in control",
+    "privacy.body": "TabRecap saves tab activity clues locally. Page text is read only after you turn on Page summary boost and grant access. AI creates organization, cleanup, and recap suggestions; it never closes tabs automatically.",
+    "privacy.dismiss": "Got it",
     "status.recapPreparing": "Preparing recap",
     "status.recapGenerating": "Generating recent recap",
     "status.recapCanceling": "Stopping recap generation",
@@ -588,6 +596,8 @@ const nodes = {
   analysisModeSelect: document.querySelector("#analysisModeSelect"),
   analysisModeHint: document.querySelector("#analysisModeHint"),
   uiLanguageToggle: document.querySelector("#uiLanguageToggle"),
+  privacyDisclosure: document.querySelector("#privacyDisclosure"),
+  privacyDisclosureDismissBtn: document.querySelector("#privacyDisclosureDismissBtn"),
   actions: document.querySelector(".actions"),
   analyzeBtn: document.querySelector("#analyzeBtn"),
   cancelBtn: document.querySelector("#cancelBtn"),
@@ -640,6 +650,7 @@ let recapProgressJob = null;
 let mockActiveJob = null;
 let mockLastJob = null;
 let panelWindowId = null;
+let privacyDisclosureDismissed = false;
 const generatedCopyByOperation = new Map();
 const generatedCopyRequests = new Set();
 
@@ -719,6 +730,7 @@ function bindEvents() {
   nodes.undoBtn.addEventListener("click", undoLastApply);
   nodes.gatewayTestBtn?.addEventListener("click", handleGatewayTestClick);
   nodes.clearLocalMemoryBtn?.addEventListener("click", handleClearLocalMemoryClick);
+  nodes.privacyDisclosureDismissBtn?.addEventListener("click", handlePrivacyDisclosureDismissClick);
   nodes.uiLanguageToggle?.addEventListener("click", toggleUiLanguage);
   for (const button of nodes.recapQuickButtons || []) {
     button.addEventListener("click", () => setRecapPreset(button.dataset.recapPreset || "7d"));
@@ -770,6 +782,10 @@ function applyUiLanguage() {
   setText('.mode-tab[data-panel-mode="recap"] .mode-tab-subtitle', t("mode.recapSubtitle"));
   setAttribute('.mode-tab[data-panel-mode="organize"]', "aria-label", t("mode.organize"));
   setAttribute('.mode-tab[data-panel-mode="recap"]', "aria-label", t("mode.recap"));
+  setAttribute("#privacyDisclosure", "aria-label", t("privacy.aria"));
+  setText("#privacyDisclosure strong", t("privacy.title"));
+  setText("#privacyDisclosure p", t("privacy.body"));
+  setButtonLabel(nodes.privacyDisclosureDismissBtn, t("privacy.dismiss"));
   setAttribute("#organizeMode", "aria-label", t("scope.nativeLabel"));
   setOptionText("#organizeMode", "current_window", t("scope.optionCurrent"));
   setOptionText("#organizeMode", "consolidate_one_window", t("scope.optionAll"));
@@ -1122,7 +1138,8 @@ function readSettings(options = {}) {
     analyzeGrouping: fields.analyzeGrouping.checked,
     analyzeCleanup: fields.analyzeCleanup.checked,
     minConfidenceToApply: fields.minConfidenceToApply.value,
-    maxTabsPerGroup: fields.maxTabsPerGroup.value
+    maxTabsPerGroup: fields.maxTabsPerGroup.value,
+    privacyDisclosureDismissed
   };
 }
 
@@ -1148,6 +1165,7 @@ async function enablePageSummaryEnhancement() {
 }
 
 function writeSettings(settings) {
+  privacyDisclosureDismissed = Boolean(settings.privacyDisclosureDismissed);
   const displaySettings = {
     ...settings,
     targetWindowMode: "current_window",
@@ -1172,6 +1190,7 @@ function writeSettings(settings) {
   syncSettingSwitches();
   syncAnalysisModeControl();
   syncChoiceGroups();
+  updatePrivacyDisclosure();
 }
 
 function syncSettingSwitches() {
@@ -1263,6 +1282,30 @@ function updateConditionalUi() {
   if (!canRememberCustomKey) fields.rememberProviderKeys.checked = false;
   syncChoiceGroups();
   schedulePageSamplingOriginRefresh();
+}
+
+function updatePrivacyDisclosure() {
+  if (nodes.privacyDisclosure) {
+    nodes.privacyDisclosure.hidden = privacyDisclosureDismissed;
+  }
+}
+
+async function handlePrivacyDisclosureDismissClick() {
+  privacyDisclosureDismissed = true;
+  updatePrivacyDisclosure();
+  try {
+    const settings = await sendMessage({
+      type: "settings:save",
+      settings: readSettings()
+    });
+    writeSettings(settings);
+    updateConditionalUi();
+    setStatusKey("status.saved");
+  } catch (error) {
+    privacyDisclosureDismissed = false;
+    updatePrivacyDisclosure();
+    setErrorStatus(error, friendlyErrorMessage(error));
+  }
 }
 
 async function handlePrimaryAction() {

@@ -130,7 +130,7 @@ h2,
 .app-shell {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 0;
   width: 100%;
   max-width: none;
@@ -176,6 +176,7 @@ h2,
 
 .topbar {
   position: relative;
+  grid-row: 1;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px;
@@ -215,6 +216,7 @@ h2,
 }
 
 .mode-tabs {
+  grid-row: 2;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
@@ -307,7 +309,57 @@ h2,
   color: rgba(255, 255, 255, 0.78);
 }
 
+.privacy-disclosure {
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 4px 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--blue-soft) 76%, var(--surface) 24%),
+      color-mix(in srgb, var(--surface) 88%, var(--blue-soft) 12%)
+    );
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--line) 10%);
+  border-radius: 14px;
+  box-shadow:
+    0 10px 22px -18px color-mix(in srgb, var(--primary) 40%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent);
+}
+
+.privacy-disclosure strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12px;
+  font-weight: 880;
+  line-height: 1.25;
+}
+
+.privacy-disclosure p {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.privacy-disclosure button {
+  min-height: 30px;
+  padding: 5px 12px;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 82%, var(--surface) 18%);
+  border: 1px solid color-mix(in srgb, var(--primary) 46%, transparent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+  box-shadow: inset 0 -1px 0 rgba(42, 38, 31, 0.08);
+}
+
 .scroll-region {
+  grid-row: 4;
   display: grid;
   align-content: start;
   gap: 10px;
@@ -1597,6 +1649,7 @@ details[open] > summary::before {
 
 .actions {
   position: relative;
+  grid-row: 5;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;

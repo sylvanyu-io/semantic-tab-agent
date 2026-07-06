@@ -135,7 +135,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   gatewayCustomModel: "",
   gatewayCustomAuxiliaryModel: "",
   gatewayThinkingIntensity: THINKING_INTENSITIES.HIGH,
-  gatewayApiKey: ""
+  gatewayApiKey: "",
+  privacyDisclosureDismissed: false
 });
 
 const enumValues = {
@@ -172,6 +173,7 @@ export function normalizeSettings(input = {}) {
   merged.includeIncognitoTabs = Boolean(merged.includeIncognitoTabs);
   merged.collapseGroupsAfterApply = Boolean(merged.collapseGroupsAfterApply);
   merged.continuousPageSummaries = Boolean(merged.continuousPageSummaries);
+  merged.privacyDisclosureDismissed = Boolean(merged.privacyDisclosureDismissed);
   merged.analyzeGrouping = Boolean(merged.analyzeGrouping);
   merged.analyzeCleanup = Boolean(merged.analyzeCleanup);
   if (!merged.analyzeGrouping && !merged.analyzeCleanup) {
