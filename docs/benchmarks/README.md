@@ -19,6 +19,7 @@
 - 50/120/300 tabs 当前规模测试是 `task_bursts` metadata-only 场景，主要走 spark 路线，分别为 `11.8s / 36.6s / 69.9s`。
 - 当前优化结论是“同条件下更快且质量不降”，不是“tab 数越少一定越快”。
 - 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；2026-07-06 的单次 live A/B 中，带行为证据 Topic F1 为 `100.0%`，剥离后为 `84.9%`。这支持继续保留该路线，但仍需要更多真实浏览会话验证。
+- 行为证据现在包含 directed transition rows。48-tab 本地 fixture 中新增 36 条转移行，payload 增加 2,855 bytes / 20.4%，换来更直接的 `tab A -> tab B` 证据。
 - 真实会话验证应先导出 redacted evidence snapshot；只有 lifecycle events、activation runs 和 summary coverage 足够时，live A/B 结论才有解释价值。
 
 ## 原始数据

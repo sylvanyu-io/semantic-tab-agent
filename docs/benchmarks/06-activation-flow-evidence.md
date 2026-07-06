@@ -26,6 +26,10 @@ log. It is included in planner payloads as evidence only:
   seconds, last activation time, run participation, return count, nearby ids.
 - `activationFlowRuns`: compact activation runs with window id, start/end time,
   tab ids, dwell seconds, return-to-anchor id, and repeated ids.
+- `activationFlowTransitions`: directed handoff rows with `fromId`, `toId`,
+  count, average dwell seconds, max dwell seconds, recency, and short clues.
+  This captures "tab A -> tab B" evidence directly instead of forcing the model
+  to infer all transitions from a longer run array.
 - `activationFlowEvidence`: small clusters of tab ids with strength and clues
   such as same activation run, quick handoff, long anchor then short checks, and
   returned to an earlier tab.
@@ -44,6 +48,7 @@ Prompt guardrail:
 - Windows are processed independently.
 - Repeated activation of the same tab is deduplicated inside a run.
 - Payload size is capped: 24 recent runs, 80 evidence rows, 6 nearby ids per tab.
+- Directed transition payload size is capped at 120 rows.
 - Existing benchmark truth labels are not sent to planner payloads.
 
 ## Verification Added
@@ -57,7 +62,8 @@ Code-level coverage:
 - `tests/tab-inventory.test.mjs`
   - confirms collected inventories include activation flow context.
 - `tests/gateway-planner.test.mjs`
-  - confirms planner payload includes activation flow rows;
+  - confirms planner payload includes activity, run, transition, and evidence
+    rows;
   - confirms prompt guardrails are present.
 - `tests/planner-benchmark-fixtures.test.mjs`
   - adds a `behavior_flow` synthetic fixture;
@@ -76,9 +82,29 @@ git diff --check
 Observed result on 2026-07-06:
 
 - targeted behavior/planner tests: 61 pass;
-- full test suite: 176 pass;
+- full test suite: 179 pass;
 - extension build succeeded: `dist/tab-recap-0.2.5.zip`;
 - whitespace check passed.
+
+## Transition Payload Check
+
+After adding directed transitions, a local no-network measurement on the
+48-tab `behavior_flow` fixture produced:
+
+| Metric | Value |
+| --- | ---: |
+| Tabs | 48 |
+| Activation runs | 12 |
+| Directed transition rows | 36 |
+| Higher-level evidence rows | 12 |
+| Payload with transitions | 16,845 bytes |
+| Payload without transitions | 13,990 bytes |
+| Added bytes | 2,855 bytes |
+| Added payload size | 20.4% |
+
+This is an intentional tradeoff: the additional rows stay compact and carry no
+titles, URLs, summaries, or truth labels, but they let the LLM see repeated
+handoffs directly.
 
 ## What This Proves
 
