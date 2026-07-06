@@ -81,6 +81,91 @@ test("worker LLM readiness check uses the tiny mini-model probe", async () => {
   assert.equal(upstreamBody.max_tokens, 2);
 });
 
+test("worker protects the monitor status snapshot with a monitor token", async () => {
+  const missingConfig = await handle(new Request("https://cliproxy.example/monitor/status"), envWithKv());
+  assert.equal(missingConfig.status, 503);
+  assert.equal((await missingConfig.json()).error.code, "monitor_token_not_configured");
+
+  const unauthorized = await handle(new Request("https://cliproxy.example/monitor/status"), envWithKv({ MONITOR_TOKEN: "secret" }));
+  assert.equal(unauthorized.status, 401);
+  assert.equal((await unauthorized.json()).error.code, "monitor_token_required");
+});
+
+test("worker monitor status reads the last scheduled result without live upstream checks", async () => {
+  const env = monitorEnv({ MONITOR_TOKEN: "secret" });
+  const scheduledFetch = monitorFetch({ readyzStatus: 530, readyzBody: "error code: 1033" });
+
+  await runScheduledMonitor(env, {
+    scheduledTime: Date.parse("2026-07-02T00:00:00.000Z"),
+    fetchImpl: scheduledFetch.fetch
+  });
+
+  let liveFetchCalled = false;
+  const localHandle = createWorkerHandler({
+    fetchImpl: async () => {
+      liveFetchCalled = true;
+      return new Response("unexpected", { status: 500 });
+    }
+  });
+  const response = await localHandle(
+    new Request("https://cliproxy.example/monitor/status", {
+      headers: { "x-monitor-token": "secret" }
+    }),
+    env
+  );
+  const body = await response.json();
+  const serialized = JSON.stringify(body);
+
+  assert.equal(response.status, 200);
+  assert.equal(liveFetchCalled, false);
+  assert.equal(body.ok, true);
+  assert.equal(body.monitor.status, "down");
+  assert.equal(body.monitor.ok, false);
+  assert.equal(body.monitor.lastSummary.readyzCode, "origin_tunnel_unavailable");
+  assert.equal(body.monitor.lastSummary.failed.includes("readyz"), true);
+  assert.equal(body.monitor.lastEmail.ok, true);
+  assert.equal(body.config.stateStore, "configured");
+  assert.equal(body.config.email, "configured");
+  assert.equal(body.config.upstream, "configured");
+  assert.equal(body.config.llmReadyModel, "gpt-5.4-mini");
+  assert.equal(serialized.includes("upstream-secret"), false);
+  assert.equal(serialized.includes("resend-secret"), false);
+  assert.equal(serialized.includes("me@sylvanyu.io"), false);
+  assert.equal(serialized.includes("raw-llm.example"), false);
+});
+
+test("worker monitor status reports unknown before the first scheduled run", async () => {
+  const response = await handle(
+    new Request("https://cliproxy.example/monitor/status", {
+      headers: { authorization: "Bearer secret" }
+    }),
+    monitorEnv({ MONITOR_TOKEN: "secret" })
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.monitor.status, "unknown");
+  assert.equal(body.monitor.lastSummary, null);
+  assert.equal(body.monitor.lastEmail, null);
+});
+
+test("worker monitor status reports missing state storage without exposing config secrets", async () => {
+  const response = await handle(
+    new Request("https://cliproxy.example/monitor/status", {
+      headers: { "x-monitor-token": "secret" }
+    }),
+    monitorEnv({ MONITOR_TOKEN: "secret", RATE_LIMIT_KV: undefined, MONITOR_STATE_KV: undefined })
+  );
+  const body = await response.json();
+  const serialized = JSON.stringify(body);
+
+  assert.equal(response.status, 503);
+  assert.equal(body.error.code, "monitor_state_store_missing");
+  assert.equal(body.error.config.stateStore, "missing");
+  assert.equal(serialized.includes("upstream-secret"), false);
+  assert.equal(serialized.includes("resend-secret"), false);
+});
+
 test("scheduled monitor keeps quiet on healthy checks", async () => {
   const calls = monitorFetch();
   const result = await runScheduledMonitor(monitorEnv(), {

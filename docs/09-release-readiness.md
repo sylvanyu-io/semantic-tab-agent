@@ -49,6 +49,10 @@ Implemented:
   diagnostics package summarizes settings shape, local-memory counts, job
   states, rollback counts, and coarse error classes without exporting custom
   keys, page URLs, page titles, page text, or custom prompts.
+- The default AI gateway Worker exposes a token-protected `/monitor/status`
+  endpoint for outage triage. It reads the last scheduled monitor snapshot from
+  KV without spending model usage and only returns redacted readiness, LLM probe,
+  email, and config status.
 - Large AI gateway jobs use a coarse-then-refine planner: a low-effort coarse
   bucket pass, followed by high-effort refinement for oversized or uncertain
   buckets, then normal local validation.
@@ -110,6 +114,9 @@ Blocking gates:
   rollback snapshots.
 - Diagnostics can be exported for support without exposing custom gateway keys,
   page URLs, page titles, page text, or custom prompts.
+- Gateway monitor status can be queried with `MONITOR_TOKEN`, does not trigger
+  a live model request, and does not expose upstream URLs, alert mailboxes, or
+  provider secrets.
 
 Recommended before public listing:
 

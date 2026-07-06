@@ -135,6 +135,20 @@ Use `/llm-readyz` as a low-frequency external monitor. The current production
 policy is every 30 minutes with email alerts, while `/readyz` can run every
 1-3 minutes.
 
+Latest monitor status:
+
+```bash
+curl -H "x-monitor-token: $MONITOR_TOKEN" https://cliproxy.sylvanyu.io/monitor/status
+```
+
+`/monitor/status` reads the last Cron monitor snapshot from KV. It does not call
+the upstream origin and does not spend model usage. Use it when an email says
+the gateway is down, or when the extension shows the default AI service as
+temporarily unavailable. The response reports the last `readyz` and
+`llm-readyz` result codes, the last alert event, and whether email/upstream/state
+storage are configured. It intentionally does not expose the upstream URL,
+gateway keys, Resend key, alert mailbox, prompts, page titles, or page text.
+
 Scheduled email monitoring:
 
 ```bash

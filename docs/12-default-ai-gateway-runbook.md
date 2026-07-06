@@ -267,6 +267,24 @@ curl -sS -H "x-monitor-token: $TOKEN" https://cliproxy.sylvanyu.io/llm-readyz
 The Worker Cron already runs it every 30 minutes after email alerts are
 configured.
 
+Latest Cron monitor state:
+
+```bash
+TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
+curl -sS -H "x-monitor-token: $TOKEN" https://cliproxy.sylvanyu.io/monitor/status
+```
+
+This endpoint is for real-time diagnosis after an alert or an extension-side
+gateway failure. It reads the last scheduled monitor snapshot from KV and does
+not run another upstream health check or model request. A healthy response only
+means the status snapshot was read successfully; check `monitor.status`,
+`monitor.lastSummary.readyzCode`, and `monitor.lastSummary.llmCode` for the
+gateway state.
+
+The response is deliberately redacted. It reports configuration status and
+coarse failure codes, but not the upstream origin URL, Worker secrets, Resend
+API key, alert mailbox, prompts, page titles, URLs, or page text.
+
 ## Monitoring And Email
 
 The Worker runs a Cron monitor every 30 minutes.
@@ -462,6 +480,8 @@ Use this when moving the origin from this Mac to another machine or a server.
 - The raw origin is not a public product API.
 - `cliproxy.sylvanyu.io/healthz` is not enough; check `/readyz` or `smoke`.
 - `/llm-readyz` costs a tiny model request and is protected by `MONITOR_TOKEN`.
+- `/monitor/status` costs no model usage and shows the latest Cron monitor
+  snapshot for outage triage.
 - Resend is only for alerts; Migadu remains the mailbox provider for
   `me@sylvanyu.io`.
 - Secret values live in Cloudflare Worker secrets and local config files, not in

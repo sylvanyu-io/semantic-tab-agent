@@ -114,6 +114,9 @@ export async function handleRequest(request, env = {}, ctx = {}, options = {}) {
   if (url.pathname === "/llm-readyz" && request.method === "GET") {
     return llmReadiness(request, env, options, requestId);
   }
+  if (url.pathname === "/monitor/status" && request.method === "GET") {
+    return monitorStatus(request, env, requestId);
+  }
   if (url.pathname !== "/v1/chat/completions") {
     return jsonError("Not found.", 404, "not_found", {}, request, requestId);
   }
@@ -592,6 +595,40 @@ async function llmReadiness(request, env, options = {}, requestId = "") {
   );
 }
 
+async function monitorStatus(request, env, requestId = "") {
+  const auth = validateMonitorAuth(request, env);
+  if (!auth.ok) {
+    return jsonError(auth.message, auth.status, auth.code, {}, request, requestId);
+  }
+
+  const store = monitorStateStore(env);
+  if (!store) {
+    return jsonError(
+      "Monitor state storage is not configured.",
+      503,
+      "monitor_state_store_missing",
+      {},
+      request,
+      requestId,
+      { config: monitorStatusConfig(env, false) }
+    );
+  }
+
+  const state = await readMonitorState(store);
+  return jsonResponse(
+    {
+      ok: true,
+      worker: true,
+      monitor: summarizeMonitorState(state),
+      config: monitorStatusConfig(env, true)
+    },
+    200,
+    {},
+    request,
+    requestId
+  );
+}
+
 async function checkUpstreamReadiness(env, options = {}) {
   const upstream = upstreamConfig(env);
   if (!upstream.ok) {
@@ -835,6 +872,107 @@ function nextMonitorState(previousState, summary, event, now) {
   };
 }
 
+function summarizeMonitorState(state) {
+  if (!state || typeof state !== "object") {
+    return {
+      ok: false,
+      status: "unknown",
+      lastStatusAt: "",
+      lastOkAt: "",
+      lastFailureAt: "",
+      lastAlertAt: "",
+      lastEvent: "none",
+      lastSummary: null,
+      lastEmail: null
+    };
+  }
+
+  return {
+    ok: state.status === "ok",
+    status: safeMonitorStatus(state.status),
+    lastStatusAt: safeIsoString(state.lastStatusAt),
+    lastOkAt: safeIsoString(state.lastOkAt),
+    lastFailureAt: safeIsoString(state.lastFailureAt),
+    lastAlertAt: safeIsoString(state.lastAlertAt),
+    lastEvent: safeMonitorEvent(state.lastEvent),
+    lastSummary: safeMonitorSummary(state.lastSummary),
+    lastEmail: safeMonitorEmail(state.lastEmail)
+  };
+}
+
+function monitorStatusConfig(env, hasStateStore) {
+  const email = monitorEmailConfig(env);
+  const upstream = upstreamConfig(env);
+  return {
+    stateStore: hasStateStore ? "configured" : "missing",
+    email: email.ok ? "configured" : email.code || "missing",
+    upstream: upstream.ok ? "configured" : "missing",
+    llmReadyModel: String(env.LLM_READY_MODEL || DEFAULT_LLM_READY_MODEL).trim() || DEFAULT_LLM_READY_MODEL,
+    llmReadyReasoningEffort:
+      String(env.LLM_READY_REASONING_EFFORT || DEFAULT_LLM_READY_REASONING_EFFORT).trim() || DEFAULT_LLM_READY_REASONING_EFFORT,
+    llmReadyMaxTokens: readLimits(env).llmReadyMaxTokens,
+    monitorReminderHours: positiveInteger(env.MONITOR_REMINDER_HOURS, DEFAULT_MONITOR_REMINDER_HOURS),
+    schedule: "*/30 * * * *"
+  };
+}
+
+function safeMonitorSummary(summary) {
+  if (!summary || typeof summary !== "object") return null;
+  return {
+    ok: Boolean(summary.ok),
+    status: safeMonitorStatus(summary.status),
+    failed: Array.isArray(summary.failed) ? summary.failed.map(safeMonitorFailure).filter(Boolean) : [],
+    requestId: safeRequestId(summary.requestId),
+    readyzCode: safeMonitorCode(summary.readyzCode),
+    llmCode: safeMonitorCode(summary.llmCode),
+    llmModel: safeModelName(summary.llmModel || DEFAULT_LLM_READY_MODEL)
+  };
+}
+
+function safeMonitorEmail(email) {
+  if (!email || typeof email !== "object") return null;
+  return {
+    ok: Boolean(email.ok),
+    status: Number.isInteger(Number(email.status)) ? Number(email.status) : 0,
+    code: safeMonitorCode(email.code),
+    at: safeIsoString(email.at)
+  };
+}
+
+function safeMonitorStatus(status) {
+  return ["ok", "down", "unknown", "not_configured"].includes(status) ? status : "unknown";
+}
+
+function safeMonitorEvent(event) {
+  return ["none", "down", "still_down", "recovered", "not_configured"].includes(event) ? event : "none";
+}
+
+function safeMonitorFailure(value) {
+  return ["readyz", "llm-readyz", "email"].includes(value) ? value : "";
+}
+
+function safeMonitorCode(value) {
+  const text = String(value || "").trim();
+  return /^[a-z0-9_.:-]{0,80}$/i.test(text) ? text : "unknown";
+}
+
+function safeModelName(value) {
+  const text = String(value || "").trim();
+  return /^[a-z0-9_.:-]{1,120}$/i.test(text) ? text : DEFAULT_LLM_READY_MODEL;
+}
+
+function safeRequestId(value) {
+  const text = String(value || "").trim();
+  return /^[a-z0-9_-]{0,120}$/i.test(text) ? text : "";
+}
+
+function safeIsoString(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const timestamp = Date.parse(text);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : "";
+}
+
 async function sendMonitorEmail(env, event, summary, checks, now, fetchImpl) {
   const config = monitorEmailConfig(env);
   if (!config.ok) return config;
@@ -1069,7 +1207,7 @@ function corsHeaders(request) {
   return {
     ...(allowedOrigin ? { "access-control-allow-origin": allowedOrigin } : {}),
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,authorization,x-tab-recap-install-id,x-tab-recap-page-summary,x-tab-recap-request-id,x-request-id,x-tab-tidy-install-id,x-tab-tidy-page-summary",
+    "access-control-allow-headers": "content-type,authorization,x-monitor-token,x-tab-recap-install-id,x-tab-recap-page-summary,x-tab-recap-request-id,x-request-id,x-tab-tidy-install-id,x-tab-tidy-page-summary",
     "access-control-expose-headers": "x-tab-recap-request-id,x-tab-recap-upstream-attempts",
     vary: "Origin"
   };
