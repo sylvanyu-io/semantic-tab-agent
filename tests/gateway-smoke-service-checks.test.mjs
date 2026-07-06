@@ -125,6 +125,48 @@ test("gateway smoke accepts a fresh ok monitor status when required", async () =
   assert.equal(result.monitor.lastStatusAt, "2026-07-02T00:30:00.000Z");
 });
 
+test("gateway smoke fails when required readyz details are not healthy", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+        monitorToken: "monitor-secret",
+        requireMonitor: true,
+        fetchImpl: async (url) => {
+          if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+          if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "origin_health_check_failed" } });
+          if (url.endsWith("/monitor/status")) return monitorStatusResponse({ lastStatusAt: "2026-07-02T00:30:00.000Z" });
+          return jsonResponse({ ok: false }, 404);
+        }
+      }),
+    /readyz upstream code is origin_health_check_failed/
+  );
+});
+
+test("gateway smoke fails when required monitor summary details are not healthy", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+        monitorToken: "monitor-secret",
+        requireMonitor: true,
+        nowMs: Date.parse("2026-07-02T01:00:00.000Z"),
+        fetchImpl: async (url) => {
+          if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+          if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+          if (url.endsWith("/monitor/status")) {
+            return monitorStatusResponse({
+              lastStatusAt: "2026-07-02T00:30:00.000Z",
+              llmCode: "llm_ready_timeout"
+            });
+          }
+          return jsonResponse({ ok: false }, 404);
+        }
+      }),
+    /monitor\/status summary is not healthy: readyz=ready llm=llm_ready_timeout/
+  );
+});
+
 test("gateway smoke fails when a required monitor status is unknown", async () => {
   await assert.rejects(
     () =>

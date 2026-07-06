@@ -461,8 +461,8 @@ For a release-blocking live check, require a fresh monitor snapshot:
 GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway
 ```
 
-This additionally fails if `/monitor/status` is skipped, not `ok`, or older
-than two hours.
+This additionally fails if `/monitor/status` is skipped, not `ok`, older than
+two hours, or missing healthy `readyz` / `llm-readyz` summary codes.
 
 Full pre-release live gate:
 

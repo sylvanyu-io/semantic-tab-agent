@@ -28,6 +28,9 @@ export async function checkBuiltInGatewayService(options = {}) {
 
   const readyz = await getJson(fetchImpl, `${configuredServiceBaseUrl}/readyz`);
   requireOk(readyz, "readyz");
+  if (requireMonitor && readyz.json?.upstream?.code !== "ready") {
+    throw new Error(`readyz upstream code is ${readyz.json?.upstream?.code || "unknown"}; expected ready.`);
+  }
 
   const monitor = monitorToken ? await getJson(fetchImpl, `${configuredServiceBaseUrl}/monitor/status`, { "x-monitor-token": monitorToken }) : null;
   if (monitor) {
@@ -51,6 +54,7 @@ export async function checkBuiltInGatewayService(options = {}) {
         nowMs: Number.isFinite(options.nowMs) ? options.nowMs : Date.now(),
         maxAgeMs: positiveMs(options.maxMonitorAgeMs, DEFAULT_REQUIRED_MONITOR_MAX_AGE_MS)
       });
+      requireHealthyMonitorSummary(monitor.json?.monitor?.lastSummary);
     }
   }
 
@@ -119,6 +123,14 @@ function requireFreshMonitorStatus(lastStatusAt, options) {
     const ageMinutes = Math.round(ageMs / 60000);
     const maxAgeMinutes = Math.round(options.maxAgeMs / 60000);
     throw new Error(`monitor/status is stale: last scheduled check was ${ageMinutes} minutes ago, max ${maxAgeMinutes} minutes.`);
+  }
+}
+
+function requireHealthyMonitorSummary(summary) {
+  const readyzCode = summary?.readyzCode || "unknown";
+  const llmCode = summary?.llmCode || "unknown";
+  if (readyzCode !== "ready" || llmCode !== "llm_ready") {
+    throw new Error(`monitor/status summary is not healthy: readyz=${readyzCode} llm=${llmCode}.`);
   }
 }
 
