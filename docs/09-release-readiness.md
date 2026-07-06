@@ -50,7 +50,8 @@ Implemented:
   organization-only switches.
 - Release checks clean stale artifacts, regenerate icons, run Node and
   Playwright tests, scan current files and git history for provider-key
-  patterns, then build both local and store packages.
+  patterns, build both local and store packages, then audit the generated zip
+  artifacts against the unpacked extensions.
 
 Not production-complete yet:
 
@@ -91,6 +92,8 @@ Blocking gates:
 - No custom gateway key appears in git history, screenshots, test output, or
   fixtures.
 - Extension package contains no `node_modules`, test outputs, or local secrets.
+- Extension zip entries exactly match their unpacked build directories and only
+  contain publishable extension assets: `manifest.json`, `src/`, and `icons/`.
 - Store packages remove `activeTab`, `scripting`, and optional host permissions,
   so page-body sampling controls and custom gateway host permission requests are
   unavailable in that channel.
