@@ -23,6 +23,8 @@ const artifacts = [
 
 const allowedTopLevel = new Set(["manifest.json", "src", "icons"]);
 const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".svg"]);
+const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
+const forbiddenProductCopy = ["Internal test", "Semantic Tab Agent", "Tab Tidy"];
 const forbiddenEntryPatterns = [
   /^docs\//,
   /^tests?\//,
@@ -55,6 +57,7 @@ for (const artifact of artifacts) {
   auditManifest(artifact.channel, manifest, unpackedFiles);
   auditEntries(artifact.channel, unpackedFiles, zipFiles);
   await auditSidePanelHtml(artifact.channel, artifact.extensionDir, manifest);
+  await auditProductCopy(artifact.channel, artifact.extensionDir, unpackedFiles);
 }
 
 if (failures) {
@@ -117,6 +120,17 @@ async function auditSidePanelHtml(channel, extensionDir, manifest) {
   const html = await readFile(join(extensionDir, sidePanelPath), "utf8");
   if (html.includes("Internal test")) fail(`${channel}: side panel exposes internal fake provider copy.`);
   if (html.includes('value="fake"')) fail(`${channel}: side panel statically exposes fake planner provider.`);
+}
+
+async function auditProductCopy(channel, extensionDir, files) {
+  for (const file of files) {
+    if (!textExtensions.has(extensionOf(file))) continue;
+
+    const content = await readFile(join(extensionDir, file), "utf8");
+    for (const copy of forbiddenProductCopy) {
+      if (content.includes(copy)) fail(`${channel}: ${file} contains obsolete/internal product copy "${copy}".`);
+    }
+  }
 }
 
 async function listFiles(dir) {
