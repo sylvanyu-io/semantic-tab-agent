@@ -97,6 +97,122 @@ test("time recap input keeps high-signal closed pages when many low-signal tabs 
   assert.equal(input.pages.some((page) => page.title === "Open placeholder 369"), false);
 });
 
+test("time recap input excludes cached incognito history unless explicitly enabled", async () => {
+  const chrome = createFakeChrome();
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      normal: {
+        key: "normal",
+        title: "Normal project page",
+        hostname: "normal.example",
+        sanitizedUrl: "https://normal.example/project",
+        firstSeenAt: "2026-06-27T02:00:00.000Z",
+        lastSeenAt: "2026-06-27T03:00:00.000Z",
+        seenCount: 2,
+        lastKnownState: { incognito: false }
+      },
+      privateActivity: {
+        key: "privateActivity",
+        title: "Private activity page",
+        hostname: "private.example",
+        sanitizedUrl: "https://private.example/activity",
+        firstSeenAt: "2026-06-27T02:10:00.000Z",
+        lastSeenAt: "2026-06-27T03:10:00.000Z",
+        seenCount: 2,
+        lastKnownState: { incognito: true }
+      }
+    }
+  };
+  chrome.__state.storage[STORAGE_KEYS.pageSummaryCache] = {
+    version: 1,
+    entries: {
+      normal: {
+        key: "normal",
+        origin: "https://normal.example/*",
+        title: "Normal project page",
+        firstSeenAt: "2026-06-27T02:00:00.000Z",
+        lastSeenAt: "2026-06-27T03:00:00.000Z",
+        sampledAt: "2026-06-27T03:00:00.000Z",
+        sample: { title: "Normal project page", visibleText: "Normal project notes" }
+      },
+      privateSummary: {
+        key: "privateSummary",
+        origin: "https://private.example/*",
+        incognito: true,
+        title: "Private summary page",
+        firstSeenAt: "2026-06-27T02:20:00.000Z",
+        lastSeenAt: "2026-06-27T03:20:00.000Z",
+        sampledAt: "2026-06-27T03:20:00.000Z",
+        sample: { title: "Private summary page", visibleText: "Private summary text" }
+      }
+    }
+  };
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      normalSession: {
+        id: "normalSession",
+        title: "Normal project page",
+        hostname: "normal.example",
+        sanitizedUrl: "https://normal.example/project",
+        urlKey: "normal",
+        openedAt: "2026-06-27T02:00:00.000Z",
+        lastObservedAt: "2026-06-27T03:00:00.000Z",
+        closeReason: "missing_after_reconcile",
+        closedAt: "2026-06-27T03:05:00.000Z",
+        incognito: false
+      },
+      privateSession: {
+        id: "privateSession",
+        title: "Private lifecycle page",
+        hostname: "private.example",
+        sanitizedUrl: "https://private.example/lifecycle",
+        urlKey: "privateLifecycle",
+        openedAt: "2026-06-27T02:30:00.000Z",
+        lastObservedAt: "2026-06-27T03:30:00.000Z",
+        closeReason: "missing_after_reconcile",
+        closedAt: "2026-06-27T03:35:00.000Z",
+        incognito: true
+      }
+    },
+    events: [
+      { type: "tab_seen", sessionId: "normalSession", at: Date.parse("2026-06-27T03:00:00.000Z") },
+      { type: "tab_seen", sessionId: "privateSession", at: Date.parse("2026-06-27T03:30:00.000Z") }
+    ]
+  };
+
+  const defaultInput = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, includeIncognitoTabs: false },
+    { range: { preset: "7d" }, now: NOW }
+  );
+  const defaultSerialized = JSON.stringify(defaultInput);
+
+  assert.equal(defaultSerialized.includes("Private"), false);
+  assert.equal(defaultInput.coverage.activityEntries, 1);
+  assert.equal(defaultInput.coverage.summaryEntries, 1);
+  assert.equal(defaultInput.coverage.lifecycleSessions, 1);
+  assert.equal(defaultInput.coverage.lifecycleEvents, 1);
+  assert.equal(defaultInput.coverage.inferredClosed, 1);
+
+  const incognitoInput = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, includeIncognitoTabs: true },
+    { range: { preset: "7d" }, now: NOW }
+  );
+  const incognitoSerialized = JSON.stringify(incognitoInput);
+
+  assert.equal(incognitoSerialized.includes("Private activity page"), true);
+  assert.equal(incognitoSerialized.includes("Private summary page"), true);
+  assert.equal(incognitoSerialized.includes("Private lifecycle page"), true);
+  assert.equal(incognitoInput.coverage.activityEntries, 2);
+  assert.equal(incognitoInput.coverage.summaryEntries, 2);
+  assert.equal(incognitoInput.coverage.lifecycleSessions, 2);
+  assert.equal(incognitoInput.coverage.lifecycleEvents, 2);
+  assert.equal(incognitoInput.coverage.inferredClosed, 2);
+});
+
 test("time recap gateway request parses fenced JSON and keeps page references valid", async () => {
   const chrome = seededRecapChrome();
   let capturedRequest = null;

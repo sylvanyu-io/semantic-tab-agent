@@ -13,7 +13,6 @@ import {
   requireGatewayModel
 } from "./gateway-planner.js";
 import { getLocal } from "./storage.js";
-import { getTabLifecycleStats } from "./tab-lifecycle-log.js";
 import { STORAGE_KEYS } from "./storage.js";
 import { canSampleUrl, getTabUrl, sanitizeTabUrl } from "./url-sanitizer.js";
 
@@ -98,18 +97,22 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
   const settings = normalizeSettings(rawSettings);
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const range = normalizeTimeRecapRange(options.range || options, now);
-  const [activityCache, summaryCache, lifecycleLog, lifecycleStats, currentTabs] = await Promise.all([
+  const [activityCache, summaryCache, lifecycleLog, currentTabs] = await Promise.all([
     getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null),
     getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null),
     getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null),
-    getTabLifecycleStats(chromeApi, { now }),
     collectCurrentTabs(chromeApi, settings)
   ]);
 
   const rows = new Map();
-  const activityEntries = normalizeEntryMap(activityCache);
-  const summaryEntries = normalizeEntryMap(summaryCache);
-  const lifecycleSessions = normalizeLifecycleSessions(lifecycleLog);
+  const rawActivityEntries = normalizeEntryMap(activityCache);
+  const rawSummaryEntries = normalizeEntryMap(summaryCache);
+  const rawLifecycleSessions = normalizeLifecycleSessions(lifecycleLog);
+  const incognitoSummaryKeys = incognitoKeysForLegacySummaries(rawActivityEntries, rawSummaryEntries, rawLifecycleSessions);
+  const activityEntries = filterEntryMapByPrivacy(rawActivityEntries, settings, isIncognitoActivityEntry);
+  const summaryEntries = filterEntryMapByPrivacy(rawSummaryEntries, settings, (entry) => isIncognitoSummaryEntry(entry, incognitoSummaryKeys));
+  const lifecycleSessions = settings.includeIncognitoTabs ? rawLifecycleSessions : rawLifecycleSessions.filter((session) => !session.incognito);
+  const lifecycleEvents = filterLifecycleEventsByPrivacy(normalizeEvents(lifecycleLog), settings, lifecycleSessions);
 
   for (const entry of Object.values(activityEntries)) {
     if (!entryOverlapsRange(entry, range)) continue;
@@ -216,9 +219,9 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       summaryEntries: Object.keys(summaryEntries).length,
       sampledEntries: pages.filter((page) => page.summary).length,
       currentOpenTabs: currentTabs.length,
-      lifecycleSessions: lifecycleStats.sessions || lifecycleSessions.length,
-      lifecycleEvents: lifecycleStats.events || normalizeEvents(lifecycleLog).length,
-      inferredClosed: lifecycleStats.inferredClosed || 0,
+      lifecycleSessions: lifecycleSessions.length,
+      lifecycleEvents: lifecycleEvents.length,
+      inferredClosed: lifecycleSessions.filter((session) => session.closeReason === "missing_after_reconcile").length,
       includedPages: pages.length,
       clippedPages: clipped.length
     },
@@ -619,6 +622,41 @@ function normalizeLifecycleSessions(log) {
 
 function normalizeEvents(log) {
   return Array.isArray(log?.events) ? log.events : [];
+}
+
+function filterLifecycleEventsByPrivacy(events, settings, lifecycleSessions) {
+  if (settings.includeIncognitoTabs) return events;
+  const includedSessionIds = new Set(lifecycleSessions.map((session) => session.id || session.sessionId).filter(Boolean));
+  return events.filter((event) => event?.sessionId && includedSessionIds.has(event.sessionId));
+}
+
+function filterEntryMapByPrivacy(entries, settings, isPrivateEntry) {
+  if (settings.includeIncognitoTabs) return entries;
+  return Object.fromEntries(Object.entries(entries).filter(([, entry]) => !isPrivateEntry(entry)));
+}
+
+function incognitoKeysForLegacySummaries(activityEntries, summaryEntries, lifecycleSessions) {
+  const keys = new Set();
+  for (const entry of Object.values(activityEntries)) {
+    if (isIncognitoActivityEntry(entry) && entry.key) keys.add(entry.key);
+  }
+  for (const entry of Object.values(summaryEntries)) {
+    if (entry?.incognito && entry.key) keys.add(entry.key);
+  }
+  for (const session of lifecycleSessions) {
+    if (!session?.incognito) continue;
+    const key = session.urlKey || pageCacheKey(session.sanitizedUrl || "");
+    if (key) keys.add(key);
+  }
+  return keys;
+}
+
+function isIncognitoActivityEntry(entry) {
+  return Boolean(entry?.incognito || entry?.lastKnownState?.incognito);
+}
+
+function isIncognitoSummaryEntry(entry, incognitoSummaryKeys) {
+  return Boolean(entry?.incognito || (entry?.key && incognitoSummaryKeys.has(entry.key)));
 }
 
 function entryOverlapsRange(entry, range) {
