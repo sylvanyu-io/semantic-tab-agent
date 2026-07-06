@@ -23,7 +23,8 @@ const serviceChecks = await checkBuiltInGatewayService({
   gatewayBaseUrlExplicit: Boolean(process.env.GATEWAY_BASE_URL),
   gatewayServiceBaseUrl: process.env.GATEWAY_SERVICE_BASE_URL || "",
   monitorToken: monitorToken.token,
-  forceServiceCheck: process.env.GATEWAY_CHECK_SERVICE === "1"
+  forceServiceCheck: process.env.GATEWAY_CHECK_SERVICE === "1",
+  requireMonitor: process.env.GATEWAY_REQUIRE_MONITOR === "1"
 });
 
 const chrome = createFakeChrome({

@@ -8,9 +8,16 @@ export async function checkBuiltInGatewayService(options = {}) {
     Boolean(options.forceServiceCheck) ||
     (!options.gatewayBaseUrlExplicit && gatewayBaseUrl === (options.builtinGatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL)) ||
     configuredServiceBaseUrl === builtinServiceBaseUrl;
+  const requireMonitor = Boolean(options.requireMonitor);
 
   if (!shouldCheckService) {
+    if (requireMonitor) throw new Error("Built-in gateway monitor check was required but service checks were skipped.");
     return { skipped: true, reason: "custom_gateway" };
+  }
+
+  const monitorToken = options.monitorToken || "";
+  if (!monitorToken && requireMonitor) {
+    throw new Error("Built-in gateway monitor check requires MONITOR_TOKEN or MONITOR_TOKEN_FILE.");
   }
 
   const fetchImpl = options.fetchImpl || fetch;
@@ -20,7 +27,6 @@ export async function checkBuiltInGatewayService(options = {}) {
   const readyz = await getJson(fetchImpl, `${configuredServiceBaseUrl}/readyz`);
   requireOk(readyz, "readyz");
 
-  const monitorToken = options.monitorToken || "";
   const monitor = monitorToken ? await getJson(fetchImpl, `${configuredServiceBaseUrl}/monitor/status`, { "x-monitor-token": monitorToken }) : null;
   if (monitor) {
     requireOk(monitor, "monitor/status");

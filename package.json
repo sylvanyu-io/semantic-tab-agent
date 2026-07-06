@@ -23,7 +23,7 @@
     "build:extension:store": "EXTENSION_CHANNEL=store node scripts/build-extension.mjs",
     "check": "npm test && npm run test:ui",
     "release:check": "npm run clean:dist && npm run assets:icons && npm run check && npm run scan:secrets && npm run scan:secrets:history && npm run build:extension && npm run build:extension:store && npm run audit:release-artifacts",
-    "release:check:live": "node scripts/require-monitor-token.mjs && npm run release:check && npm run smoke:gateway"
+    "release:check:live": "node scripts/require-monitor-token.mjs && npm run release:check && GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"

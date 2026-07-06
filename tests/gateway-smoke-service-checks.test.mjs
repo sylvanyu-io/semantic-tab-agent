@@ -78,6 +78,35 @@ test("gateway smoke skips monitor status when no monitor token is supplied", asy
   assert.deepEqual(result.monitor, { skipped: true, reason: "MONITOR_TOKEN not set" });
 });
 
+test("gateway smoke fails when a required monitor check has no token", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+        requireMonitor: true,
+        fetchImpl: async (url) => {
+          if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+          if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+          return jsonResponse({ ok: false }, 404);
+        }
+      }),
+    /requires MONITOR_TOKEN or MONITOR_TOKEN_FILE/
+  );
+});
+
+test("gateway smoke fails when required monitor checks are skipped by a custom gateway", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: "https://custom.example.test/v1",
+        gatewayBaseUrlExplicit: true,
+        requireMonitor: true,
+        fetchImpl: async () => jsonResponse({ ok: true })
+      }),
+    /monitor check was required but service checks were skipped/
+  );
+});
+
 test("gateway smoke fails when monitor email alerts are not configured", async () => {
   await assert.rejects(
     () =>
