@@ -1,6 +1,7 @@
 import { analyzeTabs } from "../src/core/controller.js";
 import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS, PLANNER_PROVIDERS } from "../src/shared/settings.js";
 import { createFakeChrome } from "../tests/helpers/fake-chrome.mjs";
+import { checkBuiltInGatewayService } from "./lib/gateway-smoke-service-checks.mjs";
 
 const key = process.env.GATEWAY_API_KEY || "";
 const requestedBaseUrl = process.env.GATEWAY_BASE_URL || BUILTIN_GATEWAY_BASE_URL;
@@ -15,7 +16,13 @@ const settings = {
   customPrompt: "Prefer semantic topic grouping over domain grouping. Put uncertain tabs in Review."
 };
 
-const serviceChecks = await checkBuiltInGatewayService(settings.gatewayBaseUrl);
+const serviceChecks = await checkBuiltInGatewayService({
+  gatewayBaseUrl: settings.gatewayBaseUrl,
+  gatewayBaseUrlExplicit: Boolean(process.env.GATEWAY_BASE_URL),
+  gatewayServiceBaseUrl: process.env.GATEWAY_SERVICE_BASE_URL || "",
+  monitorToken: process.env.MONITOR_TOKEN || "",
+  forceServiceCheck: process.env.GATEWAY_CHECK_SERVICE === "1"
+});
 
 const chrome = createFakeChrome({
   windows: [
@@ -56,89 +63,3 @@ console.log(
 );
 
 process.exit(job.validation.ok ? 0 : 1);
-
-async function checkBuiltInGatewayService(baseUrl) {
-  const configuredServiceBaseUrl = process.env.GATEWAY_SERVICE_BASE_URL || serviceBaseUrlFromGatewayBaseUrl(baseUrl);
-  const shouldCheckService =
-    process.env.GATEWAY_CHECK_SERVICE === "1" ||
-    (!process.env.GATEWAY_BASE_URL && baseUrl === BUILTIN_GATEWAY_BASE_URL) ||
-    configuredServiceBaseUrl === serviceBaseUrlFromGatewayBaseUrl(BUILTIN_GATEWAY_BASE_URL);
-
-  if (!shouldCheckService) {
-    return { skipped: true, reason: "custom_gateway" };
-  }
-
-  const healthz = await getJson(`${configuredServiceBaseUrl}/healthz`);
-  requireOk(healthz, "healthz");
-
-  const readyz = await getJson(`${configuredServiceBaseUrl}/readyz`);
-  requireOk(readyz, "readyz");
-
-  const monitorToken = process.env.MONITOR_TOKEN || "";
-  const monitor = monitorToken ? await getJson(`${configuredServiceBaseUrl}/monitor/status`, { "x-monitor-token": monitorToken }) : null;
-  if (monitor) {
-    requireOk(monitor, "monitor/status");
-    if (monitor.json?.config?.stateStore !== "configured") throw new Error("monitor/status state store is not configured");
-    if (monitor.json?.config?.email !== "configured") throw new Error(`monitor/status email is ${monitor.json?.config?.email || "unknown"}`);
-    if (monitor.json?.config?.upstream !== "configured") throw new Error(`monitor/status upstream is ${monitor.json?.config?.upstream || "unknown"}`);
-    if (monitor.json?.monitor?.status === "down") {
-      throw new Error(
-        `monitor/status reports down: readyz=${monitor.json?.monitor?.lastSummary?.readyzCode || "unknown"} llm=${
-          monitor.json?.monitor?.lastSummary?.llmCode || "unknown"
-        }`
-      );
-    }
-  }
-
-  return {
-    skipped: false,
-    baseUrl: configuredServiceBaseUrl,
-    healthz: pickServiceCheck(healthz),
-    readyz: {
-      ...pickServiceCheck(readyz),
-      upstreamCode: readyz.json?.upstream?.code || ""
-    },
-    monitor: monitor
-      ? {
-          ...pickServiceCheck(monitor),
-          status: monitor.json?.monitor?.status || "unknown",
-          readyzCode: monitor.json?.monitor?.lastSummary?.readyzCode || "",
-          llmCode: monitor.json?.monitor?.lastSummary?.llmCode || "",
-          email: monitor.json?.config?.email || "unknown"
-        }
-      : { skipped: true, reason: "MONITOR_TOKEN not set" }
-  };
-}
-
-function serviceBaseUrlFromGatewayBaseUrl(baseUrl) {
-  const url = new URL(baseUrl);
-  url.pathname = url.pathname.replace(/\/v1\/?$/, "").replace(/\/+$/, "");
-  url.search = "";
-  url.hash = "";
-  return url.toString().replace(/\/$/, "");
-}
-
-async function getJson(url, headers = {}) {
-  const response = await fetch(url, { headers });
-  let json = null;
-  let text = "";
-  try {
-    text = await response.text();
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
-  }
-  return { ok: response.ok && Boolean(json?.ok), status: response.status, json, text: text.slice(0, 160) };
-}
-
-function requireOk(check, name) {
-  if (check.ok) return;
-  throw new Error(`${name} failed with HTTP ${check.status}: ${check.text || "empty response"}`);
-}
-
-function pickServiceCheck(check) {
-  return {
-    ok: check.ok,
-    status: check.status
-  };
-}
