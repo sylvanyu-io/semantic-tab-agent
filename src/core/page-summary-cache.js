@@ -15,23 +15,24 @@ const CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 800;
 const BACKGROUND_SAMPLE_TIMEOUT_MS = 1800;
 
-export async function cachedPageSampleForTab(chromeApi, tabDescriptor) {
+export async function cachedPageSampleForTab(chromeApi, tabDescriptor, options = {}) {
   const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
-  return cachedSampleFromCache(cache, tabDescriptor);
+  return cachedSampleFromCache(cache, tabDescriptor, options);
 }
 
-export async function cachedPageSamplesForTabs(chromeApi, tabDescriptors = []) {
+export async function cachedPageSamplesForTabs(chromeApi, tabDescriptors = [], options = {}) {
   if (!tabDescriptors.length) return [];
   const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
-  return tabDescriptors.map((tabDescriptor) => cachedSampleFromCache(cache, tabDescriptor)).filter(Boolean);
+  return tabDescriptors.map((tabDescriptor) => cachedSampleFromCache(cache, tabDescriptor, options)).filter(Boolean);
 }
 
-function cachedSampleFromCache(cache, tabDescriptor) {
+function cachedSampleFromCache(cache, tabDescriptor, options = {}) {
   const key = pageSummaryCacheKey(tabDescriptor.sanitizedUrl || tabDescriptor.fullUrl || "");
   if (!key) return null;
 
   const entry = cache.entries[key];
   if (!isFreshEntry(entry)) return null;
+  if (entry.incognito && !options.includeIncognitoTabs) return null;
 
   return {
     tabId: tabDescriptor.tabId,
@@ -94,6 +95,7 @@ export async function rememberPageSummary(chromeApi, tab, sampleResult, options 
   cache.entries[key] = {
     key,
     origin: hostPermissionPattern(rawUrl),
+    incognito: Boolean(tab?.incognito),
     title: String(tab.title || sampleResult.sample.title || "").slice(0, 180),
     firstSeenAt: existing?.firstSeenAt || existing?.sampledAt || nowIso,
     lastSeenAt: nowIso,

@@ -149,10 +149,37 @@ test("continuous summary capture can store incognito tabs when explicitly enable
     windowId: 1,
     sanitizedUrl: "https://private.example/docs",
     fullUrl: ""
-  });
+  }, { includeIncognitoTabs: true });
   assert.equal(cached.sample.title, "Private live page");
   const activityEntry = Object.values(chrome.__state.storage[STORAGE_KEYS.pageActivityCache].entries)[0];
   assert.equal(activityEntry.lastKnownState.incognito, true);
+});
+
+test("cached page summaries do not reuse incognito samples unless enabled", async () => {
+  const chrome = createFakeChrome();
+  await rememberPageSummary(
+    chrome,
+    { id: 10, title: "Private cached page", url: "https://private.example/cached", incognito: true },
+    {
+      status: "ok",
+      sample: {
+        title: "Private cached page",
+        visibleText: "Private cached visible text"
+      }
+    },
+    { includeIncognitoTabs: true }
+  );
+
+  const descriptor = {
+    tabId: 10,
+    windowId: 1,
+    sanitizedUrl: "https://private.example/cached",
+    fullUrl: ""
+  };
+
+  assert.equal(await cachedPageSampleForTab(chrome, descriptor), null);
+  const cached = await cachedPageSampleForTab(chrome, descriptor, { includeIncognitoTabs: true });
+  assert.equal(cached.sample.title, "Private cached page");
 });
 
 test("continuous summary capture stores authorized live pages", async () => {

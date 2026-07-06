@@ -1240,7 +1240,9 @@ async function attachCachedPageSamples(chromeApi, inventory, settings, options =
 
   throwIfCanceled(options.signal);
   const sampleableTabs = (inventory.plannerTabs || []).filter((tab) => tab.sampleable);
-  const cachedSamples = await cachedPageSamplesForTabs(chromeApi, sampleableTabs).catch(() => []);
+  const cachedSamples = await cachedPageSamplesForTabs(chromeApi, sampleableTabs, {
+    includeIncognitoTabs: settings.includeIncognitoTabs
+  }).catch(() => []);
   const cachedTabIds = new Set();
   for (const cached of cachedSamples) {
     inventory.pageSamples.push(cached);
