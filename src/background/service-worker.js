@@ -134,7 +134,7 @@ async function syncLifecycleReconcileAlarm() {
 
 function scheduleLifecycleReconcile() {
   setTimeout(() => {
-    reconcileTabLifecycle(chrome).catch((error) => console.debug(error));
+    reconcileTabLifecycleWithSettings().catch((error) => console.debug(error));
   }, 0);
 }
 
@@ -166,5 +166,11 @@ async function captureSummaryForTab(tabId) {
 }
 
 async function rememberTabLifecycleWithSettings(type, tab) {
-  return rememberTabLifecycle(chrome, type, tab);
+  const settings = await getSettings(chrome);
+  return rememberTabLifecycle(chrome, type, tab, { includeIncognitoTabs: settings.includeIncognitoTabs });
+}
+
+async function reconcileTabLifecycleWithSettings() {
+  const settings = await getSettings(chrome);
+  return reconcileTabLifecycle(chrome, { includeIncognitoTabs: settings.includeIncognitoTabs });
 }
