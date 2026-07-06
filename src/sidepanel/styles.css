@@ -1271,7 +1271,8 @@ button:focus-visible {
 }
 
 .local-memory-row,
-.settings-transfer-row {
+.settings-transfer-row,
+.diagnostics-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -1281,14 +1282,16 @@ button:focus-visible {
 }
 
 .local-memory-row span,
-.settings-transfer-row > span {
+.settings-transfer-row > span,
+.diagnostics-row > span {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
 .local-memory-row strong,
-.settings-transfer-row strong {
+.settings-transfer-row strong,
+.diagnostics-row strong {
   color: var(--text);
   font-size: 13px;
   font-weight: 820;
@@ -1296,7 +1299,8 @@ button:focus-visible {
 }
 
 .local-memory-row small,
-.settings-transfer-row small {
+.settings-transfer-row small,
+.diagnostics-row small {
   color: var(--muted);
   font-size: 11px;
   font-weight: 650;
@@ -1304,7 +1308,8 @@ button:focus-visible {
 }
 
 .local-memory-row button,
-.settings-transfer-row button {
+.settings-transfer-row button,
+.diagnostics-row button {
   min-height: 30px;
   padding: 5px 12px;
   border-radius: 999px;
@@ -1332,11 +1337,14 @@ button:focus-visible {
   border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
-.local-memory-row button:disabled {
-  cursor: wait;
-  opacity: 0.55;
+.diagnostics-row button {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
+.local-memory-row button:disabled,
+.diagnostics-row button:disabled,
 .settings-transfer-row button:disabled {
   cursor: wait;
   opacity: 0.55;

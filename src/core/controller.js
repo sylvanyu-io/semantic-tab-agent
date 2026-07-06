@@ -124,6 +124,8 @@ export async function handleRuntimeMessage(chromeApi, message) {
     }
     case "activity:clearLocalMemory":
       return clearLocalActivityMemory(chromeApi);
+    case "diagnostics:getSnapshot":
+      return getDiagnosticsSnapshot(chromeApi);
     case "activity:getEvidenceSnapshot":
       return getEvidenceSnapshotForMessage(chromeApi, message);
     case "activity:generateTimeRecap":
@@ -159,6 +161,166 @@ async function clearLocalActivityMemory(chromeApi) {
     removedKeys,
     removedCount: removedKeys.length
   };
+}
+
+async function getDiagnosticsSnapshot(chromeApi) {
+  const [settings, storage] = await Promise.all([
+    getSettings(chromeApi),
+    chromeApi.storage.local.get(null)
+  ]);
+  const manifest = chromeApi.runtime?.getManifest?.();
+  return {
+    schema: "tabrecap_diagnostics_v1",
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    app: "TabRecap",
+    extensionVersion: manifest?.version || "",
+    settings: summarizeDiagnosticSettings(settings),
+    localMemory: summarizeLocalMemory(storage),
+    jobs: {
+      active: summarizeScopedStoredItems(storage, STORAGE_KEYS.activeJob, summarizeStoredJob),
+      last: summarizeScopedStoredItems(storage, STORAGE_KEYS.lastJob, summarizeStoredJob),
+      rollback: summarizeScopedStoredItems(storage, STORAGE_KEYS.lastRollback, summarizeRollback)
+    },
+    storage: summarizeStorageKeys(storage)
+  };
+}
+
+function summarizeDiagnosticSettings(settings) {
+  const normalized = normalizeSettings(settings);
+  const gatewayBaseUrl =
+    normalized.gatewayProviderMode === "builtin"
+      ? BUILTIN_GATEWAY_BASE_URL
+      : normalized.gatewayBaseUrl;
+  return {
+    languageMode: normalized.languageMode,
+    organizeMode: normalized.organizeMode,
+    promptPreset: normalized.promptPreset,
+    groupingGranularity: normalized.groupingGranularity,
+    analyzeGrouping: normalized.analyzeGrouping,
+    analyzeCleanup: normalized.analyzeCleanup,
+    pageContextMode: normalized.pageContextMode,
+    hostPermissionRequestMode: normalized.hostPermissionRequestMode,
+    continuousPageSummaries: normalized.continuousPageSummaries,
+    urlPrivacyMode: normalized.urlPrivacyMode,
+    includePinnedTabs: normalized.includePinnedTabs,
+    includeIncognitoTabs: normalized.includeIncognitoTabs,
+    collapseGroupsAfterApply: normalized.collapseGroupsAfterApply,
+    existingGroupMode: normalized.existingGroupMode,
+    reviewGroupMode: normalized.reviewGroupMode,
+    plannerProvider: normalized.plannerProvider,
+    gatewayProviderMode: normalized.gatewayProviderMode,
+    gatewayHost: safeDiagnosticHost(gatewayBaseUrl),
+    gatewayPathConfigured: hasDiagnosticPath(gatewayBaseUrl),
+    gatewayModel: normalized.gatewayModel,
+    gatewayAuxiliaryModel: normalized.gatewayAuxiliaryModel,
+    customModelConfigured: Boolean(normalized.gatewayCustomModel),
+    customAuxiliaryModelConfigured: Boolean(normalized.gatewayCustomAuxiliaryModel),
+    gatewayThinkingIntensity: normalized.gatewayThinkingIntensity,
+    customKeyPresent: Boolean(normalized.gatewayApiKey),
+    rememberProviderKeys: normalized.rememberProviderKeys
+  };
+}
+
+function summarizeLocalMemory(storage) {
+  const activityEntries = Object.keys(storage[STORAGE_KEYS.pageActivityCache]?.entries || {});
+  const summaryEntries = Object.keys(storage[STORAGE_KEYS.pageSummaryCache]?.entries || {});
+  const lifecycleSessions = Object.keys(storage[STORAGE_KEYS.tabLifecycleLog]?.sessions || {});
+  const lifecycleEvents = Array.isArray(storage[STORAGE_KEYS.tabLifecycleLog]?.events)
+    ? storage[STORAGE_KEYS.tabLifecycleLog].events
+    : [];
+  return {
+    pageActivityEntries: activityEntries.length,
+    pageSummaryEntries: summaryEntries.length,
+    tabLifecycleSessions: lifecycleSessions.length,
+    tabLifecycleEvents: lifecycleEvents.length
+  };
+}
+
+function summarizeScopedStoredItems(storage, baseKey, summarizeValue) {
+  return Object.entries(storage)
+    .filter(([key]) => key === baseKey || key.startsWith(`${baseKey}:`))
+    .map(([key, value]) => ({
+      scope: diagnosticScopeFromKey(key, baseKey),
+      ...summarizeValue(value)
+    }))
+    .sort((left, right) => String(left.scope).localeCompare(String(right.scope)));
+}
+
+function summarizeStoredJob(job = {}) {
+  return {
+    status: safeDiagnosticString(job.status, 40),
+    phase: safeDiagnosticString(job.phase, 60),
+    progress: typeof job.progress === "number" ? Math.max(0, Math.min(100, Math.round(job.progress))) : null,
+    createdAt: safeDiagnosticIso(job.createdAt),
+    updatedAt: safeDiagnosticIso(job.updatedAt),
+    finishedAt: safeDiagnosticIso(job.finishedAt),
+    operationIdPresent: Boolean(job.operationId),
+    errorKind: classifyDiagnosticError(job.error)
+  };
+}
+
+function summarizeRollback(rollback = {}) {
+  const tabIds = Array.isArray(rollback.tabs) ? rollback.tabs : [];
+  const groups = Array.isArray(rollback.groups) ? rollback.groups : [];
+  return {
+    createdAt: safeDiagnosticIso(rollback.createdAt),
+    tabCount: tabIds.length,
+    groupCount: groups.length
+  };
+}
+
+function summarizeStorageKeys(storage) {
+  const keys = Object.keys(storage || {});
+  const knownPrefixes = Object.values(STORAGE_KEYS);
+  return {
+    totalKeys: keys.length,
+    knownKeys: keys.filter((key) => knownPrefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`))).length,
+    unknownKeys: keys.filter((key) => !knownPrefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`))).length
+  };
+}
+
+function diagnosticScopeFromKey(key, baseKey) {
+  if (key === baseKey) return "legacy";
+  return key.slice(baseKey.length + 1) || "unknown";
+}
+
+function classifyDiagnosticError(error) {
+  const text = String(error || "");
+  if (!text) return "";
+  if (/timed?\s*out|timeout/i.test(text)) return "timeout";
+  if (/\b(530|1033)\b|cloudflare|tunnel/i.test(text)) return "cloudflare_or_tunnel";
+  if (/\b(401|403)\b|unauthorized|forbidden|api key|auth/i.test(text)) return "auth";
+  if (/invalid\s+json|unexpected token|not valid json|json/i.test(text)) return "invalid_json";
+  if (/model.*(unavailable|unsupported|not available)|unsupported.*model/i.test(text)) return "unsupported_model";
+  if (/cancel|abort/i.test(text)) return "canceled";
+  return "other";
+}
+
+function safeDiagnosticHost(rawUrl) {
+  try {
+    return new URL(rawUrl || "").hostname;
+  } catch {
+    return "";
+  }
+}
+
+function hasDiagnosticPath(rawUrl) {
+  try {
+    const url = new URL(rawUrl || "");
+    return Boolean(url.pathname && url.pathname !== "/");
+  } catch {
+    return false;
+  }
+}
+
+function safeDiagnosticString(value, maxLength) {
+  return String(value || "").slice(0, maxLength);
+}
+
+function safeDiagnosticIso(value) {
+  const text = String(value || "");
+  return Number.isFinite(Date.parse(text)) ? new Date(text).toISOString() : "";
 }
 
 async function getEvidenceSnapshotForMessage(chromeApi, message = {}) {

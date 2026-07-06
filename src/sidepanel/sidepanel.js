@@ -53,6 +53,7 @@ const UI_COPY = Object.freeze({
     "status.settingsExported": "设置已导出，不包含自定义密钥。",
     "status.settingsImported": "设置已导入。自定义密钥需要重新填写。",
     "status.settingsImportInvalid": "设置文件不可用，请选择 TabRecap 导出的 JSON。",
+    "status.diagnosticsExported": "诊断包已导出，不包含密钥、页面网址或页面正文。",
     "status.gatewayTimeout": "AI 服务响应超时。请稍后重试；如果使用自定义 API，请先点「测试连接」。",
     "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页{reviewText}",
     "status.applyDone": "已创建 {groupCount} 个分组",
@@ -74,6 +75,7 @@ const UI_COPY = Object.freeze({
     "button.clearLocalMemory": "清空",
     "button.settingsExport": "导出",
     "button.settingsImport": "导入",
+    "button.diagnosticsExport": "下载诊断包",
     "gateway.testHint": "仅检测自定义 API",
     "button.language": "EN",
     "button.languageAria": "切换界面为英文",
@@ -208,6 +210,8 @@ const UI_COPY = Object.freeze({
     "field.localMemoryHint": "清空活动记录、页面摘要和时间线记录，不会关闭标签页",
     "field.settingsTransfer": "设置迁移",
     "field.settingsTransferHint": "导出偏好和模型配置，不包含自定义密钥",
+    "field.diagnostics": "诊断包",
+    "field.diagnosticsHint": "导出本机状态摘要，不包含密钥、页面网址或页面正文",
     "field.minConfidence": "最低置信度",
     "field.maxTabs": "单组最大数量",
     "placeholder.customModel": "例如：glm-5.2、deepseek-v4-pro",
@@ -318,6 +322,7 @@ const UI_COPY = Object.freeze({
     "status.settingsExported": "Settings exported without custom keys.",
     "status.settingsImported": "Settings imported. Re-enter any custom API key.",
     "status.settingsImportInvalid": "This settings file is not usable. Choose a JSON exported by TabRecap.",
+    "status.diagnosticsExported": "Diagnostics exported without keys, page URLs, or page text.",
     "status.gatewayTimeout": "The AI service timed out. Try again later; if you use a custom API, run Test connection first.",
     "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs{reviewText}",
     "status.applyDone": "Created {groupCount} groups",
@@ -339,6 +344,7 @@ const UI_COPY = Object.freeze({
     "button.clearLocalMemory": "Clear",
     "button.settingsExport": "Export",
     "button.settingsImport": "Import",
+    "button.diagnosticsExport": "Download diagnostics",
     "gateway.testHint": "Only checks the custom API",
     "button.language": "中",
     "button.languageAria": "Switch UI to Chinese",
@@ -473,6 +479,8 @@ const UI_COPY = Object.freeze({
     "field.localMemoryHint": "Clears activity records, page summaries, and timeline logs without closing tabs",
     "field.settingsTransfer": "Settings transfer",
     "field.settingsTransferHint": "Exports preferences and model settings without custom keys",
+    "field.diagnostics": "Diagnostics",
+    "field.diagnosticsHint": "Exports a local status summary without keys, page URLs, or page text",
     "field.minConfidence": "Minimum confidence",
     "field.maxTabs": "Max tabs per group",
     "placeholder.customModel": "Example: glm-5.2, deepseek-v4-pro",
@@ -637,6 +645,7 @@ const nodes = {
   settingsImportBtn: document.querySelector("#settingsImportBtn"),
   settingsImportFile: document.querySelector("#settingsImportFile"),
   settingsTransferStatus: document.querySelector("#settingsTransferStatus"),
+  diagnosticsExportBtn: document.querySelector("#diagnosticsExportBtn"),
   timeRecapPanel: document.querySelector("#timeRecapPanel"),
   recapCustomRange: document.querySelector("#recapCustomRange"),
   recapResult: document.querySelector("#recapResult"),
@@ -758,6 +767,7 @@ function bindEvents() {
   nodes.settingsExportBtn?.addEventListener("click", handleSettingsExportClick);
   nodes.settingsImportBtn?.addEventListener("click", () => nodes.settingsImportFile?.click());
   nodes.settingsImportFile?.addEventListener("change", handleSettingsImportChange);
+  nodes.diagnosticsExportBtn?.addEventListener("click", handleDiagnosticsExportClick);
   nodes.privacyDisclosureDismissBtn?.addEventListener("click", handlePrivacyDisclosureDismissClick);
   nodes.uiLanguageToggle?.addEventListener("click", toggleUiLanguage);
   for (const button of nodes.recapQuickButtons || []) {
@@ -862,6 +872,9 @@ function applyUiLanguage() {
   setText(".settings-transfer-row > span small", t("field.settingsTransferHint"));
   setButtonLabel(nodes.settingsExportBtn, t("button.settingsExport"));
   setButtonLabel(nodes.settingsImportBtn, t("button.settingsImport"));
+  setText(".diagnostics-row strong", t("field.diagnostics"));
+  setText(".diagnostics-row > span small", t("field.diagnosticsHint"));
+  setButtonLabel(nodes.diagnosticsExportBtn, t("button.diagnosticsExport"));
   setText('label[for="minConfidenceToApply"]', t("field.minConfidence"));
   setText('label[for="maxTabsPerGroup"]', t("field.maxTabs"));
   setText(".recap-intro .step-label", t("recap.step"));
@@ -1533,18 +1546,24 @@ async function handleClearLocalMemoryClick() {
 
 function handleSettingsExportClick() {
   const payload = createSettingsExport(readSettings());
-  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `tabrecap-settings-${dateSlug(new Date())}.json`;
-  anchor.rel = "noopener";
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  downloadJson(payload, `tabrecap-settings-${dateSlug(new Date())}.json`);
   setTransferStatus(t("status.settingsExported"));
   setStatusKey("status.settingsExported");
+}
+
+async function handleDiagnosticsExportClick() {
+  setTransferButtonsDisabled(true);
+  try {
+    const payload = await sendMessage({ type: "diagnostics:getSnapshot" });
+    downloadJson(payload, `tabrecap-diagnostics-${dateSlug(new Date())}.json`);
+    setTransferStatus(t("status.diagnosticsExported"));
+    setStatusKey("status.diagnosticsExported");
+  } catch (error) {
+    setTransferStatus(friendlyErrorMessage(error), true);
+    setErrorStatus(error, friendlyErrorMessage(error));
+  } finally {
+    setTransferButtonsDisabled(false);
+  }
 }
 
 async function handleSettingsImportChange(event) {
@@ -1572,6 +1591,7 @@ async function handleSettingsImportChange(event) {
 function setTransferButtonsDisabled(disabled) {
   if (nodes.settingsExportBtn) nodes.settingsExportBtn.disabled = disabled;
   if (nodes.settingsImportBtn) nodes.settingsImportBtn.disabled = disabled;
+  if (nodes.diagnosticsExportBtn) nodes.diagnosticsExportBtn.disabled = disabled;
 }
 
 function setTransferStatus(message, isError = false) {
@@ -1585,6 +1605,19 @@ function dateSlug(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function downloadJson(payload, filename) {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noopener";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function readRecapRange() {

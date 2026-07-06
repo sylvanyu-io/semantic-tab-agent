@@ -134,6 +134,88 @@ test("clearing local memory removes activity records without closing tabs or pre
   assert.equal((await chrome.tabs.query({})).length, 1);
 });
 
+test("diagnostics snapshot summarizes local state without sensitive page or provider data", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Private customer research", url: "https://private.example.com/secret?token=abc", active: true }]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.settings] = {
+    languageMode: "zh-CN",
+    gatewayProviderMode: "custom",
+    gatewayBaseUrl: "https://api.deepseek.com/v1",
+    gatewayApiKey: "sk-private-secret",
+    rememberProviderKeys: true,
+    gatewayModel: "custom",
+    gatewayCustomModel: "deepseek-v4-pro",
+    customPrompt: "Never export this prompt"
+  };
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      private: {
+        title: "Private customer research",
+        url: "https://private.example.com/secret?token=abc",
+        openCount: 3
+      }
+    }
+  };
+  chrome.__state.storage[STORAGE_KEYS.pageSummaryCache] = {
+    version: 1,
+    entries: {
+      private: {
+        title: "Private summary title",
+        sample: { visibleText: "Private body text should never leave diagnostics" }
+      }
+    }
+  };
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      private: { title: "Private lifecycle title", url: "https://private.example.com/lifecycle" }
+    },
+    events: [{ type: "activated", tabId: 10 }]
+  };
+  chrome.__state.storage[`${STORAGE_KEYS.activeJob}:1`] = {
+    operationId: "job_secret",
+    status: "error",
+    phase: "planning",
+    progress: 72,
+    message: "Failed on Private customer research",
+    error: "AI gateway failed for https://private.example.com/secret with sk-private-secret: error code 1033",
+    createdAt: "2026-07-06T12:00:00.000Z",
+    updatedAt: "2026-07-06T12:01:00.000Z"
+  };
+  chrome.__state.storage[`${STORAGE_KEYS.lastRollback}:1`] = {
+    createdAt: "2026-07-06T12:02:00.000Z",
+    tabs: [{ id: 10, title: "Private customer research" }],
+    groups: [{ id: 1, title: "Private group" }]
+  };
+
+  const result = await handleRuntimeMessage(chrome, { type: "diagnostics:getSnapshot" });
+  const serialized = JSON.stringify(result);
+
+  assert.equal(result.schema, "tabrecap_diagnostics_v1");
+  assert.equal(result.settings.gatewayHost, "api.deepseek.com");
+  assert.equal(result.settings.customKeyPresent, true);
+  assert.equal(result.localMemory.pageActivityEntries, 1);
+  assert.equal(result.localMemory.pageSummaryEntries, 1);
+  assert.equal(result.localMemory.tabLifecycleSessions, 1);
+  assert.equal(result.localMemory.tabLifecycleEvents, 1);
+  assert.equal(result.jobs.active[0].errorKind, "cloudflare_or_tunnel");
+  assert.equal(result.jobs.rollback[0].tabCount, 1);
+  assert.equal(result.jobs.rollback[0].groupCount, 1);
+  assert.equal(serialized.includes("sk-private-secret"), false);
+  assert.equal(serialized.includes("private.example.com"), false);
+  assert.equal(serialized.includes("Private customer research"), false);
+  assert.equal(serialized.includes("Private body text"), false);
+  assert.equal(serialized.includes("Never export this prompt"), false);
+});
+
 test("closing cleanup candidates is explicit and updates the stored plan preview", async () => {
   const chrome = createFakeChrome({
     windows: [

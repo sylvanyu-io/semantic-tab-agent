@@ -45,6 +45,10 @@ Implemented:
 - Recap jobs expose the same side-panel bottom progress and stop controls.
 - Time recap local fallback has a repeatable real-extension scale benchmark for
   30/120/300 tab sessions in an isolated Chromium profile.
+- More options includes a user-triggered redacted diagnostics export. The
+  diagnostics package summarizes settings shape, local-memory counts, job
+  states, rollback counts, and coarse error classes without exporting custom
+  keys, page URLs, page titles, page text, or custom prompts.
 - Large AI gateway jobs use a coarse-then-refine planner: a low-effort coarse
   bucket pass, followed by high-effort refinement for oversized or uncertain
   buckets, then normal local validation.
@@ -63,7 +67,7 @@ Not production-complete yet:
 - No hosted account system.
 - No provider-specific adaptive scheduler beyond the AI gateway coarse/refine
   path.
-- No telemetry/diagnostics toggle.
+- No remote telemetry or hosted diagnostics dashboard.
 
 ## Release Gates
 
@@ -104,11 +108,15 @@ Blocking gates:
 - Settings can be exported and imported for migration without exporting custom
   gateway keys, local activity records, page summaries, timeline logs, jobs, or
   rollback snapshots.
+- Diagnostics can be exported for support without exposing custom gateway keys,
+  page URLs, page titles, page text, or custom prompts.
 
 Recommended before public listing:
 
 - Keep the local-memory clearing control visible before recap history becomes a
   first-class history surface.
+- Use the redacted diagnostics export when investigating AI gateway outages
+  before asking users for screenshots or raw extension errors.
 - Re-run the 30/120/300-tab real-extension recap scale benchmark before larger
   public releases.
 - Expand adaptive planning beyond the AI gateway path if other providers become
