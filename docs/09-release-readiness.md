@@ -85,8 +85,10 @@ Blocking gates:
   the real-extension stress runner to the standard package gate.
 - The `CI` workflow can be manually dispatched with `full_gate` enabled to run
   the real-extension stress runner on GitHub's Ubuntu runner under `xvfb`.
-- After downloading a stress artifact, `npm run stress:summary -- <artifact>`
-  prints the compact evidence summary used to refresh this document.
+- The real-extension stress artifact includes both machine-readable JSON and a
+  human-readable Markdown summary. After downloading the JSON, `npm run
+  stress:summary -- <artifact>` can regenerate the same compact evidence summary
+  used to refresh this document.
 - `npm run release:check:live` passes before public releases that depend on the
   built-in default AI service. It runs `release:check:full`, reads
   `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`, or this machine's default local runtime

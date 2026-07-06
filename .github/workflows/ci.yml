@@ -95,6 +95,6 @@ jobs:
         if: always()
         with:
           name: tab-recap-extension-stress
-          path: dist/stress/*.json
+          path: dist/stress/*
           if-no-files-found: ignore
           retention-days: 7

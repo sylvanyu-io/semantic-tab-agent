@@ -24,3 +24,12 @@ test("dist cleanup removes stale release and stress artifacts", async () => {
   assert.match(cleanScript, /join\(distDir, "stress"\)/);
   assert.match(cleanScript, /entry\.endsWith\("\.zip"\)/);
 });
+
+test("real extension stress writes machine and human readable artifacts", async () => {
+  const stressScript = await readFile("scripts/stress-extension.mjs", "utf8");
+
+  assert.match(stressScript, /formatStressSummaryMarkdown/);
+  assert.match(stressScript, /summarizeStressArtifact/);
+  assert.match(stressScript, /`\$\{runId\}\.json`/);
+  assert.match(stressScript, /`\$\{runId\}\.md`/);
+});

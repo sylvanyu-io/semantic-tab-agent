@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS } from "../src/shared/settings.js";
+import { formatStressSummaryMarkdown, summarizeStressArtifact } from "./summarize-stress-artifact.mjs";
 
 const extensionDir = resolve("dist/extension");
 const totalTabs = positiveInteger(process.env.STRESS_TABS, 240);
@@ -508,6 +509,7 @@ async function samplingUiDebug(page, windowId) {
 async function writeStressSummary(error = null) {
   await mkdir("dist/stress", { recursive: true });
   const summaryPath = resolve("dist/stress", `${runId}.json`);
+  const markdownPath = resolve("dist/stress", `${runId}.md`);
   const summary = {
     runId,
     totalTabs,
@@ -526,6 +528,7 @@ async function writeStressSummary(error = null) {
     results
   };
   await writeFile(summaryPath, JSON.stringify(summary, null, 2));
+  await writeFile(markdownPath, `${formatStressSummaryMarkdown(summarizeStressArtifact({ ...summary, artifactPath: summaryPath }))}\n`);
   console.log(JSON.stringify(summary, null, 2));
 }
 
