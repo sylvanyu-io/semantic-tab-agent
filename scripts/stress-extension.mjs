@@ -387,11 +387,22 @@ async function runUiSamplingAnalyze(page, options) {
   }
   await page.evaluate(({ organizeMode }) => {
     window.__semanticTabAgentAllowFakeProvider = true;
+    const ensureOption = (selector, value, label) => {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`Missing select ${selector}.`);
+      if (!element.querySelector(`option[value="${value}"]`)) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        element.append(option);
+      }
+    };
     const set = (selector, value, dispatch = true) => {
       const element = document.querySelector(selector);
       element.value = value;
       if (dispatch) element.dispatchEvent(new Event("change", { bubbles: true }));
     };
+    ensureOption("#plannerProvider", "fake", "Fake");
     set("#organizeMode", organizeMode, false);
     set("#plannerProvider", "fake", false);
     set("#existingGroupMode", "dissolve_existing_groups", false);
@@ -400,6 +411,9 @@ async function runUiSamplingAnalyze(page, options) {
     document.querySelector("#ackSampling").checked = true;
     document.querySelector("#pageContextMode").dispatchEvent(new Event("change", { bubbles: true }));
     document.querySelector("#hostPermissionRequestMode").dispatchEvent(new Event("change", { bubbles: true }));
+    if (document.querySelector("#plannerProvider")?.value !== "fake") {
+      throw new Error("Stress harness failed to select the fake planner provider.");
+    }
   }, options);
   await page
     .waitForFunction(() => (window.__semanticTabAgentPageSamplingOrigins?.origins || []).length > 0, null, {
@@ -418,6 +432,7 @@ async function runUiSamplingAnalyze(page, options) {
     });
   await page.click("#analyzeBtn");
   const job = await waitForLastJob(page, options.sourceWindowId, 180000);
+  assertEqual(job.settings?.plannerProvider, "fake", "UI sampling planner provider");
   const statuses = countBy((job.inventory.pageSamples || []).map((sample) => sample.status));
   if (job.preview.pageSampling.ok !== options.expectedSamples) {
     const uiDebug = await page.evaluate(async () => {

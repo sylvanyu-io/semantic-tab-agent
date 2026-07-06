@@ -33,3 +33,11 @@ test("real extension stress writes machine and human readable artifacts", async 
   assert.match(stressScript, /`\$\{runId\}\.json`/);
   assert.match(stressScript, /`\$\{runId\}\.md`/);
 });
+
+test("real extension stress forces the UI sampling branch onto the fake planner", async () => {
+  const stressScript = await readFile("scripts/stress-extension.mjs", "utf8");
+
+  assert.match(stressScript, /ensureOption\("#plannerProvider", "fake", "Fake"\)/);
+  assert.match(stressScript, /Stress harness failed to select the fake planner provider/);
+  assert.match(stressScript, /assertEqual\(job\.settings\?\.plannerProvider, "fake", "UI sampling planner provider"\)/);
+});
