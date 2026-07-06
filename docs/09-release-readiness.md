@@ -89,6 +89,8 @@ Blocking gates:
   human-readable Markdown summary. After downloading the JSON, `npm run
   stress:summary -- <artifact>` can regenerate the same compact evidence summary
   used to refresh this document.
+- The GitHub full stress job also publishes that Markdown summary to the job
+  summary, so pass/fail evidence is visible without downloading artifacts.
 - `npm run release:check:live` passes before public releases that depend on the
   built-in default AI service. It runs `release:check:full`, reads
   `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`, or this machine's default local runtime

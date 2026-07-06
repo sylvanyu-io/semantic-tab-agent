@@ -90,6 +90,15 @@ jobs:
       - name: Run real-extension stress gate
         run: xvfb-run --auto-servernum npm run stress:extension
 
+      - name: Publish stress summary to job summary
+        if: always()
+        run: |
+          if compgen -G "dist/stress/*.md" > /dev/null; then
+            cat dist/stress/*.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No stress summary artifact was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload stress summary
         uses: actions/upload-artifact@v7
         if: always()
