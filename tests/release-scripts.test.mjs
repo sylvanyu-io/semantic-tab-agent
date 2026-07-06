@@ -12,6 +12,8 @@ test("public release scripts include real extension stress and live gateway gate
   assert.match(scripts["release:check:live"], /node scripts\/require-monitor-token\.mjs/);
   assert.match(scripts["release:check:live"], /npm run release:check:full/);
   assert.match(scripts["release:check:live"], /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
+
+  assert.equal(scripts["stress:summary"], "node scripts/summarize-stress-artifact.mjs");
 });
 
 test("dist cleanup removes stale release and stress artifacts", async () => {

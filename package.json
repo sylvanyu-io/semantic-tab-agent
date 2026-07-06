@@ -13,6 +13,7 @@
     "analyze:planner-quality": "node scripts/analyze-planner-benchmark-quality.mjs",
     "benchmark:recap-extension-scale": "node scripts/benchmark-recap-extension-scale.mjs",
     "stress:extension": "node scripts/stress-extension.mjs",
+    "stress:summary": "node scripts/summarize-stress-artifact.mjs",
     "assets:icons": "node scripts/generate-icons.mjs",
     "assets:readme": "node scripts/generate-readme-assets.mjs",
     "clean:dist": "node scripts/clean-dist.mjs",
