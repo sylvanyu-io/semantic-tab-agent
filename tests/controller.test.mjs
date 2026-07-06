@@ -1517,6 +1517,41 @@ test("clearAnalysisState removes terminal previews but preserves running jobs", 
   assert.equal(chrome.__state.storage[`${STORAGE_KEYS.activeJob}:1`].status, "running");
 });
 
+test("clearAnalysisState only clears the requested window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          { id: 10, title: "React docs", url: "https://react.dev/learn", active: true },
+          { id: 11, title: "MDN CSS grid", url: "https://developer.mozilla.org/docs/Web/CSS/CSS_grid_layout" }
+        ]
+      },
+      {
+        id: 2,
+        tabs: [
+          { id: 20, title: "Sailing route notes", url: "https://example.com/sailing", active: true },
+          { id: 21, title: "Weather forecast", url: "https://example.com/weather" }
+        ]
+      }
+    ]
+  });
+
+  const firstJob = await analyzeTabs(chrome, FAKE_PLANNER_SETTINGS, { windowId: 1 });
+  const secondJob = await analyzeTabs(chrome, FAKE_PLANNER_SETTINGS, { windowId: 2 });
+  assert.equal((await getActiveJob(chrome, 1))?.operationId, firstJob.operationId);
+  assert.equal((await getLastJob(chrome, 1))?.operationId, firstJob.operationId);
+  assert.equal((await getActiveJob(chrome, 2))?.operationId, secondJob.operationId);
+  assert.equal((await getLastJob(chrome, 2))?.operationId, secondJob.operationId);
+
+  assert.deepEqual(await clearAnalysisState(chrome, 1), { cleared: true });
+  assert.equal(await getActiveJob(chrome, 1), null);
+  assert.equal(await getLastJob(chrome, 1), null);
+  assert.equal((await getActiveJob(chrome, 2))?.operationId, secondJob.operationId);
+  assert.equal((await getLastJob(chrome, 2))?.operationId, secondJob.operationId);
+});
+
 async function waitForActiveJob(chrome, predicate) {
   const deadline = Date.now() + 1000;
   while (Date.now() < deadline) {

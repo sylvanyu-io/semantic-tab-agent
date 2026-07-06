@@ -2387,7 +2387,7 @@ function visibleErrorMessage(error) {
 }
 
 async function clearAnalysisState() {
-  await sendMessage({ type: "tabs:clearAnalysisState" }).catch(() => null);
+  await sendMessage(scopedWindowMessage({ type: "tabs:clearAnalysisState" })).catch(() => null);
 }
 
 function replacerForDetails(key, value) {

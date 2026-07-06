@@ -1305,10 +1305,12 @@ test("side panel restores a completed background preview after reopening", async
         warnings: []
       }
     };
+    window.__messages = [];
     window.__messageTypes = [];
     window.chrome = {
       runtime: {
         sendMessage: async (message) => {
+          window.__messages.push(message);
           window.__messageTypes.push(message.type);
           if (message.type === "settings:get") return { ok: true, result: settings };
           if (message.type === "settings:save") return { ok: true, result: message.settings };
@@ -1329,7 +1331,7 @@ test("side panel restores a completed background preview after reopening", async
     };
   });
 
-  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=77`);
   await expect(page.locator("#languageMode")).toHaveValue("en-US");
   await expect(page.getByRole("button", { name: "开始整理" })).toBeEnabled();
   await expect(page.locator("#previewCount")).toHaveText("2 组");
@@ -1343,6 +1345,9 @@ test("side panel restores a completed background preview after reopening", async
   await expect.poll(() => page.evaluate(() => window.__messageTypes.includes("tabs:startAnalyze"))).toBe(false);
 
   await page.getByRole("button", { name: "返回上级" }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.__messages.find((message) => message.type === "tabs:clearAnalysisState")?.windowId))
+    .toBe(77);
   await expect(page.locator("#previewSection")).toBeHidden();
   await page.reload();
   await expect(page.locator("#previewSection")).toBeHidden();
