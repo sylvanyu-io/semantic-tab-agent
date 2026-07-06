@@ -654,6 +654,7 @@ async function init() {
   bindEvents();
   bindSettingSwitches();
   bindChoiceGroups();
+  syncInternalPlannerProviderOption();
 
   const settings = await sendMessage({ type: "settings:get" });
   writeSettings(settings);
@@ -1197,6 +1198,24 @@ function normalizePanelPageContextMode(value) {
 
 function allowInternalFakeProvider() {
   return Boolean(globalThis.__semanticTabAgentAllowFakeProvider);
+}
+
+function syncInternalPlannerProviderOption() {
+  if (!fields.plannerProvider) return;
+
+  const fakeOption = fields.plannerProvider.querySelector('option[value="fake"]');
+  if (!allowInternalFakeProvider()) {
+    fakeOption?.remove();
+    if (fields.plannerProvider.value === "fake") fields.plannerProvider.value = "gateway";
+    return;
+  }
+
+  if (!fakeOption) {
+    const option = document.createElement("option");
+    option.value = "fake";
+    option.textContent = "Fake";
+    fields.plannerProvider.append(option);
+  }
 }
 
 async function persistSettings() {

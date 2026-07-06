@@ -54,6 +54,7 @@ for (const artifact of artifacts) {
 
   auditManifest(artifact.channel, manifest, unpackedFiles);
   auditEntries(artifact.channel, unpackedFiles, zipFiles);
+  await auditSidePanelHtml(artifact.channel, artifact.extensionDir, manifest);
 }
 
 if (failures) {
@@ -107,6 +108,15 @@ function auditEntries(channel, unpackedFiles, zipFiles) {
     if (!allowedExtensions.has(extensionOf(file))) fail(`${channel}: zip contains disallowed extension ${file}.`);
     if (forbiddenEntryPatterns.some((pattern) => pattern.test(file))) fail(`${channel}: zip contains forbidden entry ${file}.`);
   }
+}
+
+async function auditSidePanelHtml(channel, extensionDir, manifest) {
+  const sidePanelPath = manifest.side_panel?.default_path;
+  if (!sidePanelPath) return;
+
+  const html = await readFile(join(extensionDir, sidePanelPath), "utf8");
+  if (html.includes("Internal test")) fail(`${channel}: side panel exposes internal fake provider copy.`);
+  if (html.includes('value="fake"')) fail(`${channel}: side panel statically exposes fake planner provider.`);
 }
 
 async function listFiles(dir) {
