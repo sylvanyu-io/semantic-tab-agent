@@ -1,6 +1,6 @@
 # Time Recap Development Plan / 时间段回顾开发计划
 
-Status: implemented in the current build. The codebase now has a recap input builder, gateway recap planner, local fallback, cancelable runtime message, side-panel Recap mode, shared bottom progress controls, scoped advanced AI settings, and Node plus Playwright coverage. Remaining work is product expansion, not first-use viability: recap history, direct recap-to-organize actions, local-memory controls, and larger real-browser benchmark evidence.
+Status: implemented in the current build. The codebase now has a recap input builder, gateway recap planner, local fallback, cancelable runtime message, side-panel Recap mode, shared bottom progress controls, scoped advanced AI settings, a local-memory clearing control, and Node plus Playwright coverage. Remaining work is product expansion, not first-use viability: recap history, direct recap-to-organize actions, and larger real-browser benchmark evidence.
 
 This document records the product plan for "summarize what I did during a time period" and the acceptance checks needed before treating it as release-ready. TabRecap already records useful local signals; the feature turns those signals into a user-facing recap instead of a developer activity dump.
 
@@ -391,15 +391,7 @@ Implemented:
 - Recap subtitle explains the data classes used: recent activity, open counts, age, titles, URLs, existing groups, and available page summaries.
 - Advanced settings let the user control URL privacy, result language, model, thinking intensity, gateway URL/key, and incognito inclusion.
 - Turning off continuous summaries stops future page-summary capture while preserving existing local records for recap.
-
-Future tasks:
-
-- Add details:
-  - what is stored locally;
-  - what may be sent to AI;
-  - what is never read;
-  - how to clear local memory.
-- Add a clear local memory control before making recap history a first-class feature.
+- More options includes a clear local memory control for activity records, page summaries, and lifecycle logs.
 
 Acceptance:
 
@@ -459,7 +451,7 @@ Recommended before a broad public listing:
 - `npm run release:check` passes.
 - Real Chrome side panel smoke includes metadata-only recap, recap with continuous summaries enabled, denied page permission, sleeping tabs, language switch, and gateway failure fallback.
 - Larger real-browser recap benchmarks are added to `docs/benchmarks/`.
-- A local-memory clearing control exists if recap history becomes persistent user-facing history.
+- Local-memory clearing remains available before recap history becomes a first-class history surface.
 
 ## Open Decisions
 

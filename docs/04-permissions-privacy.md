@@ -116,7 +116,7 @@ When long-term page memory is enabled, the extension stores two local caches in 
 - `semanticTabAgent.pageSummaryCache`: reusable short page summaries for permitted pages.
 - `semanticTabAgent.pageActivityCache`: first-seen and last-seen page metadata for activity recap and old-tab candidates.
 
-The activity cache stores sanitized URLs, titles, hostnames, timestamps, and compact summary metadata. It does not store full query strings, URL hashes, form values, cookies, local storage, full HTML, or full visible text. Turning off long-term memory stops future capture but keeps existing local records for recap until a separate clear-history control exists.
+The activity cache stores sanitized URLs, titles, hostnames, timestamps, and compact summary metadata. It does not store full query strings, URL hashes, form values, cookies, local storage, full HTML, or full visible text. Turning off long-term memory stops future capture; users can also clear saved local activity records, page summaries, and lifecycle logs from More options without closing any tabs or deleting preferences.
 
 ## Harness Coverage
 

@@ -102,6 +102,38 @@ test("cleanup candidate focus activates the tab without closing anything", async
   assert.equal((await chrome.tabs.query({})).length, 2);
 });
 
+test("clearing local memory removes activity records without closing tabs or preferences", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Current work", url: "https://example.com/work", active: true }]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.settings] = { languageMode: "zh-CN" };
+  chrome.__state.storage[STORAGE_KEYS.lastRollback] = { createdAt: "2026-06-27T00:00:00.000Z" };
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = { version: 1, entries: { page: { title: "Activity" } } };
+  chrome.__state.storage[STORAGE_KEYS.pageSummaryCache] = { version: 1, entries: { page: { title: "Summary" } } };
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = { version: 1, sessions: { page: { title: "Lifecycle" } }, events: [] };
+
+  const result = await handleRuntimeMessage(chrome, { type: "activity:clearLocalMemory" });
+
+  assert.equal(result.cleared, true);
+  assert.equal(result.removedCount, 3);
+  assert.deepEqual(
+    result.removedKeys.sort(),
+    [STORAGE_KEYS.pageActivityCache, STORAGE_KEYS.pageSummaryCache, STORAGE_KEYS.tabLifecycleLog].sort()
+  );
+  assert.equal(chrome.__state.storage[STORAGE_KEYS.pageActivityCache], undefined);
+  assert.equal(chrome.__state.storage[STORAGE_KEYS.pageSummaryCache], undefined);
+  assert.equal(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog], undefined);
+  assert.deepEqual(chrome.__state.storage[STORAGE_KEYS.settings], { languageMode: "zh-CN" });
+  assert.deepEqual(chrome.__state.storage[STORAGE_KEYS.lastRollback], { createdAt: "2026-06-27T00:00:00.000Z" });
+  assert.equal((await chrome.tabs.query({})).length, 1);
+});
+
 test("closing cleanup candidates is explicit and updates the stored plan preview", async () => {
   const chrome = createFakeChrome({
     windows: [

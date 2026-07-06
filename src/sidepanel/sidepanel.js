@@ -42,6 +42,7 @@ const UI_COPY = Object.freeze({
     "status.gatewayTestUrlMissing": "请先填写自定义 API 地址。",
     "status.gatewayTesting": "正在测试自定义 API",
     "status.gatewayTestOk": "自定义 API 可用：{model}",
+    "status.localMemoryCleared": "本机记录已清空",
     "status.gatewayTimeout": "AI 服务响应超时。请稍后重试；如果使用自定义 API，请先点「测试连接」。",
     "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页{reviewText}",
     "status.applyDone": "已创建 {groupCount} 个分组",
@@ -60,6 +61,7 @@ const UI_COPY = Object.freeze({
     "button.apply": "开始整理",
     "button.undo": "撤销",
     "button.gatewayTest": "测试连接",
+    "button.clearLocalMemory": "清空",
     "gateway.testHint": "仅检测自定义 API",
     "button.language": "EN",
     "button.languageAria": "切换界面为英文",
@@ -186,6 +188,8 @@ const UI_COPY = Object.freeze({
     "field.gatewayKey": "API Key（可选）",
     "field.rememberKey": "记住自定义密钥",
     "field.rememberKeyHint": "只保存在这台电脑",
+    "field.localMemory": "本机记录",
+    "field.localMemoryHint": "清空活动记录、页面摘要和时间线记录，不会关闭标签页",
     "field.minConfidence": "最低置信度",
     "field.maxTabs": "单组最大数量",
     "placeholder.customModel": "例如：glm-5.2、deepseek-v4-pro",
@@ -248,6 +252,7 @@ const UI_COPY = Object.freeze({
     "confirm.removed": "{count} 个已关闭的标签页会跳过。",
     "confirm.duplicate": "{count} 个重复引用会跳过。",
     "confirm.continue": "确认继续整理吗？",
+    "confirm.clearLocalMemory": "清空后，近期回顾和清理建议会失去已保存的本机线索。当前打开的标签页不会被关闭。确认清空吗？",
     "aiWait.planning": ["理解标题线索", "寻找相邻任务", "避开域名硬分组", "检查不确定页", "整理分组边界"],
     "aiWait.coarse_planning": ["快速扫一遍", "寻找跨窗口主题", "拆出主题方向", "标记模糊标签"],
     "aiWait.refining": ["拆开过大的组", "复核模糊边界", "合并同一任务", "保留原始顺序"],
@@ -291,6 +296,7 @@ const UI_COPY = Object.freeze({
     "status.gatewayTestUrlMissing": "Enter a custom API URL first.",
     "status.gatewayTesting": "Testing custom API",
     "status.gatewayTestOk": "Custom API connected: {model}",
+    "status.localMemoryCleared": "Local records cleared",
     "status.gatewayTimeout": "The AI service timed out. Try again later; if you use a custom API, run Test connection first.",
     "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs{reviewText}",
     "status.applyDone": "Created {groupCount} groups",
@@ -309,6 +315,7 @@ const UI_COPY = Object.freeze({
     "button.apply": "Organize",
     "button.undo": "Undo",
     "button.gatewayTest": "Test connection",
+    "button.clearLocalMemory": "Clear",
     "gateway.testHint": "Only checks the custom API",
     "button.language": "中",
     "button.languageAria": "Switch UI to Chinese",
@@ -435,6 +442,8 @@ const UI_COPY = Object.freeze({
     "field.gatewayKey": "API key (optional)",
     "field.rememberKey": "Remember custom key",
     "field.rememberKeyHint": "Stored only on this computer",
+    "field.localMemory": "Local records",
+    "field.localMemoryHint": "Clears activity records, page summaries, and timeline logs without closing tabs",
     "field.minConfidence": "Minimum confidence",
     "field.maxTabs": "Max tabs per group",
     "placeholder.customModel": "Example: glm-5.2, deepseek-v4-pro",
@@ -497,6 +506,7 @@ const UI_COPY = Object.freeze({
     "confirm.removed": "{count} closed tabs will be skipped.",
     "confirm.duplicate": "{count} duplicate references will be skipped.",
     "confirm.continue": "Continue organizing?",
+    "confirm.clearLocalMemory": "This clears saved local clues used by recaps and cleanup suggestions. Open tabs will not be closed. Clear local records?",
     "aiWait.planning": ["Reading title clues", "Finding neighboring tasks", "Avoiding domain-only groups", "Checking uncertain pages", "Tightening group edges"],
     "aiWait.coarse_planning": ["Scanning the tab set", "Finding cross-window topics", "Shaping topic lanes", "Marking fuzzy tabs"],
     "aiWait.refining": ["Breaking up large groups", "Reviewing fuzzy edges", "Merging one task", "Keeping tab order"],
@@ -591,6 +601,7 @@ const nodes = {
   gatewayCustomModelField: document.querySelector("#gatewayCustomModelField"),
   gatewayTestBtn: document.querySelector("#gatewayTestBtn"),
   gatewayTestHint: document.querySelector("#gatewayTestHint"),
+  clearLocalMemoryBtn: document.querySelector("#clearLocalMemoryBtn"),
   timeRecapPanel: document.querySelector("#timeRecapPanel"),
   recapCustomRange: document.querySelector("#recapCustomRange"),
   recapResult: document.querySelector("#recapResult"),
@@ -707,6 +718,7 @@ function bindEvents() {
   nodes.applyBtn.addEventListener("click", applyLastPlan);
   nodes.undoBtn.addEventListener("click", undoLastApply);
   nodes.gatewayTestBtn?.addEventListener("click", handleGatewayTestClick);
+  nodes.clearLocalMemoryBtn?.addEventListener("click", handleClearLocalMemoryClick);
   nodes.uiLanguageToggle?.addEventListener("click", toggleUiLanguage);
   for (const button of nodes.recapQuickButtons || []) {
     button.addEventListener("click", () => setRecapPreset(button.dataset.recapPreset || "7d"));
@@ -799,6 +811,9 @@ function applyUiLanguage() {
   setText("#gatewayTestHint", t("gateway.testHint"));
   setText(".secret-remember-row strong", t("field.rememberKey"));
   setText(".secret-remember-row small", t("field.rememberKeyHint"));
+  setText(".local-memory-row strong", t("field.localMemory"));
+  setText(".local-memory-row small", t("field.localMemoryHint"));
+  setButtonLabel(nodes.clearLocalMemoryBtn, t("button.clearLocalMemory"));
   setText('label[for="minConfidenceToApply"]', t("field.minConfidence"));
   setText('label[for="maxTabsPerGroup"]', t("field.maxTabs"));
   setText(".recap-intro .step-label", t("recap.step"));
@@ -1422,6 +1437,22 @@ async function handleGatewayTestClick() {
     setErrorStatus(error, friendlyErrorMessage(error));
   } finally {
     nodes.gatewayTestBtn.disabled = false;
+  }
+}
+
+async function handleClearLocalMemoryClick() {
+  if (!confirm(t("confirm.clearLocalMemory"))) return;
+  nodes.clearLocalMemoryBtn.disabled = true;
+  try {
+    await sendMessage({ type: "activity:clearLocalMemory" });
+    await clearAnalysisState();
+    resetToSetup();
+    resetTimeRecapToSetup();
+    setStatusKey("status.localMemoryCleared");
+  } catch (error) {
+    setErrorStatus(error, friendlyErrorMessage(error));
+  } finally {
+    nodes.clearLocalMemoryBtn.disabled = false;
   }
 }
 
@@ -3278,6 +3309,7 @@ async function mockMessage(message) {
     };
   }
   if (message.type === "activity:focusTab") return { focused: true, tabId: message.tabId, windowId: message.windowId };
+  if (message.type === "activity:clearLocalMemory") return { cleared: true, removedCount: 3 };
   if (message.type === "activity:cancelTimeRecap") return { canceled: true, operationId: message.operationId || "mock_recap" };
   if (message.type === "activity:generateTimeRecap") {
     return mockTimeRecap();

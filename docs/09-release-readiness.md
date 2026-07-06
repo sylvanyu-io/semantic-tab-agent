@@ -102,7 +102,7 @@ Recommended before public listing:
 
 - Add export/import settings without exporting custom gateway keys by default.
 - Add first-run privacy disclosure.
-- Add a clear local-memory clearing control before making recap history a
+- Keep the local-memory clearing control visible before recap history becomes a
   first-class history surface.
 - Add larger real-browser recap benchmarks for 30, 120, and 300 tab sessions.
 - Expand adaptive planning beyond the AI gateway path if other providers become

@@ -38,6 +38,11 @@ const PROGRESS_COPY_TIMEOUT_MS = 12_000;
 const PAGE_SAMPLE_CONCURRENCY = 6;
 const PAGE_SAMPLE_TIMEOUT_MS = 1800;
 const CLEANUP_ACTIVITY_RANGE_MS = 30 * 24 * 60 * 60 * 1000;
+const LOCAL_MEMORY_KEYS = Object.freeze([
+  STORAGE_KEYS.pageActivityCache,
+  STORAGE_KEYS.pageSummaryCache,
+  STORAGE_KEYS.tabLifecycleLog
+]);
 
 function scopedStorageKey(baseKey, windowId) {
   return `${baseKey}:${normalizeWindowScope(windowId)}`;
@@ -117,6 +122,8 @@ export async function handleRuntimeMessage(chromeApi, message) {
       await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
       return getActivityOverview(chromeApi, { rangeMs: message.rangeMs, includeIncognitoTabs: settings.includeIncognitoTabs });
     }
+    case "activity:clearLocalMemory":
+      return clearLocalActivityMemory(chromeApi);
     case "activity:getEvidenceSnapshot":
       return getEvidenceSnapshotForMessage(chromeApi, message);
     case "activity:generateTimeRecap":
@@ -141,6 +148,17 @@ export async function handleRuntimeMessage(chromeApi, message) {
     default:
       throw new Error(`Unknown message type: ${message?.type || "<missing>"}`);
   }
+}
+
+async function clearLocalActivityMemory(chromeApi) {
+  const before = await chromeApi.storage.local.get(LOCAL_MEMORY_KEYS);
+  const removedKeys = LOCAL_MEMORY_KEYS.filter((key) => before[key] !== undefined);
+  await removeLocal(chromeApi, LOCAL_MEMORY_KEYS);
+  return {
+    cleared: true,
+    removedKeys,
+    removedCount: removedKeys.length
+  };
 }
 
 async function getEvidenceSnapshotForMessage(chromeApi, message = {}) {
