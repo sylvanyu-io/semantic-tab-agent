@@ -52,6 +52,18 @@ const TAB_FIELDS = Object.freeze([
 ]);
 const PAGE_SAMPLE_FIELDS = Object.freeze(["status", "title", "metaDescription", "language", "contentKind", "headings", "visibleText", "reason"]);
 const PAGE_SAMPLE_SIGNAL_FIELDS = Object.freeze(["id", "contentKind", "title", "headings", "summary"]);
+const ACTIVATION_FLOW_ACTIVITY_FIELDS = Object.freeze([
+  "id",
+  "activeCount",
+  "totalActiveSeconds",
+  "maxActiveSeconds",
+  "lastActivatedAt",
+  "appearedInRuns",
+  "returnedToCount",
+  "nearbyIds"
+]);
+const ACTIVATION_FLOW_RUN_FIELDS = Object.freeze(["windowId", "startedAt", "endedAt", "ids", "dwellSeconds", "returnToId", "repeatedIds"]);
+const ACTIVATION_FLOW_EVIDENCE_FIELDS = Object.freeze(["ids", "strength", "count", "lastAt", "clues"]);
 const EXCLUDED_FIELDS = Object.freeze(["id", "windowId", "reason"]);
 const LOCKED_GROUP_FIELDS = Object.freeze(["id", "windowId", "title", "color", "collapsed", "tabIds"]);
 const PAGE_SAMPLE_RESULT_FIELDS = Object.freeze(["id", "windowId", "status", "origin", "reason"]);
@@ -409,7 +421,9 @@ export function buildPlannerSystemPrompt(settings) {
       : "Grouping is disabled for this request: return groups as an empty array and put every eligible tab id in review so runtime coverage remains auditable.",
     "Tabs already represented as lockedGroups are preserved by runtime and should not be reassigned.",
     reviewModeInstruction(settings),
-    "Use sequenceIndex and index as strong context signals: adjacent tabs are often part of the same task or reading flow.",
+    "Use sequenceIndex and index as ordering context: adjacent tabs may be part of the same task or reading flow.",
+    "When activationFlow is present, treat it as behavioral evidence only: browsing runs, active duration, nearby ids, and return-to-earlier-tab clues can support semantic grouping, but must not override title, URL, page summaries, original order, or the user's prompt.",
+    "Do not group tabs merely because they were adjacent in activation history; use activationFlow only when behavior and semantic content support the same interpretation.",
     "Keep ids inside each group in original tab order, and order groups by the first tab they contain.",
     groupSizeInstruction(settings),
     languageInstruction(settings.languageMode),
@@ -550,6 +564,12 @@ export function buildPlannerPayload(inventory, settings, options = {}) {
     pageSampleFields: PAGE_SAMPLE_FIELDS,
     pageSampleSignalFields: PAGE_SAMPLE_SIGNAL_FIELDS,
     pageSampleSignals,
+    activationFlowActivityFields: ACTIVATION_FLOW_ACTIVITY_FIELDS,
+    activationFlowTabActivity: buildActivationFlowActivityRows(inventory),
+    activationFlowRunFields: ACTIVATION_FLOW_RUN_FIELDS,
+    activationFlowRuns: buildActivationFlowRunRows(inventory),
+    activationFlowEvidenceFields: ACTIVATION_FLOW_EVIDENCE_FIELDS,
+    activationFlowEvidence: buildActivationFlowEvidenceRows(inventory),
     excludedFields: EXCLUDED_FIELDS,
     excluded: (inventory.excludedTabs || []).map((tab) => [tab.tabId, tab.windowId, tab.exclusionReason]),
     lockedGroupFields: LOCKED_GROUP_FIELDS,
@@ -605,6 +625,65 @@ export function buildPlannerPayload(inventory, settings, options = {}) {
   }
 
   return payload;
+}
+
+function buildActivationFlowActivityRows(inventory = {}) {
+  const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
+  return (inventory.activationFlow?.tabActivity || [])
+    .filter((activity) => tabIds.has(activity.id))
+    .map((activity) => [
+      activity.id,
+      Math.max(0, Number(activity.activeCount || 0)),
+      Math.max(0, Number(activity.totalActiveSeconds || 0)),
+      Math.max(0, Number(activity.maxActiveSeconds || 0)),
+      activity.lastActivatedAt || "",
+      Math.max(0, Number(activity.appearedInRuns || 0)),
+      Math.max(0, Number(activity.returnedToCount || 0)),
+      (activity.nearbyIds || []).filter((id) => tabIds.has(id)).slice(0, 6)
+    ]);
+}
+
+function buildActivationFlowRunRows(inventory = {}) {
+  const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
+  return (inventory.activationFlow?.runs || [])
+    .map((run) => ({
+      ...run,
+      ids: (run.ids || []).filter((id) => tabIds.has(id)),
+      repeatedIds: (run.repeatedIds || []).filter((id) => tabIds.has(id))
+    }))
+    .filter((run) => uniqueNumbers(run.ids).length >= 2)
+    .map((run) => [
+      run.windowId,
+      run.startedAt || "",
+      run.endedAt || "",
+      run.ids.slice(0, 14),
+      (run.dwellSeconds || []).slice(0, Math.max(0, Math.min(13, run.ids.length - 1))).map((seconds) => Math.max(0, Number(seconds || 0))),
+      tabIds.has(run.returnToId) ? run.returnToId : null,
+      run.repeatedIds.slice(0, 6)
+    ])
+    .slice(0, 24);
+}
+
+function buildActivationFlowEvidenceRows(inventory = {}) {
+  const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
+  return (inventory.activationFlow?.evidence || [])
+    .map((evidence) => ({
+      ...evidence,
+      ids: (evidence.ids || []).filter((id) => tabIds.has(id))
+    }))
+    .filter((evidence) => evidence.ids.length >= 2)
+    .map((evidence) => [
+      evidence.ids.slice(0, 8),
+      Math.max(0, Math.min(1, Number(evidence.strength || 0))),
+      Math.max(1, Number(evidence.count || 1)),
+      evidence.lastAt || "",
+      (evidence.clues || []).map((clue) => String(clue || "").slice(0, 48)).filter(Boolean).slice(0, 5)
+    ])
+    .slice(0, 80);
+}
+
+function uniqueNumbers(values = []) {
+  return [...new Set(values.filter(Number.isInteger))];
 }
 
 export function buildGatewayUserPrompt(inventory, settings, options = {}) {
@@ -863,7 +942,8 @@ function buildCleanupSystemPrompt(settings) {
     "Rank as many eligible tabs as useful up to cleanupInstructions.actionLimit. For sessions at or below that limit, include nearly all tabs unless they are clearly current, pinned, or unsafe to suggest.",
     "Keep each candidate compact: reason should be one short clause, evidence should contain one or two short user-facing clues.",
     "Write evidence like \"search result\", \"old task\", \"easy to find again\", or \"rarely reopened\". Do not write raw feature names like activeCount, ageDays, idleDays, sampleable, sequenceIndex, or tabId.",
-    "Use original tab order, tab age/activity, current groups, page summaries, and the proposed grouping context.",
+    "Use original tab order, tab age/activity, current groups, page summaries, behavioral activation evidence, and the proposed grouping context.",
+    "Treat activationFlow as behavioral evidence only. A tab repeatedly used as an anchor may be valuable to keep; quick handoffs may indicate search or comparison behavior. Do not expose raw activation field names to users.",
     "Do not recommend closing pinned tabs as high priority unless evidence is very strong.",
     languageInstruction(settings.languageMode)
   ].join("\n");
@@ -884,6 +964,12 @@ function buildCleanupUserPrompt(inventory, settings, options = {}, groups = [], 
       tabs: projectRows(payload.tabFields, payload.tabs, cleanupTabFields),
       pageSampleSignalFields: payload.pageSampleSignalFields,
       pageSampleSignals: payload.pageSampleSignals,
+      activationFlowActivityFields: payload.activationFlowActivityFields,
+      activationFlowTabActivity: payload.activationFlowTabActivity,
+      activationFlowRunFields: payload.activationFlowRunFields,
+      activationFlowRuns: payload.activationFlowRuns,
+      activationFlowEvidenceFields: payload.activationFlowEvidenceFields,
+      activationFlowEvidence: payload.activationFlowEvidence,
       activityFields: payload.activityFields,
       activity: payload.activity,
       recap: payload.recap,
@@ -1005,7 +1091,8 @@ function buildCoarseSystemPrompt(settings, options = {}) {
     "This is a coarse pass: mixed or large buckets are acceptable because a second pass will refine them.",
     "Every eligible tab id must appear exactly once, either in buckets[].tabIds or reviewTabIds.",
     "Put generic, sensitive, or very uncertain tabs in reviewTabIds.",
-    "Use sequenceIndex and index as ordering signals. Adjacent tabs often belong together.",
+    "Use sequenceIndex and index as ordering clues. Adjacent tabs may belong together, but they are not a hard rule.",
+    "When activationFlow is present, use browsing runs, dwell durations, nearby ids, and return-to-earlier-tab evidence as clues. Do not create buckets from behavior alone unless semantic content also supports it.",
     "Do not create a broad catch-all bucket for unrelated leftovers; use reviewTabIds instead.",
     languageInstruction(settings.languageMode),
     `Runtime preset: ${presetText}`
@@ -1027,6 +1114,12 @@ function buildCoarseUserPrompt(inventory, settings) {
       pageSampleFields: payload.pageSampleFields,
       pageSampleSignalFields: payload.pageSampleSignalFields,
       pageSampleSignals: payload.pageSampleSignals,
+      activationFlowActivityFields: payload.activationFlowActivityFields,
+      activationFlowTabActivity: payload.activationFlowTabActivity,
+      activationFlowRunFields: payload.activationFlowRunFields,
+      activationFlowRuns: payload.activationFlowRuns,
+      activationFlowEvidenceFields: payload.activationFlowEvidenceFields,
+      activationFlowEvidence: payload.activationFlowEvidence,
       lockedGroupFields: payload.lockedGroupFields,
       lockedGroups: payload.lockedGroups,
       pageSampleResultFields: payload.pageSampleResultFields,
@@ -1273,7 +1366,19 @@ function subsetInventory(inventory, refs) {
     plannerTabs,
     excludedTabs: [],
     lockedGroups: [],
+    activationFlow: subsetActivationFlow(inventory.activationFlow || {}, ids),
     pageSamples: (inventory.pageSamples || []).filter((sample) => ids.has(sample.tabId))
+  };
+}
+
+function subsetActivationFlow(activationFlow = {}, ids) {
+  return {
+    tabActivity: (activationFlow.tabActivity || []).filter((activity) => ids.has(activity.id)),
+    runs: (activationFlow.runs || [])
+      .filter((run) => uniqueNumbers(run.ids || []).every((id) => ids.has(id)) && uniqueNumbers(run.ids || []).length >= 2),
+    evidence: (activationFlow.evidence || [])
+      .map((evidence) => ({ ...evidence, ids: (evidence.ids || []).filter((id) => ids.has(id)) }))
+      .filter((evidence) => evidence.ids.length >= 2)
   };
 }
 

@@ -17,6 +17,50 @@ const inventory = {
     { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Structured output docs", hostname: "docs.example" },
     { tabId: 11, windowId: 1, index: 1, sequenceIndex: 1, title: "Chrome tabGroups API", hostname: "developer.chrome.com" }
   ],
+  activationFlow: {
+    tabActivity: [
+      {
+        id: 10,
+        activeCount: 3,
+        totalActiveSeconds: 180,
+        maxActiveSeconds: 120,
+        lastActivatedAt: "2026-06-25T00:02:00.000Z",
+        appearedInRuns: 2,
+        returnedToCount: 1,
+        nearbyIds: [11]
+      },
+      {
+        id: 11,
+        activeCount: 2,
+        totalActiveSeconds: 60,
+        maxActiveSeconds: 60,
+        lastActivatedAt: "2026-06-25T00:03:00.000Z",
+        appearedInRuns: 2,
+        returnedToCount: 0,
+        nearbyIds: [10]
+      }
+    ],
+    runs: [
+      {
+        windowId: 1,
+        startedAt: "2026-06-25T00:00:00.000Z",
+        endedAt: "2026-06-25T00:03:00.000Z",
+        ids: [10, 11, 10],
+        dwellSeconds: [120, 60],
+        returnToId: 10,
+        repeatedIds: [10]
+      }
+    ],
+    evidence: [
+      {
+        ids: [10, 11],
+        strength: 0.69,
+        count: 2,
+        lastAt: "2026-06-25T00:03:00.000Z",
+        clues: ["same activation run", "returned to an earlier tab"]
+      }
+    ]
+  },
   excludedTabs: [],
   lockedGroups: [],
   pageSamples: [
@@ -57,6 +101,8 @@ test("planner prompt exposes grouping granularity without losing ordering constr
   assert.match(compactPrompt, /Grouping granularity: compact/);
   assert.match(compactPrompt, /Avoid singleton or 2-tab groups/);
   assert.match(compactPrompt, /Use sequenceIndex and index/);
+  assert.match(compactPrompt, /activationFlow is present, treat it as behavioral evidence only/);
+  assert.match(compactPrompt, /Do not group tabs merely because they were adjacent in activation history/);
   assert.match(detailedPrompt, /Grouping granularity: detailed/);
   assert.match(detailedPrompt, /precise task boundaries/);
 });
@@ -148,6 +194,23 @@ test("AI gateway planner posts a chat-completions JSON request", async () => {
     assert.equal(payload.pageSampleSignals.length, 1);
     assert.equal(payload.pageSampleSignals[0][0], 10);
     assert.match(payload.pageSampleSignals[0][4], /JSON schema output/);
+    assert.deepEqual(payload.activationFlowActivityFields, [
+      "id",
+      "activeCount",
+      "totalActiveSeconds",
+      "maxActiveSeconds",
+      "lastActivatedAt",
+      "appearedInRuns",
+      "returnedToCount",
+      "nearbyIds"
+    ]);
+    assert.deepEqual(payload.activationFlowTabActivity[0], [10, 3, 180, 120, "2026-06-25T00:02:00.000Z", 2, 1, [11]]);
+    assert.deepEqual(payload.activationFlowRunFields, ["windowId", "startedAt", "endedAt", "ids", "dwellSeconds", "returnToId", "repeatedIds"]);
+    assert.deepEqual(payload.activationFlowRuns, [[1, "2026-06-25T00:00:00.000Z", "2026-06-25T00:03:00.000Z", [10, 11, 10], [120, 60], 10, [10]]]);
+    assert.deepEqual(payload.activationFlowEvidenceFields, ["ids", "strength", "count", "lastAt", "clues"]);
+    assert.deepEqual(payload.activationFlowEvidence, [
+      [[10, 11], 0.69, 2, "2026-06-25T00:03:00.000Z", ["same activation run", "returned to an earlier tab"]]
+    ]);
     assert.equal(rowToObject(payload.pageSampleResultFields, payload.pageSampleResults[0]).status, "ok");
     return {
       ok: true,

@@ -1,4 +1,5 @@
 import { EXISTING_GROUP_MODES, ORGANIZE_MODES, normalizeSettings } from "../shared/settings.js";
+import { getTabActivationFlowContext } from "./tab-lifecycle-log.js";
 import { canSampleUrl, getTabUrl, sanitizeTabUrl } from "./url-sanitizer.js";
 
 const NO_GROUP_ID = -1;
@@ -39,6 +40,11 @@ export async function collectTabInventory(chromeApi, rawSettings, invocation = {
     settings.existingGroupMode === EXISTING_GROUP_MODES.PRESERVE
       ? tabs.filter((tab) => !lockedTabIds.has(tab.tabId))
       : tabs;
+  const activationFlow = await getTabActivationFlowContext(chromeApi, plannerTabs).catch(() => ({
+    tabActivity: [],
+    runs: [],
+    evidence: []
+  }));
 
   return {
     schemaVersion: 1,
@@ -60,6 +66,7 @@ export async function collectTabInventory(chromeApi, rawSettings, invocation = {
     plannerTabs,
     excludedTabs,
     lockedGroups,
+    activationFlow,
     collectedAt: new Date().toISOString()
   };
 }

@@ -7,6 +7,13 @@ const MAX_EVENTS = 1800;
 const MAX_SESSIONS = 1800;
 const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const RECONCILE_EVENT = "reconcile_snapshot";
+const FLOW_RUN_BREAK_MS = 90 * 60 * 1000;
+const FLOW_MAX_DWELL_MS = 60 * 60 * 1000;
+const FLOW_MAX_RUNS = 24;
+const FLOW_MAX_EVIDENCE = 80;
+const FLOW_MAX_NEARBY_IDS = 6;
+const FLOW_EVIDENCE_WINDOW_SIZE = 5;
+const FLOW_EVIDENCE_WINDOW_STEP = 3;
 
 let lifecycleWriteQueue = Promise.resolve();
 
@@ -105,6 +112,12 @@ export async function getTabLifecycleStats(chromeApi, options = {}) {
   await lifecycleWriteQueue.catch(() => null);
   const log = normalizeLifecycleLog(await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null));
   return getLifecycleStatsFromLog(log, now);
+}
+
+export async function getTabActivationFlowContext(chromeApi, tabs = [], options = {}) {
+  await lifecycleWriteQueue.catch(() => null);
+  const log = normalizeLifecycleLog(await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null));
+  return buildActivationFlowContext(log, tabs, options);
 }
 
 function mutateLifecycleLog(chromeApi, now, mutate) {
@@ -331,6 +344,280 @@ function getLifecycleStatsFromLog(log, now) {
       .sort((left, right) => right.ageMs - left.ageMs)
       .slice(0, 50)
   };
+}
+
+function buildActivationFlowContext(log, tabs = [], options = {}) {
+  const tabIds = new Set((tabs || []).map((tab) => tab?.tabId).filter(Number.isInteger));
+  if (!tabIds.size) return emptyActivationFlowContext();
+  const runBreakMs = Number.isFinite(options.runBreakMs) ? options.runBreakMs : FLOW_RUN_BREAK_MS;
+  const maxDwellMs = Number.isFinite(options.maxDwellMs) ? options.maxDwellMs : FLOW_MAX_DWELL_MS;
+  const maxRuns = Number.isFinite(options.maxRuns) ? options.maxRuns : FLOW_MAX_RUNS;
+  const maxEvidence = Number.isFinite(options.maxEvidence) ? options.maxEvidence : FLOW_MAX_EVIDENCE;
+  const activityByTabId = buildInitialTabActivity(log, tabIds);
+  const runs = [];
+
+  const eventsByWindow = new Map();
+  for (const event of (log.events || [])
+    .filter((event) => event.type === "tab_activated" && Number.isInteger(event.tabId) && Number.isInteger(event.windowId))
+    .sort((left, right) => {
+      const byTime = Date.parse(left.at || "") - Date.parse(right.at || "");
+      return byTime || Number(left.seq || 0) - Number(right.seq || 0);
+    })) {
+    if (!tabIds.has(event.tabId)) continue;
+    const at = Date.parse(event.at || "");
+    if (!Number.isFinite(at)) continue;
+    if (!eventsByWindow.has(event.windowId)) eventsByWindow.set(event.windowId, []);
+    eventsByWindow.get(event.windowId).push({ tabId: event.tabId, windowId: event.windowId, at, atIso: event.at });
+  }
+
+  for (const events of eventsByWindow.values()) {
+    let current = [];
+    for (const event of events) {
+      const previous = current[current.length - 1];
+      if (!previous) {
+        current = [event];
+        continue;
+      }
+      const gap = event.at - previous.at;
+      if (event.tabId === previous.tabId) continue;
+      if (gap <= 0) continue;
+      if (gap > runBreakMs) {
+        appendActivationRun(runs, current, maxDwellMs);
+        current = [event];
+        continue;
+      }
+      current.push(event);
+    }
+    appendActivationRun(runs, current, maxDwellMs);
+  }
+
+  const recentRuns = runs
+    .sort((left, right) => Date.parse(right.endedAt || "") - Date.parse(left.endedAt || ""))
+    .slice(0, maxRuns)
+    .sort((left, right) => Date.parse(left.startedAt || "") - Date.parse(right.startedAt || ""));
+  const evidence = buildActivationEvidence(recentRuns, activityByTabId)
+    .sort((left, right) => right.strength - left.strength || Date.parse(right.lastAt || "") - Date.parse(left.lastAt || ""))
+    .slice(0, maxEvidence);
+
+  return {
+    tabActivity: [...activityByTabId.values()]
+      .map((activity) => ({
+        id: activity.id,
+        activeCount: activity.activeCount,
+        totalActiveSeconds: Math.round(activity.totalActiveSeconds),
+        maxActiveSeconds: Math.round(activity.maxActiveSeconds),
+        lastActivatedAt: activity.lastActivatedAt,
+        appearedInRuns: activity.appearedInRuns,
+        returnedToCount: activity.returnedToCount,
+        nearbyIds: topNearbyIds(activity.nearbyCounts)
+      }))
+      .filter((activity) => activity.activeCount || activity.totalActiveSeconds || activity.appearedInRuns || activity.nearbyIds.length),
+    runs: recentRuns.map(compactActivationRun),
+    evidence
+  };
+}
+
+function emptyActivationFlowContext() {
+  return { tabActivity: [], runs: [], evidence: [] };
+}
+
+function buildInitialTabActivity(log, tabIds) {
+  const byTabId = new Map([...tabIds].map((id) => [id, createTabActivity(id)]));
+  for (const session of Object.values(log.sessions || {})) {
+    if (!tabIds.has(session.tabId)) continue;
+    const activity = byTabId.get(session.tabId) || createTabActivity(session.tabId);
+    activity.activeCount = Math.max(activity.activeCount, Number(session.activeCount || 0));
+    if (isAfter(session.lastActivatedAt, activity.lastActivatedAt)) activity.lastActivatedAt = session.lastActivatedAt || "";
+    byTabId.set(session.tabId, activity);
+  }
+  return byTabId;
+}
+
+function createTabActivity(id) {
+  return {
+    id,
+    activeCount: 0,
+    totalActiveSeconds: 0,
+    maxActiveSeconds: 0,
+    lastActivatedAt: "",
+    appearedInRuns: 0,
+    returnedToCount: 0,
+    nearbyCounts: new Map()
+  };
+}
+
+function appendActivationRun(runs, events, maxDwellMs) {
+  if ((events || []).length < 2) return;
+  const steps = [];
+  const seenIds = new Set();
+  for (let index = 0; index < events.length; index += 1) {
+    const event = events[index];
+    const next = events[index + 1];
+    const dwellMs = next ? Math.max(1, Math.min(maxDwellMs, next.at - event.at)) : 0;
+    const appearedBefore = seenIds.has(event.tabId);
+    steps.push({
+      id: event.tabId,
+      activeSeconds: next ? Math.max(1, Math.round(dwellMs / 1000)) : 0,
+      returnToEarlier: appearedBefore
+    });
+    seenIds.add(event.tabId);
+  }
+
+  const ids = steps.map((step) => step.id);
+  const repeatedIds = uniqueOrdered(ids.filter((id, index) => ids.indexOf(id) !== index));
+  runs.push({
+    windowId: events[0].windowId,
+    startedAt: events[0].atIso,
+    endedAt: events[events.length - 1].atIso,
+    spanSeconds: Math.max(1, Math.round((events[events.length - 1].at - events[0].at) / 1000)),
+    ids,
+    dwellSeconds: steps.slice(0, -1).map((step) => step.activeSeconds),
+    returnToId: repeatedIds[0] || null,
+    repeatedIds,
+    steps
+  });
+}
+
+function compactActivationRun(run) {
+  const ids = (run.ids || []).slice(0, 24);
+  return {
+    windowId: run.windowId,
+    startedAt: run.startedAt,
+    endedAt: run.endedAt,
+    spanSeconds: run.spanSeconds,
+    ids,
+    dwellSeconds: (run.dwellSeconds || []).slice(0, Math.max(0, ids.length - 1)),
+    returnToId: run.returnToId,
+    repeatedIds: (run.repeatedIds || []).slice(0, 8)
+  };
+}
+
+function buildActivationEvidence(runs, activityByTabId) {
+  const byIds = new Map();
+  for (const run of runs) {
+    const runIds = uniqueOrdered(run.ids);
+    if (runIds.length < 2) continue;
+    for (const id of runIds) {
+      const activity = activityByTabId.get(id);
+      if (activity) activity.appearedInRuns += 1;
+    }
+    for (const id of run.repeatedIds || []) {
+      const activity = activityByTabId.get(id);
+      if (activity) activity.returnedToCount += 1;
+    }
+    for (let index = 0; index < run.steps.length - 1; index += 1) {
+      const step = run.steps[index];
+      const activity = activityByTabId.get(step.id);
+      if (!activity) continue;
+      activity.totalActiveSeconds += Number(step.activeSeconds || 0);
+      activity.maxActiveSeconds = Math.max(activity.maxActiveSeconds, Number(step.activeSeconds || 0));
+    }
+    for (const ids of evidenceWindowsForRun(run)) {
+      const key = ids.slice().sort((left, right) => left - right).join(":");
+      const entry = byIds.get(key) || {
+        ids,
+        count: 0,
+        lastAt: "",
+        returned: false,
+        quickHandoff: false,
+        longAnchorThenChecks: false
+      };
+      entry.count += 1;
+      if (isAfter(run.endedAt, entry.lastAt)) entry.lastAt = run.endedAt;
+      entry.returned = entry.returned || ids.some((id) => (run.repeatedIds || []).includes(id));
+      entry.quickHandoff = entry.quickHandoff || hasQuickHandoff(run, ids);
+      entry.longAnchorThenChecks = entry.longAnchorThenChecks || hasLongAnchorThenChecks(run, ids);
+      byIds.set(key, entry);
+      addNearbyCounts(activityByTabId, ids);
+    }
+  }
+
+  return [...byIds.values()].map((entry) => ({
+    ids: entry.ids,
+    strength: activationEvidenceStrength(entry),
+    count: entry.count,
+    lastAt: entry.lastAt,
+    clues: activationEvidenceClues(entry)
+  }));
+}
+
+function evidenceWindowsForRun(run) {
+  const uniqueIds = uniqueOrdered(run.ids);
+  if (uniqueIds.length <= FLOW_EVIDENCE_WINDOW_SIZE + 1) return [uniqueIds];
+  const windows = [];
+  for (let index = 0; index < run.steps.length - 1; index += FLOW_EVIDENCE_WINDOW_STEP) {
+    const ids = uniqueOrdered(run.steps.slice(index, index + FLOW_EVIDENCE_WINDOW_SIZE).map((step) => step.id));
+    if (ids.length >= 2) windows.push(ids);
+  }
+  return windows;
+}
+
+function addNearbyCounts(activityByTabId, ids) {
+  for (const id of ids) {
+    const activity = activityByTabId.get(id);
+    if (!activity) continue;
+    for (const nearbyId of ids) {
+      if (nearbyId === id) continue;
+      activity.nearbyCounts.set(nearbyId, (activity.nearbyCounts.get(nearbyId) || 0) + 1);
+    }
+  }
+}
+
+function topNearbyIds(counts = new Map()) {
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0] - right[0])
+    .slice(0, FLOW_MAX_NEARBY_IDS)
+    .map(([id]) => id);
+}
+
+function hasQuickHandoff(run, ids) {
+  const idSet = new Set(ids);
+  return run.steps.some((step, index) => index < run.steps.length - 1 && idSet.has(step.id) && step.activeSeconds > 0 && step.activeSeconds <= 180);
+}
+
+function hasLongAnchorThenChecks(run, ids) {
+  const idSet = new Set(ids);
+  return run.steps.some((step, index) => {
+    const next = run.steps[index + 1];
+    return idSet.has(step.id) && step.activeSeconds >= 20 * 60 && next && idSet.has(next.id) && next.activeSeconds > 0 && next.activeSeconds <= 5 * 60;
+  });
+}
+
+function activationEvidenceStrength(entry) {
+  const score =
+    0.35 +
+    Math.min(0.25, Math.max(0, entry.count - 1) * 0.08) +
+    (entry.returned ? 0.18 : 0) +
+    (entry.quickHandoff ? 0.08 : 0) +
+    (entry.longAnchorThenChecks ? 0.1 : 0);
+  return Math.round(Math.min(0.95, score) * 100) / 100;
+}
+
+function activationEvidenceClues(entry) {
+  return [
+    "same activation run",
+    entry.returned ? "returned to an earlier tab" : "",
+    entry.quickHandoff ? "quick handoff" : "",
+    entry.longAnchorThenChecks ? "long anchor then short checks" : "",
+    entry.count > 1 ? "repeated together" : ""
+  ].filter(Boolean);
+}
+
+function uniqueOrdered(values) {
+  const seen = new Set();
+  const result = [];
+  for (const value of values || []) {
+    if (!Number.isInteger(value) || seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+  return result;
+}
+
+function isAfter(candidate, current) {
+  const candidateTime = Date.parse(candidate || "");
+  const currentTime = Date.parse(current || "");
+  return Number.isFinite(candidateTime) && (!Number.isFinite(currentTime) || candidateTime > currentTime);
 }
 
 function lifecycleUrlKey(rawUrl) {
