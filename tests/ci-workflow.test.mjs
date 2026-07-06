@@ -15,6 +15,9 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /uses: actions\/setup-node@v6/);
   assert.match(workflow, /node-version: 22/);
   assert.match(workflow, /run: npm ci/);
+  assert.match(workflow, /uses: actions\/cache@v6/);
+  assert.match(workflow, /path: ~\/\.cache\/ms-playwright/);
+  assert.match(workflow, /key: \$\{\{ runner\.os \}\}-playwright-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /run: npx playwright install --with-deps chromium/);
   assert.match(workflow, /run: npm run release:check/);
   assert.match(workflow, /uses: actions\/upload-artifact@v7/);
