@@ -1176,7 +1176,9 @@ async function attachPageSamples(chromeApi, inventory, settings, options = {}) {
     if (sampleResult.status === "ok") {
       sampledOk += 1;
       if (settings.continuousPageSummaries && liveTab) {
-        await rememberPageSummary(chromeApi, liveTab, sampleResult).catch(() => null);
+        await rememberPageSummary(chromeApi, liveTab, sampleResult, {
+          includeIncognitoTabs: settings.includeIncognitoTabs
+        }).catch(() => null);
       }
     } else {
       sampledBlocked += 1;

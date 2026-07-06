@@ -1192,6 +1192,48 @@ test("continuous summary cache can enrich analysis without live page sampling", 
   assert.equal(job.preview.pageSampling.ok, 1);
 });
 
+test("live analysis sampling caches incognito summaries only when explicitly enabled", async () => {
+  const chrome = createFakeChrome({
+    grantedOrigins: ["https://private.example/*"],
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        incognito: true,
+        tabs: [{ id: 10, title: "Private research", url: "https://private.example/project", active: true }]
+      }
+    ]
+  });
+  chrome.scripting.executeScript = async () => [
+    {
+      result: {
+        title: "Private research summary",
+        headings: ["Private heading"],
+        visibleText: "Private page details"
+      }
+    }
+  ];
+
+  const job = await analyzeTabs(
+    chrome,
+    {
+      ...FAKE_PLANNER_SETTINGS,
+      includeIncognitoTabs: true,
+      continuousPageSummaries: true,
+      pageContextMode: PAGE_CONTEXT_MODES.ALL_GRANTED_ORIGINS,
+      pageSamplingConsentMode: PAGE_SAMPLING_CONSENT_MODES.ACKNOWLEDGED_PERSISTENTLY
+    },
+    { windowId: 1 }
+  );
+
+  assert.equal(job.inventory.pageSamples.length, 1);
+  assert.equal(job.preview.pageSampling.ok, 1);
+  const cache = chrome.__state.storage[STORAGE_KEYS.pageSummaryCache];
+  assert.equal(Object.values(cache.entries)[0].sample.title, "Private research summary");
+  const activityEntry = Object.values(chrome.__state.storage[STORAGE_KEYS.pageActivityCache].entries)[0];
+  assert.equal(activityEntry.lastKnownState.incognito, true);
+});
+
 test("canceling during page sampling marks the job canceled immediately", async () => {
   const chrome = createFakeChrome({
     grantedOrigins: ["https://example.com/*"],
