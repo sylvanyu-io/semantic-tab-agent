@@ -57,6 +57,7 @@ for (const artifact of artifacts) {
   auditManifest(artifact.channel, manifest, unpackedFiles);
   auditEntries(artifact.channel, unpackedFiles, zipFiles);
   await auditSidePanelHtml(artifact.channel, artifact.extensionDir, manifest);
+  await auditSidePanelRuntimeGuards(artifact.channel, artifact.extensionDir, unpackedFiles);
   await auditProductCopy(artifact.channel, artifact.extensionDir, unpackedFiles);
 }
 
@@ -120,6 +121,35 @@ async function auditSidePanelHtml(channel, extensionDir, manifest) {
   const html = await readFile(join(extensionDir, sidePanelPath), "utf8");
   if (html.includes("Internal test")) fail(`${channel}: side panel exposes internal fake provider copy.`);
   if (html.includes('value="fake"')) fail(`${channel}: side panel statically exposes fake planner provider.`);
+}
+
+async function auditSidePanelRuntimeGuards(channel, extensionDir, files) {
+  const htmlPath = "src/sidepanel/index.html";
+  const scriptPath = "src/sidepanel/sidepanel.js";
+  const stylesPath = "src/sidepanel/styles.css";
+  for (const requiredFile of [htmlPath, scriptPath, stylesPath]) {
+    if (!files.includes(requiredFile)) {
+      fail(`${channel}: side panel runtime guard file is missing ${requiredFile}.`);
+      return;
+    }
+  }
+
+  const html = await readFile(join(extensionDir, htmlPath), "utf8");
+  const script = await readFile(join(extensionDir, scriptPath), "utf8");
+  const styles = await readFile(join(extensionDir, stylesPath), "utf8");
+
+  if (!html.includes("content-access-feature")) {
+    fail(`${channel}: side panel content-reading controls are not marked as content-access-feature.`);
+  }
+  if (!script.includes("function hasContentAccessFeature()")) {
+    fail(`${channel}: side panel is missing the content access feature detector.`);
+  }
+  if (!script.includes("nodes.appShell.dataset.contentAccess")) {
+    fail(`${channel}: side panel does not expose content access state to CSS.`);
+  }
+  if (!styles.includes('.app-shell[data-content-access="off"] .content-access-feature')) {
+    fail(`${channel}: side panel CSS no longer hides content-reading controls when unavailable.`);
+  }
 }
 
 async function auditProductCopy(channel, extensionDir, files) {
