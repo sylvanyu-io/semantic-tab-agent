@@ -1328,14 +1328,14 @@ async function generateTimeRecap() {
 
     updateLocalProgress(t("status.recapGenerating"), 28, PANEL_MODE_RECAP);
     startRecapProgress(operationId, settings);
-    const result = await sendMessage({
+    const result = await sendMessage(scopedWindowMessage({
       type: "activity:generateTimeRecap",
       operationId,
       settings,
       languageMode: settings.languageMode,
       range: readRecapRange(),
       timeoutMs: TIME_RECAP_GATEWAY_TIMEOUT_MS
-    });
+    }));
     if (canceledRecapOperations.has(operationId) || activeRecapOperationId !== operationId) return;
     lastTimeRecap = result;
     lastTimeRecapError = null;
@@ -1373,7 +1373,7 @@ async function cancelTimeRecap() {
     setBusy(false, "", { mode: PANEL_MODE_RECAP });
   }
   setStatusKey("status.recapCanceled", {}, false, { mode: PANEL_MODE_RECAP });
-  sendMessage({ type: "activity:cancelTimeRecap", operationId }).catch(() => {
+  sendMessage(scopedWindowMessage({ type: "activity:cancelTimeRecap", operationId })).catch(() => {
     // The UI should still stop waiting if the background context has already gone away.
   });
 }
@@ -2709,14 +2709,14 @@ function requestGeneratedProgressCopy(job) {
   if (generatedCopyByOperation.has(operationId) || generatedCopyRequests.has(operationId)) return;
 
   generatedCopyRequests.add(operationId);
-  sendMessage({
+  sendMessage(scopedWindowMessage({
     type: "progressCopy:generate",
     operationId,
     phase: job.phase,
     tabCount: job.tabCount || 0,
     windowCount: job.windowCount || 0,
     languageMode: uiLanguage
-  })
+  }))
     .then((result) => {
       const messages = Array.isArray(result?.messages) ? result.messages.filter(Boolean) : [];
       if (messages.length) rememberGeneratedProgressCopy(operationId, messages);

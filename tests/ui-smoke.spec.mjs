@@ -644,7 +644,11 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayThinkingIntensity: "medium"
     });
-  await expect.poll(() => page.evaluate(() => window.__recapMessages.some((message) => message.type === "progressCopy:generate"))).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.__recapMessages.some((message) => message.type === "progressCopy:generate" && message.windowId === 42))
+    )
+    .toBe(true);
 });
 
 test("time recap and organize generation can run in parallel", async ({ page }) => {
