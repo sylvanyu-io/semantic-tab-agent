@@ -1,6 +1,6 @@
 # Time Recap Development Plan / 时间段回顾开发计划
 
-Status: implemented in the current build. The codebase now has a recap input builder, gateway recap planner, local fallback, cancelable runtime message, side-panel Recap mode, shared bottom progress controls, scoped advanced AI settings, and Node plus Playwright coverage. Remaining work is product expansion, not first-use viability: recap history, direct recap-to-organize actions, manual close controls inside recap review candidates, and larger real-browser benchmark evidence.
+Status: implemented in the current build. The codebase now has a recap input builder, gateway recap planner, local fallback, cancelable runtime message, side-panel Recap mode, shared bottom progress controls, scoped advanced AI settings, and Node plus Playwright coverage. Remaining work is product expansion, not first-use viability: recap history, direct recap-to-organize actions, local-memory controls, and larger real-browser benchmark evidence.
 
 This document records the product plan for "summarize what I did during a time period" and the acceptance checks needed before treating it as release-ready. TabRecap already records useful local signals; the feature turns those signals into a user-facing recap instead of a developer activity dump.
 
@@ -41,7 +41,7 @@ Implemented pieces:
   - Session TTL is 90 days and max sessions/events are 1800.
 - `src/core/controller.js`
   - Exposes `activity:getOverview`, `activity:generateTimeRecap`, and `activity:cancelTimeRecap`.
-  - Uses activity overview as cleanup fallback and as planner input.
+  - Uses activity overview as the local fallback and as planner input.
 - `src/core/time-recap.js`
   - Builds compact recap input from local activity, summaries, lifecycle sessions, and current tabs.
   - Sends the recap request through the same chat-completions-compatible gateway.
@@ -61,10 +61,7 @@ Implemented pieces:
 
 Current verification:
 
-- `npm test`: 151 passed on 2026-06-28.
-- `npm run test:ui`: 29 passed on 2026-06-28.
-- `npm run build:extension`: built `dist/tab-recap-0.2.1.zip` on 2026-06-28.
-- Visual smoke screenshot inspected: `/tmp/tab-recap-recap-progress-20260628.png` for recap progress, bottom controls, and shared action layout.
+- `npm run release:check`: 184 Node tests, 33 Playwright UI tests, secret scans, dev/store builds, and release artifact audit passed on 2026-07-06.
 
 ## User Experience
 
@@ -115,15 +112,13 @@ The recap result should be a review surface, not a wall of text.
    - 3 to 6 theme cards.
    - Each theme has a short human title, one-sentence summary, confidence, and representative tabs.
 
-2. `任务线索`
+2. `时间线`
    - Timeline-like clusters.
    - Show "started around", "recently active", "still open", and "representative pages".
 
-3. `可能可以收尾`
-   - Reuse cleanup candidates, but frame them as "worth reviewing", not "trash".
-   - Current action: locate the tab.
-   - Future action: selected/manual close controls, still never automatic.
-   - Closing remains explicit user action only.
+3. `主题线索`
+   - 3 to 6 topic cards.
+   - Each card explains what the user appeared to be working on and shows representative page chips.
 
 4. `下次继续`
    - Optional next-step hints.
@@ -227,6 +222,7 @@ Validation rules:
 - Compatibility parser also accepts `pageIds`, `pages`, and `tabIds`, but normalized UI state uses page IDs.
 - Empty or duplicate themes are merged or removed locally.
 - Time recap only explains the activity pattern for the selected range; cleanup recommendations belong to the organizer flow and are not shown in recap results.
+- Recap output must not include manual close controls, cleanup checklists, or "worth reviewing" tab recommendations.
 - Output language must follow the selected UI language.
 - Do not allow the model to request permissions or browser mutations.
 
@@ -340,16 +336,14 @@ Implemented:
   - `回顾`
 - Time-range selector.
 - CTA: `生成回顾`.
-- Theme cards, timeline cards, follow-up hints, and review candidates.
+- Summary card, timeline rows, theme cards, and follow-up hints.
 - Collapsed evidence details.
 - Representative page chips.
-- Locate-tab action for review candidates.
 - Shared bottom progress and stop button while generating.
 - Scoped advanced settings so recap does not show organization-only controls.
 
 Future product expansion:
 
-- Manual close controls inside recap review candidates.
 - Launch an organize job from a recap theme.
 
 Design requirements:
@@ -379,13 +373,12 @@ Status: deferred.
 Future tasks:
 
 - From a recap theme, allow "organize these tabs" by launching a scoped grouping job for those tab IDs.
-- From review candidates, allow selected manual close.
-- After closing candidates, refresh recap locally without another AI request.
 - Do not automatically mutate groups from the recap screen.
+- Do not add cleanup recommendations or manual close controls to the recap screen; cleanup remains an organizer feature.
 
 Acceptance:
 
-- Recap can help the user decide, but it does not silently organize or close anything.
+- Recap helps the user understand recent work, but it does not silently organize or close anything.
 
 ### Phase 5: Privacy and Settings
 
@@ -442,7 +435,7 @@ Metrics:
 - percentage of pages represented in at least one theme;
 - invalid tab ID rate;
 - human review score for usefulness;
-- whether cleanup candidates overlap with old/low-activity tabs.
+- whether the summary matches the user's remembered activity.
 
 Acceptance:
 
@@ -472,7 +465,6 @@ Recommended before a broad public listing:
 
 - Should recap history be stored, or should each recap stay disposable?
 - Should recap themes offer "organize these pages" as a scoped follow-up action?
-- Should review candidates in recap get the same manual close controls as cleanup results?
 - Should recap use the primary model by default, or benchmark a cheaper recap-only route before changing defaults?
 
 ## Completed First Slice
