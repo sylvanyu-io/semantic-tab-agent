@@ -8,6 +8,7 @@
 
 <p align="center">
   <a href="manifest.json"><img alt="Chrome MV3" src="https://img.shields.io/badge/Chrome-MV3-1f55ff" /></a>
+  <a href="https://github.com/sylvanyu-io/tab-recap/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sylvanyu-io/tab-recap/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="package.json"><img alt="Tests" src="https://img.shields.io/badge/tests-node%20%2B%20playwright-c9ff4a" /></a>
   <a href="worker/README.md"><img alt="Gateway" src="https://img.shields.io/badge/AI-gateway-d94a32" /></a>
 </p>
@@ -129,6 +130,8 @@ npm run release:check:live
 ```
 
 它会优先读取 `MONITOR_TOKEN`，其次读取 `MONITOR_TOKEN_FILE`，最后读取这台机器上的默认 runtime secret 文件。
+
+GitHub Actions 会在 push 和 PR 上运行标准 `release:check`。需要远端复现真实扩展压力测试时，手动触发 `CI` workflow 并勾选 `full_gate`。
 
 生成 README 图片资源：
 

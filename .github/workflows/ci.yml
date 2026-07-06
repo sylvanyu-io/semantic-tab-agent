@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      full_gate:
+        description: Run the real-extension stress gate
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release-check:
+    name: Release check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run standard release gate
+        run: npm run release:check
+
+      - name: Upload extension packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: tab-recap-extension-packages
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  extension-stress:
+    name: Real extension stress
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_gate }}
+    needs: release-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build local extension package
+        run: npm run assets:icons && npm run build:extension
+
+      - name: Run real-extension stress gate
+        run: xvfb-run --auto-servernum npm run stress:extension
+
+      - name: Upload stress summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tab-recap-extension-stress
+          path: dist/stress/*.json
+          if-no-files-found: ignore
+          retention-days: 7

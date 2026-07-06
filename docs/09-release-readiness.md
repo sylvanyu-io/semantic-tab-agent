@@ -79,8 +79,12 @@ Blocking gates:
 
 - `npm run check` passes.
 - `npm run release:check` passes and produces a clean extension package.
+- GitHub Actions runs `npm run release:check` on push and pull requests, then
+  uploads the generated extension zip artifacts.
 - `npm run release:check:full` passes before public release packaging. It adds
   the real-extension stress runner to the standard package gate.
+- The `CI` workflow can be manually dispatched with `full_gate` enabled to run
+  the real-extension stress runner on GitHub's Ubuntu runner under `xvfb`.
 - `npm run release:check:live` passes before public releases that depend on the
   built-in default AI service. It runs `release:check:full`, reads
   `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`, or this machine's default local runtime
