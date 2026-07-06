@@ -55,13 +55,10 @@ The product idea remains one analysis job. It is not a requirement that the impl
 
 ## Evidence
 
-Functional checks:
-
-- `node --test tests/*.test.mjs worker/test/*.test.mjs`: 150/150 passing.
-- `npx playwright test tests/ui-smoke.spec.mjs`: 29/29 passing.
-- `npm run scan:secrets`: no provider-key patterns found.
-- `npm run scan:secrets:history`: no provider-key patterns found in git history.
-- `npm run release:check`: passed Node tests, UI smoke, current/history secret scans, and built local plus store packages.
+Functional checks at implementation time covered Node tests, Playwright UI
+smoke tests, current/history secret scans, and local plus store package builds.
+Current release verification is centralized in `docs/09-release-readiness.md`,
+so this design record does not carry stale test-count snapshots.
 
 New regression coverage:
 

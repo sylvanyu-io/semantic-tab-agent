@@ -61,7 +61,9 @@ Implemented pieces:
 
 Current verification:
 
-- `npm run release:check`: 184 Node tests, 33 Playwright UI tests, secret scans, dev/store builds, and release artifact audit passed on 2026-07-06.
+- Current release verification is tracked in `docs/09-release-readiness.md`.
+  The latest recorded full gate includes GitHub Actions standard release checks
+  and a remote 240-tab real-extension stress run.
 
 ## User Experience
 
@@ -384,7 +386,7 @@ Acceptance:
 
 Goal: make data use understandable without sounding like a dev note.
 
-Status: partially done.
+Status: implemented, with ongoing benchmark maintenance.
 
 Implemented:
 
@@ -408,11 +410,14 @@ Status: partially done.
 Existing evidence:
 
 - Model-routing and planner optimization records live under `docs/benchmarks/`.
-- Current automated gates include Node and Playwright coverage for recap data, UI, cancellation, fallback, and language handling.
+- `docs/benchmarks/08-time-recap-extension-scale.md` records real-extension
+  recap scale evidence.
+- Current automated gates include Node and Playwright coverage for recap data,
+  UI, cancellation, fallback, language handling, and parallel organize/recap
+  jobs.
 
-Future benchmark records under `docs/benchmarks/`:
+Benchmark records to keep current under `docs/benchmarks/`:
 
-- Metadata-only recap on 30, 120, 300 synthetic tabs.
 - Recap with page summaries.
 - Mixed old/new tab sessions.
 - Forum-like pages where title alone is weak.
@@ -451,8 +456,12 @@ Recommended before a broad public listing:
 - `npm run release:check` passes for the standard package gate.
 - `npm run release:check:full` passes before public packaging, including the
   real-extension stress runner.
-- Real Chrome side panel smoke includes metadata-only recap, recap with continuous summaries enabled, denied page permission, sleeping tabs, language switch, and gateway failure fallback.
-- Larger real-browser recap benchmarks are added to `docs/benchmarks/`.
+- GitHub Actions standard release gate passes on push/PR, and manual
+  `full_gate` dispatch passes before public packaging.
+- Real Chrome side panel smoke includes metadata-only recap, recap with
+  continuous summaries enabled, denied page permission, sleeping tabs, language
+  switch, and gateway failure fallback.
+- Larger real-browser recap benchmarks stay current in `docs/benchmarks/`.
 - Local-memory clearing remains available before recap history becomes a first-class history surface.
 
 ## Open Decisions
