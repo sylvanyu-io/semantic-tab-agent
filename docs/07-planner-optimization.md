@@ -166,6 +166,24 @@ Workers should return compact JSON:
 
 The final browser mutation must still be driven only by local validated data.
 
+## Behavioral Evidence Contract
+
+The planner receives three levels of behavior signal:
+
+- `activationFlowRuns`: recent in-window browsing runs with ordered tab IDs and
+  dwell durations.
+- `activationFlowTransitions`: compact directed rows such as `fromId -> toId`
+  with count, average dwell, max dwell, recency, and short clues. This captures
+  repeated handoffs like "read an anchor page, check two references, return to
+  the anchor" without sending titles or page text.
+- `activationFlowEvidence`: unordered higher-level clusters that summarize
+  repeated togetherness, quick handoffs, and return-to-anchor patterns.
+
+These signals help the LLM identify task relationships that title/domain
+matching misses. They must remain supporting evidence: semantic content,
+original tab order, page summaries, URL privacy mode, and the user's prompt stay
+authoritative.
+
 ## Next Implementation Steps
 
 1. Continue refactoring `gateway-planner.js` into explicit planner stages:

@@ -14,6 +14,7 @@ The snapshot answers:
 - how many tabs and recap pages are available;
 - how many page summaries exist;
 - how much lifecycle and activation-flow evidence exists;
+- how many direct tab-to-tab transition rows exist;
 - whether the current session has enough behavior signals to justify a planner
   quality comparison;
 - whether data is thin because summaries, lifecycle events, or activation runs
@@ -57,8 +58,8 @@ Use this before running live A/B planner benchmarks:
 
 1. export a redacted snapshot;
 2. check `readiness.level` and `readiness.warnings`;
-3. only compare prompt/model behavior when lifecycle events and activation runs
-   are present;
+3. only compare prompt/model behavior when lifecycle events, activation runs,
+   and direct transition rows are present;
 4. keep private detail snapshots out of git;
 5. record public conclusions in `docs/benchmarks/README.md`.
 

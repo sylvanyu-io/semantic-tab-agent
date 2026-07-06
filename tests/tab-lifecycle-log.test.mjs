@@ -155,6 +155,35 @@ test("tab lifecycle extracts activation flow context with dwell and return-to-an
   assert.deepEqual(context.runs[0].dwellSeconds, [1800, 120, 30]);
   assert.equal(context.runs[0].returnToId, 1);
   assert.deepEqual(context.runs[0].repeatedIds, [1]);
+  assert.deepEqual(context.transitions, [
+    {
+      fromId: 1,
+      toId: 2,
+      count: 1,
+      avgDwellSeconds: 1800,
+      maxDwellSeconds: 1800,
+      lastAt: "2026-06-25T00:32:31.000Z",
+      clues: ["long source dwell", "returned to source later"]
+    },
+    {
+      fromId: 2,
+      toId: 3,
+      count: 1,
+      avgDwellSeconds: 120,
+      maxDwellSeconds: 120,
+      lastAt: "2026-06-25T00:32:31.000Z",
+      clues: ["quick handoff"]
+    },
+    {
+      fromId: 3,
+      toId: 1,
+      count: 1,
+      avgDwellSeconds: 30,
+      maxDwellSeconds: 30,
+      lastAt: "2026-06-25T00:32:31.000Z",
+      clues: ["quick handoff"]
+    }
+  ]);
 
   const tabOneActivity = context.tabActivity.find((activity) => activity.id === 1);
   assert.equal(tabOneActivity.activeCount, 2);
@@ -227,6 +256,7 @@ test("tab lifecycle caps activation flow output for large histories", async () =
   const context = await getTabActivationFlowContext(chrome, tabs.map((tab) => ({ tabId: tab.id })));
 
   assert.equal(context.runs.length, 24);
+  assert.equal(context.transitions.length <= 120, true);
   assert.equal(context.evidence.length <= 80, true);
   assert.equal(context.runs.every((run) => run.ids.length <= 24), true);
   assert.equal(context.tabActivity.every((activity) => activity.nearbyIds.length <= 6), true);

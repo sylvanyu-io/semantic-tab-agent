@@ -444,12 +444,59 @@ function buildBenchmarkActivationFlow(tabs, truth, scenario) {
       (activity) => activity.activeCount || activity.totalActiveSeconds || activity.appearedInRuns || activity.nearbyIds.length
     ),
     runs: runs.slice(0, 24),
+    transitions: buildBenchmarkTransitions(runs).slice(0, 120),
     evidence: evidence.slice(0, 80)
   };
 }
 
 function emptyActivationFlow() {
-  return { tabActivity: [], runs: [], evidence: [] };
+  return { tabActivity: [], runs: [], transitions: [], evidence: [] };
+}
+
+function buildBenchmarkTransitions(runs) {
+  const byPair = new Map();
+  for (const run of runs) {
+    for (let index = 0; index < run.ids.length - 1; index += 1) {
+      const fromId = run.ids[index];
+      const toId = run.ids[index + 1];
+      if (!Number.isInteger(fromId) || !Number.isInteger(toId) || fromId === toId) continue;
+      const key = `${fromId}:${toId}`;
+      const dwellSeconds = Math.max(0, Number(run.dwellSeconds[index] || 0));
+      const entry = byPair.get(key) || {
+        fromId,
+        toId,
+        count: 0,
+        totalDwellSeconds: 0,
+        maxDwellSeconds: 0,
+        lastAt: "",
+        quickHandoff: false,
+        longSourceDwell: false,
+        returnedToSource: false
+      };
+      entry.count += 1;
+      entry.totalDwellSeconds += dwellSeconds;
+      entry.maxDwellSeconds = Math.max(entry.maxDwellSeconds, dwellSeconds);
+      if (!entry.lastAt || Date.parse(run.endedAt || "") > Date.parse(entry.lastAt || "")) entry.lastAt = run.endedAt;
+      entry.quickHandoff = entry.quickHandoff || (dwellSeconds > 0 && dwellSeconds <= 180);
+      entry.longSourceDwell = entry.longSourceDwell || dwellSeconds >= 20 * 60;
+      entry.returnedToSource = entry.returnedToSource || (run.repeatedIds || []).includes(fromId);
+      byPair.set(key, entry);
+    }
+  }
+  return [...byPair.values()].map((entry) => ({
+    fromId: entry.fromId,
+    toId: entry.toId,
+    count: entry.count,
+    avgDwellSeconds: Math.round(entry.totalDwellSeconds / Math.max(1, entry.count)),
+    maxDwellSeconds: Math.round(entry.maxDwellSeconds),
+    lastAt: entry.lastAt,
+    clues: [
+      entry.quickHandoff ? "quick handoff" : "",
+      entry.longSourceDwell ? "long source dwell" : "",
+      entry.returnedToSource ? "returned to source later" : "",
+      entry.count > 1 ? "repeated transition" : ""
+    ].filter(Boolean)
+  }));
 }
 
 function behaviorFlowChunks(tabs, truth) {

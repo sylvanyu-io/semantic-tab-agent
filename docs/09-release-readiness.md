@@ -27,8 +27,9 @@ Implemented:
   put uncertain tabs in Review.
 - Groups above `maxTabsPerGroup` are rejected instead of applied as oversized
   catch-all groups.
-- Tab inventory includes original `sequenceIndex` plus per-window `index`, and
-  planner prompts treat nearby tabs as semantic context.
+- Tab inventory includes original `sequenceIndex`, per-window `index`, lifecycle
+  activation runs, and direct tab-to-tab transition rows. Planner prompts treat
+  these as behavioral evidence only, not as hard grouping rules.
 - Target-window selection is validated against user settings; planner output
   cannot redirect apply to an arbitrary window.
 - Preview before apply and rollback snapshot persisted before the first browser

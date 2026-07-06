@@ -37,6 +37,17 @@ test("tab inventory includes activation flow behavior context", async () => {
 
   assert.deepEqual(inventory.activationFlow.runs.map((run) => run.ids), [[10, 11]]);
   assert.deepEqual(inventory.activationFlow.runs[0].dwellSeconds, [6]);
+  assert.deepEqual(inventory.activationFlow.transitions, [
+    {
+      fromId: 10,
+      toId: 11,
+      count: 1,
+      avgDwellSeconds: 6,
+      maxDwellSeconds: 6,
+      lastAt: "2026-06-25T00:00:07.000Z",
+      clues: ["quick handoff"]
+    }
+  ]);
   assert.deepEqual(inventory.activationFlow.evidence[0].ids, [10, 11]);
   assert.equal(inventory.activationFlow.tabActivity.find((activity) => activity.id === 10).totalActiveSeconds, 6);
 });

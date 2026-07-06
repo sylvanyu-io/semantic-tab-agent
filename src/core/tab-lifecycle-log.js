@@ -11,6 +11,7 @@ const FLOW_RUN_BREAK_MS = 90 * 60 * 1000;
 const FLOW_MAX_DWELL_MS = 60 * 60 * 1000;
 const FLOW_MAX_RUNS = 24;
 const FLOW_MAX_EVIDENCE = 80;
+const FLOW_MAX_TRANSITIONS = 120;
 const FLOW_MAX_NEARBY_IDS = 6;
 const FLOW_EVIDENCE_WINDOW_SIZE = 5;
 const FLOW_EVIDENCE_WINDOW_STEP = 3;
@@ -413,12 +414,13 @@ function buildActivationFlowContext(log, tabs = [], options = {}) {
       }))
       .filter((activity) => activity.activeCount || activity.totalActiveSeconds || activity.appearedInRuns || activity.nearbyIds.length),
     runs: recentRuns.map(compactActivationRun),
+    transitions: buildActivationTransitions(recentRuns),
     evidence
   };
 }
 
 function emptyActivationFlowContext() {
-  return { tabActivity: [], runs: [], evidence: [] };
+  return { tabActivity: [], runs: [], transitions: [], evidence: [] };
 }
 
 function buildInitialTabActivity(log, tabIds) {
@@ -539,6 +541,62 @@ function buildActivationEvidence(runs, activityByTabId) {
     lastAt: entry.lastAt,
     clues: activationEvidenceClues(entry)
   }));
+}
+
+function buildActivationTransitions(runs) {
+  const byPair = new Map();
+  for (const run of runs || []) {
+    for (let index = 0; index < (run.steps || []).length - 1; index += 1) {
+      const step = run.steps[index];
+      const next = run.steps[index + 1];
+      if (!Number.isInteger(step?.id) || !Number.isInteger(next?.id) || step.id === next.id) continue;
+      const key = `${step.id}:${next.id}`;
+      const entry = byPair.get(key) || {
+        fromId: step.id,
+        toId: next.id,
+        count: 0,
+        totalDwellSeconds: 0,
+        maxDwellSeconds: 0,
+        lastAt: "",
+        quickHandoff: false,
+        longSourceDwell: false,
+        returnedToSource: false
+      };
+      const dwellSeconds = Math.max(0, Number(step.activeSeconds || 0));
+      entry.count += 1;
+      entry.totalDwellSeconds += dwellSeconds;
+      entry.maxDwellSeconds = Math.max(entry.maxDwellSeconds, dwellSeconds);
+      if (isAfter(run.endedAt, entry.lastAt)) entry.lastAt = run.endedAt;
+      entry.quickHandoff = entry.quickHandoff || (dwellSeconds > 0 && dwellSeconds <= 180);
+      entry.longSourceDwell = entry.longSourceDwell || dwellSeconds >= 20 * 60;
+      entry.returnedToSource = entry.returnedToSource || (run.repeatedIds || []).includes(step.id);
+      byPair.set(key, entry);
+    }
+  }
+
+  return [...byPair.values()]
+    .sort((left, right) => {
+      const byCount = right.count - left.count;
+      if (byCount) return byCount;
+      const byDwell = right.totalDwellSeconds - left.totalDwellSeconds;
+      if (byDwell) return byDwell;
+      return Date.parse(right.lastAt || "") - Date.parse(left.lastAt || "");
+    })
+    .slice(0, FLOW_MAX_TRANSITIONS)
+    .map((entry) => ({
+      fromId: entry.fromId,
+      toId: entry.toId,
+      count: entry.count,
+      avgDwellSeconds: Math.round(entry.totalDwellSeconds / Math.max(1, entry.count)),
+      maxDwellSeconds: Math.round(entry.maxDwellSeconds),
+      lastAt: entry.lastAt,
+      clues: [
+        entry.quickHandoff ? "quick handoff" : "",
+        entry.longSourceDwell ? "long source dwell" : "",
+        entry.returnedToSource ? "returned to source later" : "",
+        entry.count > 1 ? "repeated transition" : ""
+      ].filter(Boolean)
+    }));
 }
 
 function evidenceWindowsForRun(run) {

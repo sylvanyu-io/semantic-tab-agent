@@ -63,6 +63,15 @@ const ACTIVATION_FLOW_ACTIVITY_FIELDS = Object.freeze([
   "nearbyIds"
 ]);
 const ACTIVATION_FLOW_RUN_FIELDS = Object.freeze(["windowId", "startedAt", "endedAt", "ids", "dwellSeconds", "returnToId", "repeatedIds"]);
+const ACTIVATION_FLOW_TRANSITION_FIELDS = Object.freeze([
+  "fromId",
+  "toId",
+  "count",
+  "avgDwellSeconds",
+  "maxDwellSeconds",
+  "lastAt",
+  "clues"
+]);
 const ACTIVATION_FLOW_EVIDENCE_FIELDS = Object.freeze(["ids", "strength", "count", "lastAt", "clues"]);
 const EXCLUDED_FIELDS = Object.freeze(["id", "windowId", "reason"]);
 const LOCKED_GROUP_FIELDS = Object.freeze(["id", "windowId", "title", "color", "collapsed", "tabIds"]);
@@ -422,7 +431,7 @@ export function buildPlannerSystemPrompt(settings) {
     "Tabs already represented as lockedGroups are preserved by runtime and should not be reassigned.",
     reviewModeInstruction(settings),
     "Use sequenceIndex and index as ordering context: adjacent tabs may be part of the same task or reading flow.",
-    "When activationFlow is present, treat it as behavioral evidence only: browsing runs, active duration, nearby ids, and return-to-earlier-tab clues can support semantic grouping, but must not override title, URL, page summaries, original order, or the user's prompt.",
+    "When activationFlow is present, treat it as behavioral evidence only: browsing runs, direct transitions, active duration, nearby ids, and return-to-earlier-tab clues can support semantic grouping, but must not override title, URL, page summaries, original order, or the user's prompt.",
     "Do not group tabs merely because they were adjacent in activation history; use activationFlow only when behavior and semantic content support the same interpretation.",
     "Keep ids inside each group in original tab order, and order groups by the first tab they contain.",
     groupSizeInstruction(settings),
@@ -568,6 +577,8 @@ export function buildPlannerPayload(inventory, settings, options = {}) {
     activationFlowTabActivity: buildActivationFlowActivityRows(inventory),
     activationFlowRunFields: ACTIVATION_FLOW_RUN_FIELDS,
     activationFlowRuns: buildActivationFlowRunRows(inventory),
+    activationFlowTransitionFields: ACTIVATION_FLOW_TRANSITION_FIELDS,
+    activationFlowTransitions: buildActivationFlowTransitionRows(inventory),
     activationFlowEvidenceFields: ACTIVATION_FLOW_EVIDENCE_FIELDS,
     activationFlowEvidence: buildActivationFlowEvidenceRows(inventory),
     excludedFields: EXCLUDED_FIELDS,
@@ -662,6 +673,22 @@ function buildActivationFlowRunRows(inventory = {}) {
       run.repeatedIds.slice(0, 6)
     ])
     .slice(0, 24);
+}
+
+function buildActivationFlowTransitionRows(inventory = {}) {
+  const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
+  return (inventory.activationFlow?.transitions || [])
+    .filter((transition) => tabIds.has(transition.fromId) && tabIds.has(transition.toId))
+    .map((transition) => [
+      transition.fromId,
+      transition.toId,
+      Math.max(1, Number(transition.count || 1)),
+      Math.max(0, Number(transition.avgDwellSeconds || 0)),
+      Math.max(0, Number(transition.maxDwellSeconds || 0)),
+      transition.lastAt || "",
+      (transition.clues || []).map((clue) => String(clue || "").slice(0, 48)).filter(Boolean).slice(0, 5)
+    ])
+    .slice(0, 120);
 }
 
 function buildActivationFlowEvidenceRows(inventory = {}) {
@@ -943,7 +970,7 @@ function buildCleanupSystemPrompt(settings) {
     "Keep each candidate compact: reason should be one short clause, evidence should contain one or two short user-facing clues.",
     "Write evidence like \"search result\", \"old task\", \"easy to find again\", or \"rarely reopened\". Do not write raw feature names like activeCount, ageDays, idleDays, sampleable, sequenceIndex, or tabId.",
     "Use original tab order, tab age/activity, current groups, page summaries, behavioral activation evidence, and the proposed grouping context.",
-    "Treat activationFlow as behavioral evidence only. A tab repeatedly used as an anchor may be valuable to keep; quick handoffs may indicate search or comparison behavior. Do not expose raw activation field names to users.",
+    "Treat activationFlow as behavioral evidence only. A tab repeatedly used as an anchor may be valuable to keep; direct transitions and quick handoffs may indicate search or comparison behavior. Do not expose raw activation field names to users.",
     "Do not recommend closing pinned tabs as high priority unless evidence is very strong.",
     languageInstruction(settings.languageMode)
   ].join("\n");
@@ -968,6 +995,8 @@ function buildCleanupUserPrompt(inventory, settings, options = {}, groups = [], 
       activationFlowTabActivity: payload.activationFlowTabActivity,
       activationFlowRunFields: payload.activationFlowRunFields,
       activationFlowRuns: payload.activationFlowRuns,
+      activationFlowTransitionFields: payload.activationFlowTransitionFields,
+      activationFlowTransitions: payload.activationFlowTransitions,
       activationFlowEvidenceFields: payload.activationFlowEvidenceFields,
       activationFlowEvidence: payload.activationFlowEvidence,
       activityFields: payload.activityFields,
@@ -1092,7 +1121,7 @@ function buildCoarseSystemPrompt(settings, options = {}) {
     "Every eligible tab id must appear exactly once, either in buckets[].tabIds or reviewTabIds.",
     "Put generic, sensitive, or very uncertain tabs in reviewTabIds.",
     "Use sequenceIndex and index as ordering clues. Adjacent tabs may belong together, but they are not a hard rule.",
-    "When activationFlow is present, use browsing runs, dwell durations, nearby ids, and return-to-earlier-tab evidence as clues. Do not create buckets from behavior alone unless semantic content also supports it.",
+    "When activationFlow is present, use browsing runs, direct transitions, dwell durations, nearby ids, and return-to-earlier-tab evidence as clues. Do not create buckets from behavior alone unless semantic content also supports it.",
     "Do not create a broad catch-all bucket for unrelated leftovers; use reviewTabIds instead.",
     languageInstruction(settings.languageMode),
     `Runtime preset: ${presetText}`
@@ -1376,6 +1405,7 @@ function subsetActivationFlow(activationFlow = {}, ids) {
     tabActivity: (activationFlow.tabActivity || []).filter((activity) => ids.has(activity.id)),
     runs: (activationFlow.runs || [])
       .filter((run) => uniqueNumbers(run.ids || []).every((id) => ids.has(id)) && uniqueNumbers(run.ids || []).length >= 2),
+    transitions: (activationFlow.transitions || []).filter((transition) => ids.has(transition.fromId) && ids.has(transition.toId)),
     evidence: (activationFlow.evidence || [])
       .map((evidence) => ({ ...evidence, ids: (evidence.ids || []).filter((id) => ids.has(id)) }))
       .filter((evidence) => evidence.ids.length >= 2)

@@ -24,7 +24,9 @@ test("evidence snapshot defaults to redacted aggregate counts", async () => {
   assert.equal(snapshot.privacy, "redacted_counts");
   assert.equal(snapshot.counts.plannerTabs, 3);
   assert.equal(snapshot.counts.activationRuns, 1);
+  assert.equal(snapshot.counts.activationTransitions, 3);
   assert.equal(snapshot.behavior.repeatedRuns, 1);
+  assert.equal(snapshot.behavior.transitions, 3);
   assert.equal(snapshot.behavior.quickHandoffs >= 1, true);
   assert.equal(snapshot.tabState.sampleableTabs, 3);
   assert.equal("privateDetails" in snapshot, false);

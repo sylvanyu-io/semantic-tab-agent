@@ -15,7 +15,7 @@ export async function buildEvidenceSnapshot(chromeApi, rawSettings = {}, options
     buildTimeRecapInput(chromeApi, settings, { range, now }),
     getActivityOverview(chromeApi, { rangeMs: range.rangeMs, includeIncognitoTabs: settings.includeIncognitoTabs, now })
   ]);
-  const activationFlow = inventory.activationFlow || { tabActivity: [], runs: [], evidence: [] };
+  const activationFlow = inventory.activationFlow || { tabActivity: [], runs: [], transitions: [], evidence: [] };
   const includePrivateFields = Boolean(options.includePrivateFields);
 
   return {
@@ -42,6 +42,7 @@ export async function buildEvidenceSnapshot(chromeApi, rawSettings = {}, options
       lifecycleSessions: recapInput.coverage?.lifecycleSessions || 0,
       lifecycleEvents: recapInput.coverage?.lifecycleEvents || 0,
       activationRuns: activationFlow.runs?.length || 0,
+      activationTransitions: activationFlow.transitions?.length || 0,
       activationEvidence: activationFlow.evidence?.length || 0,
       activationTabs: activationFlow.tabActivity?.length || 0
     },
@@ -76,6 +77,7 @@ export async function buildEvidenceSnapshot(chromeApi, rawSettings = {}, options
 function summarizeActivationFlow(activationFlow = {}) {
   const runs = activationFlow.runs || [];
   const evidence = activationFlow.evidence || [];
+  const transitions = activationFlow.transitions || [];
   const tabActivity = activationFlow.tabActivity || [];
   const repeatedRuns = runs.filter((run) => (run.repeatedIds || []).length).length;
   const quickHandoffs = evidence.filter((item) => (item.clues || []).includes("quick handoff")).length;
@@ -86,6 +88,7 @@ function summarizeActivationFlow(activationFlow = {}) {
 
   return {
     runs: runs.length,
+    transitions: transitions.length,
     evidence: evidence.length,
     tabsWithActivity: tabActivity.length,
     repeatedRuns,
@@ -94,6 +97,16 @@ function summarizeActivationFlow(activationFlow = {}) {
     averageRunSpanSeconds: runs.length ? Math.round(totalSpanSeconds / runs.length) : 0,
     averageUniqueTabsPerRun: runs.length ? round1(totalRunTabs / runs.length) : 0,
     totalActiveSeconds,
+    strongestTransitions: transitions
+      .slice()
+      .sort((left, right) => Number(right.count || 0) - Number(left.count || 0) || Number(right.avgDwellSeconds || 0) - Number(left.avgDwellSeconds || 0))
+      .slice(0, 8)
+      .map((item) => ({
+        count: Number(item.count || 0),
+        avgDwellSeconds: Number(item.avgDwellSeconds || 0),
+        maxDwellSeconds: Number(item.maxDwellSeconds || 0),
+        clues: item.clues || []
+      })),
     strongestEvidence: evidence
       .slice()
       .sort((left, right) => Number(right.strength || 0) - Number(left.strength || 0))

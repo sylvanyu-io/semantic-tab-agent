@@ -51,6 +51,17 @@ const inventory = {
         repeatedIds: [10]
       }
     ],
+    transitions: [
+      {
+        fromId: 10,
+        toId: 11,
+        count: 2,
+        avgDwellSeconds: 120,
+        maxDwellSeconds: 180,
+        lastAt: "2026-06-25T00:03:00.000Z",
+        clues: ["quick handoff", "repeated transition"]
+      }
+    ],
     evidence: [
       {
         ids: [10, 11],
@@ -207,6 +218,18 @@ test("AI gateway planner posts a chat-completions JSON request", async () => {
     assert.deepEqual(payload.activationFlowTabActivity[0], [10, 3, 180, 120, "2026-06-25T00:02:00.000Z", 2, 1, [11]]);
     assert.deepEqual(payload.activationFlowRunFields, ["windowId", "startedAt", "endedAt", "ids", "dwellSeconds", "returnToId", "repeatedIds"]);
     assert.deepEqual(payload.activationFlowRuns, [[1, "2026-06-25T00:00:00.000Z", "2026-06-25T00:03:00.000Z", [10, 11, 10], [120, 60], 10, [10]]]);
+    assert.deepEqual(payload.activationFlowTransitionFields, [
+      "fromId",
+      "toId",
+      "count",
+      "avgDwellSeconds",
+      "maxDwellSeconds",
+      "lastAt",
+      "clues"
+    ]);
+    assert.deepEqual(payload.activationFlowTransitions, [
+      [10, 11, 2, 120, 180, "2026-06-25T00:03:00.000Z", ["quick handoff", "repeated transition"]]
+    ]);
     assert.deepEqual(payload.activationFlowEvidenceFields, ["ids", "strength", "count", "lastAt", "clues"]);
     assert.deepEqual(payload.activationFlowEvidence, [
       [[10, 11], 0.69, 2, "2026-06-25T00:03:00.000Z", ["same activation run", "returned to an earlier tab"]]
