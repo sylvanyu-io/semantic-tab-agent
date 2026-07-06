@@ -96,6 +96,65 @@ test("continuous summary capture skips sleeping tabs", async () => {
   assert.equal(sampled, false);
 });
 
+test("continuous summary capture skips incognito tabs by default", async () => {
+  const chrome = createFakeChrome();
+  let sampled = false;
+  chrome.scripting.executeScript = async () => {
+    sampled = true;
+    return [{ result: { title: "Private sample", visibleText: "Private text" } }];
+  };
+
+  const result = await capturePageSummaryIfAllowed(
+    chrome,
+    { id: 10, active: true, incognito: true, url: "https://private.example/page" },
+    { ...DEFAULT_SETTINGS, continuousPageSummaries: true, includeIncognitoTabs: false }
+  );
+
+  assert.equal(result.status, "skipped");
+  assert.equal(sampled, false);
+  assert.equal(chrome.__state.storage[STORAGE_KEYS.pageSummaryCache], undefined);
+  assert.equal(chrome.__state.storage[STORAGE_KEYS.pageActivityCache], undefined);
+});
+
+test("continuous summary capture can store incognito tabs when explicitly enabled", async () => {
+  const chrome = createFakeChrome();
+  chrome.permissions.contains = async (request) =>
+    Boolean(request.permissions?.includes("scripting") || request.origins?.includes("https://*/*"));
+  chrome.scripting.executeScript = async () => [
+    {
+      result: {
+        title: "Private live page",
+        metaDescription: "Private but user-enabled summary",
+        language: "en",
+        headings: ["Private overview"],
+        visibleText: "Private live page text"
+      }
+    }
+  ];
+
+  const result = await capturePageSummaryIfAllowed(
+    chrome,
+    { id: 10, active: true, incognito: true, url: "https://private.example/docs" },
+    {
+      ...DEFAULT_SETTINGS,
+      continuousPageSummaries: true,
+      includeIncognitoTabs: true,
+      pageContextMode: PAGE_CONTEXT_MODES.OFF
+    }
+  );
+
+  assert.equal(result.status, "ok");
+  const cached = await cachedPageSampleForTab(chrome, {
+    tabId: 10,
+    windowId: 1,
+    sanitizedUrl: "https://private.example/docs",
+    fullUrl: ""
+  });
+  assert.equal(cached.sample.title, "Private live page");
+  const activityEntry = Object.values(chrome.__state.storage[STORAGE_KEYS.pageActivityCache].entries)[0];
+  assert.equal(activityEntry.lastKnownState.incognito, true);
+});
+
 test("continuous summary capture stores authorized live pages", async () => {
   const chrome = createFakeChrome();
   chrome.permissions.contains = async (request) =>

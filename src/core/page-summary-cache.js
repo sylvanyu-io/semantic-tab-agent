@@ -46,8 +46,8 @@ function cachedSampleFromCache(cache, tabDescriptor) {
 export async function capturePageSummaryIfAllowed(chromeApi, tab, rawSettings = {}) {
   const settings = normalizeSettings(rawSettings);
   if (!settings.continuousPageSummaries) return { status: "disabled", reason: "Continuous summaries are off." };
-  if (!isSafeBackgroundTab(tab)) return { status: "skipped", reason: "Tab is not eligible for background summary capture." };
-  await rememberOpenTabActivity(chromeApi, tab).catch(() => null);
+  if (!isSafeBackgroundTab(tab, settings)) return { status: "skipped", reason: "Tab is not eligible for background summary capture." };
+  await rememberOpenTabActivity(chromeApi, tab, null, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
   if (!chromeApi.permissions?.contains || !chromeApi.scripting?.executeScript) {
     return { status: "blocked", reason: "Required permissions or scripting API are unavailable." };
   }
@@ -75,13 +75,14 @@ export async function capturePageSummaryIfAllowed(chromeApi, tab, rawSettings = 
   }));
 
   if (result.status === "ok") {
-    await rememberPageSummary(chromeApi, tab, result);
+    await rememberPageSummary(chromeApi, tab, result, { includeIncognitoTabs: settings.includeIncognitoTabs });
   }
   return result;
 }
 
 export async function rememberPageSummary(chromeApi, tab, sampleResult, options = {}) {
   if (sampleResult?.status !== "ok" || !sampleResult.sample) return null;
+  if (tab?.incognito && !options.includeIncognitoTabs) return null;
   const rawUrl = getTabUrl(tab);
   const key = pageSummaryCacheKey(cacheComparableUrl(rawUrl));
   if (!key) return null;
@@ -104,7 +105,7 @@ export async function rememberPageSummary(chromeApi, tab, sampleResult, options 
 
   const pruned = pruneCache(cache, now);
   await setLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, pruned);
-  await rememberOpenTabActivity(chromeApi, tab, sampleResult, { now }).catch(() => null);
+  await rememberOpenTabActivity(chromeApi, tab, sampleResult, { now, includeIncognitoTabs: options.includeIncognitoTabs }).catch(() => null);
   return pruned.entries[key];
 }
 
@@ -145,9 +146,9 @@ function isFreshEntry(entry, now = Date.now()) {
   return Number.isFinite(sampledAt) && now - sampledAt <= CACHE_TTL_MS;
 }
 
-function isSafeBackgroundTab(tab) {
+function isSafeBackgroundTab(tab, settings = {}) {
   if (!tab || typeof (tab.id ?? tab.tabId) !== "number") return false;
-  if (tab.incognito) return false;
+  if (tab.incognito && !settings.includeIncognitoTabs) return false;
   if (tab.discarded || tab.frozen) return false;
   return canSampleUrl(getTabUrl(tab));
 }

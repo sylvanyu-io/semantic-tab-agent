@@ -149,7 +149,9 @@ async function sweepOpenTabsForSummaries() {
   if (!settings.continuousPageSummaries) return;
   const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }).catch(() => []);
   const tabs = windows.flatMap((window) => window.tabs || []);
-  await rememberOpenTabsActivity(chrome, tabs).catch((error) => console.debug(error));
+  await rememberOpenTabsActivity(chrome, tabs, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch((error) =>
+    console.debug(error)
+  );
   for (const tab of tabs) {
     if (!tab?.id) continue;
     await capturePageSummaryIfAllowed(chrome, tab, settings).catch((error) => console.debug(error));
@@ -161,7 +163,9 @@ async function captureSummaryForTab(tabId) {
   if (!settings.continuousPageSummaries) return;
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab) return;
-  await rememberOpenTabActivity(chrome, tab).catch((error) => console.debug(error));
+  await rememberOpenTabActivity(chrome, tab, null, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch((error) =>
+    console.debug(error)
+  );
   await capturePageSummaryIfAllowed(chrome, tab, settings);
 }
 
