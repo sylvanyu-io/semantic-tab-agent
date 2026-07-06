@@ -134,14 +134,15 @@ Blocking gates:
 Latest full release gates:
 
 - `2026-07-07`: GitHub Actions manual `CI` dispatch with `full_gate=true`
-  passed on `main` at `20666ac`.
+  passed on `main` at `b01d0a9`.
 - Remote run:
-  `https://github.com/sylvanyu-io/tab-recap/actions/runs/28821729595`.
-- The remote standard release gate covered 220 Node tests, 33 Playwright UI
+  `https://github.com/sylvanyu-io/tab-recap/actions/runs/28824135179`.
+- The remote standard release gate completed in 1m0s and covered 221 Node tests,
+  33 Playwright UI
   tests, current and history secret scans, dev plus store builds, release
   artifact audit, and extension package artifact upload.
-- The remote stress gate then ran under Ubuntu `xvfb` against an isolated
-  Chromium profile with 240 tabs across 4 windows.
+- The remote stress gate then completed in 2m30s under Ubuntu `xvfb` against an
+  isolated Chromium profile with 240 tabs across 4 windows.
 - All-window organization created 6 groups, applied the plan, and restored all
   240 tabs through undo.
 - Current-window organization created 6 groups for the active 60-tab window,
@@ -153,7 +154,7 @@ Latest full release gates:
   sampling read 4 of 4 active pages.
 - The live gateway branch was intentionally skipped because `GATEWAY_API_KEY`
   was not set for this remote stress run.
-- Remote ignored artifact uploaded by CI: `sta-stress-mr9oqiho.json`.
+- Remote stress artifact uploaded by CI: `sta-stress-mr9q8w86.json`.
 
 Recommended before public listing:
 
