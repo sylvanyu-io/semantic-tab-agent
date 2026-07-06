@@ -319,6 +319,34 @@ If `RESEND_API_KEY`, `ALERT_TO`, or `ALERT_FROM` is missing, the scheduled job
 returns before running the real LLM probe, so it does not spend model usage
 without a working alert channel.
 
+After every Worker deploy or secret change, verify the live monitor config:
+
+```bash
+TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
+curl -sS -H "x-monitor-token: $TOKEN" https://cliproxy.sylvanyu.io/monitor/status
+```
+
+Expected:
+
+```text
+config.email: configured
+config.upstream: configured
+config.stateStore: configured
+monitor.lastSummary.readyzCode: ready
+monitor.lastSummary.llmCode: llm_ready
+```
+
+If `config.email` is `resend_api_key_missing`, the Worker will not send outage
+mail and the Cron job will skip the real LLM probe. Re-enter the secret with a
+TTY prompt instead of a non-interactive shell value:
+
+```bash
+npx wrangler secret put RESEND_API_KEY --config worker/wrangler.toml
+```
+
+Then deploy or wait for Wrangler's secret update to publish, and re-check
+`/monitor/status`. Do not store the Resend key in this repository.
+
 Resend test email was sent and received on 2026-07-02. Resend returned:
 
 ```text
