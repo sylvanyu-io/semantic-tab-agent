@@ -451,6 +451,16 @@ This checks the product-facing Worker health path, origin readiness path,
 if `config.email` is not `configured` or if the latest monitor snapshot reports
 `down`.
 
+Full pre-release live gate:
+
+```bash
+TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
+MONITOR_TOKEN="$TOKEN" npm run release:check:live
+```
+
+This runs the full local release gate first, then the same live default-gateway
+smoke. Use it before publishing builds that rely on the built-in AI service.
+
 If `cloudflared` is running but public checks still return 530, inspect
 Cloudflare tunnel logs. If logs show QUIC timeouts or no free edge addresses,
 keep `protocol: http2` and restart the tunnel.

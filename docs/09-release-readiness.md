@@ -79,10 +79,13 @@ Blocking gates:
 
 - `npm run check` passes.
 - `npm run release:check` passes and produces a clean extension package.
+- `MONITOR_TOKEN="$TOKEN" npm run release:check:live` passes before public
+  releases that depend on the built-in default AI service.
 - `npm run stress:extension` validates current-window apply/undo and
   consolidate-to-one-window apply/undo on a throwaway Chromium profile.
-- AI gateway live smoke passes against the configured gateway when gateway
-  credentials are available for a manual pre-release smoke.
+- AI gateway live smoke verifies Worker health, origin readiness, monitor email
+  configuration, the latest monitor snapshot, and one real chat-completions
+  request.
 - Page sampling cannot run without visible risk acknowledgement.
 - Page sampling active-tab mode cannot sample background tabs.
 - Bulk page sampling returns `permission_required` without host permission.
