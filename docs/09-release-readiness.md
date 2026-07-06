@@ -124,6 +124,23 @@ Blocking gates:
   a live model request, and does not expose upstream URLs, alert mailboxes, or
   provider secrets.
 
+Latest extension stress run:
+
+- `2026-07-07`: `npm run stress:extension` passed against an isolated Chromium
+  profile with 240 tabs across 4 windows.
+- All-window organization created 6 groups, applied the plan, and restored all
+  240 tabs through undo.
+- Current-window organization created 6 groups for the active 60-tab window,
+  applied the plan, and restored the window through undo without leaking state
+  across other windows.
+- Page-summary risk gating blocked 60 of 60 attempted samples before explicit
+  acknowledgement.
+- UI-authorized full page-summary sampling read 240 of 240 pages, and active-tab
+  sampling read 4 of 4 active pages.
+- The live gateway branch was intentionally skipped because `GATEWAY_API_KEY`
+  was not set for this local stress run.
+- Ignored artifact: `dist/stress/sta-stress-mr9n8cov.json`.
+
 Recommended before public listing:
 
 - Keep the local-memory clearing control visible before recap history becomes a
