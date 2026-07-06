@@ -936,11 +936,11 @@ test("time recap fallback keeps raw AI errors out of the visible product copy", 
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
 
-  await expect(page.locator(".recap-summary-card")).toContainText("AI 暂时不可用，先展示本机线索。");
+  await expect(page.locator(".recap-summary-card")).toContainText("已先用本机线索生成回顾。");
   await expect(page.locator(".recap-summary-card")).not.toContainText("timed out");
   await expect(page.locator(".recap-summary-card")).not.toContainText("300 seconds");
   await expect(page.locator("#recapDetailsText")).toContainText("已整理 65 个本机页面线索");
-  await expect(page.locator("#recapDetailsText")).toContainText("AI 暂时不可用，本次先展示本机线索。");
+  await expect(page.locator("#recapDetailsText")).toContainText("AI 回顾这次没有完成，已先保留本机线索结果。");
   await expect(page.locator("#recapDetailsText")).not.toContainText("timed out");
   await expect(page.locator("#recapDetailsText")).not.toContainText("300 seconds");
   await expect(page.locator("#recapDetailsText")).not.toContainText("tabId");
