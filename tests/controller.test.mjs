@@ -1273,6 +1273,50 @@ test("active analysis exposes progress and can be canceled", async () => {
   }
 });
 
+test("running analyses are isolated per source window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Window one docs", url: "https://example.com/window-one", active: true }]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [{ id: 20, title: "Window two docs", url: "https://example.com/window-two", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const settings = { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" };
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+
+  try {
+    const first = await startAnalyzeTabs(chrome, settings, { windowId: 1 });
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === first.operationId && job.phase === "planning");
+
+    const second = await startAnalyzeTabs(chrome, settings, { windowId: 2 });
+    await waitForWindowActiveJob(chrome, 2, (job) => job?.operationId === second.operationId && job.phase === "planning");
+
+    await assert.rejects(() => startAnalyzeTabs(chrome, settings, { windowId: 1 }), /已有整理任务正在运行/);
+    assert.equal((await getActiveJob(chrome, 1)).operationId, first.operationId);
+    assert.equal((await getActiveJob(chrome, 2)).operationId, second.operationId);
+
+    await cancelActiveJob(chrome, 1);
+    assert.equal((await getActiveJob(chrome, 1)).status, "canceled");
+    assert.equal((await getActiveJob(chrome, 2)).status, "running");
+
+    await cancelActiveJob(chrome, 2);
+    assert.equal((await getActiveJob(chrome, 2)).status, "canceled");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("startAnalyzeTabs returns immediately while the background job writes final preview", async () => {
   const chrome = createFakeChrome({
     windows: [
@@ -1481,4 +1525,14 @@ async function waitForActiveJob(chrome, predicate) {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   assert.fail("Timed out waiting for active analysis job.");
+}
+
+async function waitForWindowActiveJob(chrome, windowId, predicate) {
+  const deadline = Date.now() + 1000;
+  while (Date.now() < deadline) {
+    const job = await getActiveJob(chrome, windowId);
+    if (predicate(job)) return job;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.fail(`Timed out waiting for active analysis job in window ${windowId}.`);
 }
