@@ -75,8 +75,8 @@ git diff --check
 
 Observed result on 2026-07-06:
 
-- targeted behavior/planner tests: 60 pass;
-- full test suite: 174 pass;
+- targeted behavior/planner tests: 61 pass;
+- full test suite: 176 pass;
 - extension build succeeded: `dist/tab-recap-0.2.5.zip`;
 - whitespace check passed.
 
@@ -86,7 +86,35 @@ This proves the harness now captures and transmits behavior evidence in a
 bounded, non-answer-leaking form, and that the planner prompt treats it as
 secondary evidence.
 
-It does not yet prove live model quality improves. That requires a live A/B run:
+## Live A/B Result
+
+One live synthetic A/B run has been recorded. This is enough to justify keeping
+the feature path, but not enough to claim a universal quality win.
+
+| Condition | Run | Time | Requests | Tokens | Groups | Coverage | Topic F1 | Family F1 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| activationFlow enabled | `planner-scale-2026-07-06T10-31-52-720Z-pid19058` | 86.7s | 2 | 20,808 | 7 | 100.0% | 100.0% | 65.5% |
+| activationFlow disabled | `planner-scale-2026-07-06T10-34-02-822Z-pid21095` | 103.0s | 2 | 16,034 | 5 | 81.3% | 84.9% | 54.4% |
+
+What changed in this run:
+
+- With activation flow, the model grouped all 48 tabs and matched synthetic
+  fine-grained topics perfectly.
+- Without activation flow, 9 tabs went to review and Topic F1 dropped to 84.9%.
+- The activation-flow payload used more prompt tokens, as expected.
+- The enabled run was still faster in this sample, but this should not be
+  treated as a latency guarantee because model variance is high.
+
+Artifacts:
+
+- With activation flow: `docs/benchmarks/data/planner-scale-2026-07-06T10-31-52-720Z-pid19058.json`
+- Without activation flow: `docs/benchmarks/data/planner-scale-2026-07-06T10-34-02-822Z-pid21095.json`
+- Quality report: `docs/benchmarks/archive/generated/activation-flow-quality.md`
+- Individual reports:
+  - `docs/benchmarks/archive/generated/activation-flow-with.md`
+  - `docs/benchmarks/archive/generated/activation-flow-without.md`
+
+Additional proof still requires more live A/B runs:
 
 1. run `BENCHMARK_SCENARIOS=behavior_flow` with activation flow enabled;
 2. run the same fixture with `BENCHMARK_ACTIVATION_FLOW=0` to strip it from

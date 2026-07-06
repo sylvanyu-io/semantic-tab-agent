@@ -1,0 +1,4462 @@
+{
+  "schema": "tab_tidy_gateway_planner_scale_benchmark_v1",
+  "runId": "planner-scale-2026-07-06T10-31-52-720Z-pid19058",
+  "generatedAt": "2026-07-06T10:33:19.465Z",
+  "partial": false,
+  "sizes": [
+    48
+  ],
+  "scenarios": [
+    "behavior_flow"
+  ],
+  "strategyOrder": [
+    {
+      "key": "auto",
+      "label": "product default auto route"
+    }
+  ],
+  "scenarioOrder": [
+    {
+      "key": "behavior_flow",
+      "label": "Behavior flow evidence",
+      "description": "Simulates user activation runs, dwell time, and return-to-anchor behavior without leaking fixture truth labels."
+    }
+  ],
+  "strategyFilter": "auto",
+  "scenarioFilter": "behavior_flow",
+  "environment": {
+    "node": "v22.23.1",
+    "gatewayBaseUrl": "built-in default",
+    "gatewayModel": "gpt-5.4",
+    "gatewayAuxiliaryModel": "gpt-5.3-codex-spark",
+    "gatewayThinkingIntensity": "high",
+    "promptPreset": "conservative",
+    "groupingGranularity": "balanced",
+    "activationFlow": "enabled",
+    "plannerOptionOverrides": {},
+    "requestTimeoutMs": 180000,
+    "strategyTimeoutMs": 240000,
+    "pageContext": "metadata-only synthetic inventory",
+    "note": "Synthetic browser tabs only; no user browsing data or gateway keys are stored."
+  },
+  "results": [
+    {
+      "runId": "planner-scale-2026-07-06T10-31-52-720Z-pid19058",
+      "startedAt": "2026-07-06T10:31:52.725Z",
+      "finishedAt": "2026-07-06T10:33:19.458Z",
+      "scenario": "behavior_flow",
+      "scenarioLabel": "Behavior flow evidence",
+      "tabCount": 48,
+      "windowCount": 4,
+      "strategy": "auto",
+      "strategyLabel": "product default auto route",
+      "settings": {
+        "organizeMode": "consolidate_one_window",
+        "targetWindowMode": "current_window",
+        "existingGroupMode": "dissolve_existing_groups",
+        "reviewGroupMode": "create_review_group",
+        "pageContextMode": "off",
+        "hostPermissionRequestMode": "never",
+        "pageSamplingConsentMode": "not_acknowledged",
+        "urlPrivacyMode": "sanitized_url",
+        "includePinnedTabs": false,
+        "includeIncognitoTabs": false,
+        "collapseGroupsAfterApply": true,
+        "continuousPageSummaries": false,
+        "analyzeGrouping": true,
+        "analyzeCleanup": true,
+        "minConfidenceToApply": 0.65,
+        "maxTabsPerGroup": 40,
+        "undoTargetWindowMode": "leave_empty_target_window",
+        "languageMode": "auto",
+        "promptPreset": "conservative",
+        "groupingGranularity": "balanced",
+        "customPrompt": "Benchmark run. Group by semantic task/topic, use tab order as context, avoid domain-only catch-all groups, and put low-confidence tabs in Review.",
+        "selectedTargetWindowId": null,
+        "plannerProvider": "gateway",
+        "gatewayProviderMode": "builtin",
+        "rememberProviderKeys": false,
+        "gatewayBaseUrl": "",
+        "gatewayModel": "gpt-5.4",
+        "gatewayAuxiliaryModel": "gpt-5.3-codex-spark",
+        "gatewayCustomModel": "",
+        "gatewayCustomAuxiliaryModel": "",
+        "gatewayThinkingIntensity": "high",
+        "gatewayApiKey": ""
+      },
+      "inventory": {
+        "schemaVersion": 1,
+        "mode": "consolidate_one_window",
+        "scope": {
+          "kind": "all_normal_windows",
+          "currentWindowId": null,
+          "invocationWindowId": 1,
+          "windowIds": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "windows": [
+          {
+            "windowId": 1,
+            "type": "normal",
+            "focused": true,
+            "incognito": false,
+            "tabCount": 12
+          },
+          {
+            "windowId": 2,
+            "type": "normal",
+            "focused": false,
+            "incognito": false,
+            "tabCount": 12
+          },
+          {
+            "windowId": 3,
+            "type": "normal",
+            "focused": false,
+            "incognito": false,
+            "tabCount": 12
+          },
+          {
+            "windowId": 4,
+            "type": "normal",
+            "focused": false,
+            "incognito": false,
+            "tabCount": 12
+          }
+        ],
+        "tabs": [
+          {
+            "tabId": 10000,
+            "windowId": 1,
+            "index": 0,
+            "sequenceIndex": 0,
+            "title": "Agent workbench 000",
+            "audible": false,
+            "discarded": true,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/codex/0",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10001,
+            "windowId": 1,
+            "index": 1,
+            "sequenceIndex": 1,
+            "title": "Tooling reference 001",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/mcp/1",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10002,
+            "windowId": 1,
+            "index": 2,
+            "sequenceIndex": 2,
+            "title": "Evaluation page 002",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/review/2",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10003,
+            "windowId": 1,
+            "index": 3,
+            "sequenceIndex": 3,
+            "title": "Agent workbench 003",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/codex/3",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10004,
+            "windowId": 1,
+            "index": 4,
+            "sequenceIndex": 4,
+            "title": "Product UI design - settings switch patterns 004",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/switches/4",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10005,
+            "windowId": 1,
+            "index": 5,
+            "sequenceIndex": 5,
+            "title": "Showcase ideas 005",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/readme/5",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10006,
+            "windowId": 1,
+            "index": 6,
+            "sequenceIndex": 6,
+            "title": "UI reference 006",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/sidepanel/6",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10007,
+            "windowId": 1,
+            "index": 7,
+            "sequenceIndex": 7,
+            "title": "Interaction examples 007",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/switches/7",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10008,
+            "windowId": 1,
+            "index": 8,
+            "sequenceIndex": 8,
+            "title": "Read later queue - background reference page 008",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/reference/8",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10009,
+            "windowId": 1,
+            "index": 9,
+            "sequenceIndex": 9,
+            "title": "Article 009",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/article/9",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10010,
+            "windowId": 1,
+            "index": 10,
+            "sequenceIndex": 10,
+            "title": "Newsletter 010",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/newsletter/10",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10011,
+            "windowId": 1,
+            "index": 11,
+            "sequenceIndex": 11,
+            "title": "Reference 011",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/reference/11",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10012,
+            "windowId": 2,
+            "index": 0,
+            "sequenceIndex": 12,
+            "title": "AI coding agents - Codex task orchestration notes 012",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/codex/12",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10013,
+            "windowId": 2,
+            "index": 1,
+            "sequenceIndex": 13,
+            "title": "Tooling reference 013",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/mcp/13",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10014,
+            "windowId": 2,
+            "index": 2,
+            "sequenceIndex": 14,
+            "title": "Evaluation page 014",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/review/14",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10015,
+            "windowId": 2,
+            "index": 3,
+            "sequenceIndex": 15,
+            "title": "Agent workbench 015",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/codex/15",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10016,
+            "windowId": 2,
+            "index": 4,
+            "sequenceIndex": 16,
+            "title": "Cloudflare Worker gateway - Cloudflare tunnel diagnostics 016",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/tunnel/16",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10017,
+            "windowId": 2,
+            "index": 5,
+            "sequenceIndex": 17,
+            "title": "Security checklist 017",
+            "audible": false,
+            "discarded": true,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/limits/17",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10018,
+            "windowId": 2,
+            "index": 6,
+            "sequenceIndex": 18,
+            "title": "Gateway docs 018",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/workers/18",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10019,
+            "windowId": 2,
+            "index": 7,
+            "sequenceIndex": 19,
+            "title": "Tunnel notes 019",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/tunnel/19",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10020,
+            "windowId": 2,
+            "index": 8,
+            "sequenceIndex": 20,
+            "title": "Read later queue - background reference page 020",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/reference/20",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10021,
+            "windowId": 2,
+            "index": 9,
+            "sequenceIndex": 21,
+            "title": "Article 021",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/article/21",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10022,
+            "windowId": 2,
+            "index": 10,
+            "sequenceIndex": 22,
+            "title": "Newsletter 022",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/newsletter/22",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10023,
+            "windowId": 2,
+            "index": 11,
+            "sequenceIndex": 23,
+            "title": "Reference 023",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/reference/23",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10024,
+            "windowId": 3,
+            "index": 0,
+            "sequenceIndex": 24,
+            "title": "Chrome extension APIs - tabs and tabGroups API reference 024",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/tabs/24",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10025,
+            "windowId": 3,
+            "index": 1,
+            "sequenceIndex": 25,
+            "title": "Extension guide 025",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/sidepanel/25",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10026,
+            "windowId": 3,
+            "index": 2,
+            "sequenceIndex": 26,
+            "title": "Permissions notes 026",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/permissions/26",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10027,
+            "windowId": 3,
+            "index": 3,
+            "sequenceIndex": 27,
+            "title": "API docs 027",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/tabs/27",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10028,
+            "windowId": 3,
+            "index": 4,
+            "sequenceIndex": 28,
+            "title": "Cloudflare Worker gateway - Cloudflare tunnel diagnostics 028",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/tunnel/28",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10029,
+            "windowId": 3,
+            "index": 5,
+            "sequenceIndex": 29,
+            "title": "Security checklist 029",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/limits/29",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10030,
+            "windowId": 3,
+            "index": 6,
+            "sequenceIndex": 30,
+            "title": "Gateway docs 030",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/workers/30",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10031,
+            "windowId": 3,
+            "index": 7,
+            "sequenceIndex": 31,
+            "title": "Tunnel notes 031",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/tunnel/31",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10032,
+            "windowId": 3,
+            "index": 8,
+            "sequenceIndex": 32,
+            "title": "Video and media queue - design teardown playlist 032",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/playlist/32",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10033,
+            "windowId": 3,
+            "index": 9,
+            "sequenceIndex": 33,
+            "title": "Video 033",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/tutorial/33",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10034,
+            "windowId": 3,
+            "index": 10,
+            "sequenceIndex": 34,
+            "title": "Talk 034",
+            "audible": false,
+            "discarded": true,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/talk/34",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10035,
+            "windowId": 3,
+            "index": 11,
+            "sequenceIndex": 35,
+            "title": "Playlist 035",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/playlist/35",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10036,
+            "windowId": 4,
+            "index": 0,
+            "sequenceIndex": 36,
+            "title": "Chrome extension APIs - tabs and tabGroups API reference 036",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/tabs/36",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10037,
+            "windowId": 4,
+            "index": 1,
+            "sequenceIndex": 37,
+            "title": "Extension guide 037",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/sidepanel/37",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10038,
+            "windowId": 4,
+            "index": 2,
+            "sequenceIndex": 38,
+            "title": "Permissions notes 038",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/permissions/38",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10039,
+            "windowId": 4,
+            "index": 3,
+            "sequenceIndex": 39,
+            "title": "API docs 039",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/tabs/39",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10040,
+            "windowId": 4,
+            "index": 4,
+            "sequenceIndex": 40,
+            "title": "Frontend implementation - CSS panel layout refinement 040",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/css/40",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10041,
+            "windowId": 4,
+            "index": 5,
+            "sequenceIndex": 41,
+            "title": "Test plan 041",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/tests/41",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10042,
+            "windowId": 4,
+            "index": 6,
+            "sequenceIndex": 42,
+            "title": "Bug thread 042",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/state/42",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10043,
+            "windowId": 4,
+            "index": 7,
+            "sequenceIndex": 43,
+            "title": "Layout notes 043",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/css/43",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10044,
+            "windowId": 4,
+            "index": 8,
+            "sequenceIndex": 44,
+            "title": "Playlist 044",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/playlist/44",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10045,
+            "windowId": 4,
+            "index": 9,
+            "sequenceIndex": 45,
+            "title": "Video 045",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/tutorial/45",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10046,
+            "windowId": 4,
+            "index": 10,
+            "sequenceIndex": 46,
+            "title": "Talk 046",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/talk/46",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10047,
+            "windowId": 4,
+            "index": 11,
+            "sequenceIndex": 47,
+            "title": "Playlist 047",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/playlist/47",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          }
+        ],
+        "plannerTabs": [
+          {
+            "tabId": 10000,
+            "windowId": 1,
+            "index": 0,
+            "sequenceIndex": 0,
+            "title": "Agent workbench 000",
+            "audible": false,
+            "discarded": true,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/codex/0",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10001,
+            "windowId": 1,
+            "index": 1,
+            "sequenceIndex": 1,
+            "title": "Tooling reference 001",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/mcp/1",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10002,
+            "windowId": 1,
+            "index": 2,
+            "sequenceIndex": 2,
+            "title": "Evaluation page 002",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/review/2",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10003,
+            "windowId": 1,
+            "index": 3,
+            "sequenceIndex": 3,
+            "title": "Agent workbench 003",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/codex/3",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10004,
+            "windowId": 1,
+            "index": 4,
+            "sequenceIndex": 4,
+            "title": "Product UI design - settings switch patterns 004",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/switches/4",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10005,
+            "windowId": 1,
+            "index": 5,
+            "sequenceIndex": 5,
+            "title": "Showcase ideas 005",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/readme/5",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10006,
+            "windowId": 1,
+            "index": 6,
+            "sequenceIndex": 6,
+            "title": "UI reference 006",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/sidepanel/6",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10007,
+            "windowId": 1,
+            "index": 7,
+            "sequenceIndex": 7,
+            "title": "Interaction examples 007",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/switches/7",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10008,
+            "windowId": 1,
+            "index": 8,
+            "sequenceIndex": 8,
+            "title": "Read later queue - background reference page 008",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/reference/8",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10009,
+            "windowId": 1,
+            "index": 9,
+            "sequenceIndex": 9,
+            "title": "Article 009",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/article/9",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10010,
+            "windowId": 1,
+            "index": 10,
+            "sequenceIndex": 10,
+            "title": "Newsletter 010",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/newsletter/10",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10011,
+            "windowId": 1,
+            "index": 11,
+            "sequenceIndex": 11,
+            "title": "Reference 011",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/reference/11",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10012,
+            "windowId": 2,
+            "index": 0,
+            "sequenceIndex": 12,
+            "title": "AI coding agents - Codex task orchestration notes 012",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/codex/12",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10013,
+            "windowId": 2,
+            "index": 1,
+            "sequenceIndex": 13,
+            "title": "Tooling reference 013",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/mcp/13",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10014,
+            "windowId": 2,
+            "index": 2,
+            "sequenceIndex": 14,
+            "title": "Evaluation page 014",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/review/14",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10015,
+            "windowId": 2,
+            "index": 3,
+            "sequenceIndex": 15,
+            "title": "Agent workbench 015",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/codex/15",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10016,
+            "windowId": 2,
+            "index": 4,
+            "sequenceIndex": 16,
+            "title": "Cloudflare Worker gateway - Cloudflare tunnel diagnostics 016",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/tunnel/16",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10017,
+            "windowId": 2,
+            "index": 5,
+            "sequenceIndex": 17,
+            "title": "Security checklist 017",
+            "audible": false,
+            "discarded": true,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/limits/17",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10018,
+            "windowId": 2,
+            "index": 6,
+            "sequenceIndex": 18,
+            "title": "Gateway docs 018",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/workers/18",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10019,
+            "windowId": 2,
+            "index": 7,
+            "sequenceIndex": 19,
+            "title": "Tunnel notes 019",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/tunnel/19",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10020,
+            "windowId": 2,
+            "index": 8,
+            "sequenceIndex": 20,
+            "title": "Read later queue - background reference page 020",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/reference/20",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10021,
+            "windowId": 2,
+            "index": 9,
+            "sequenceIndex": 21,
+            "title": "Article 021",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/article/21",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10022,
+            "windowId": 2,
+            "index": 10,
+            "sequenceIndex": 22,
+            "title": "Newsletter 022",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/newsletter/22",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10023,
+            "windowId": 2,
+            "index": 11,
+            "sequenceIndex": 23,
+            "title": "Reference 023",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/reference/23",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10024,
+            "windowId": 3,
+            "index": 0,
+            "sequenceIndex": 24,
+            "title": "Chrome extension APIs - tabs and tabGroups API reference 024",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/tabs/24",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10025,
+            "windowId": 3,
+            "index": 1,
+            "sequenceIndex": 25,
+            "title": "Extension guide 025",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/sidepanel/25",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10026,
+            "windowId": 3,
+            "index": 2,
+            "sequenceIndex": 26,
+            "title": "Permissions notes 026",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/permissions/26",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10027,
+            "windowId": 3,
+            "index": 3,
+            "sequenceIndex": 27,
+            "title": "API docs 027",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/tabs/27",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10028,
+            "windowId": 3,
+            "index": 4,
+            "sequenceIndex": 28,
+            "title": "Cloudflare Worker gateway - Cloudflare tunnel diagnostics 028",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/tunnel/28",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10029,
+            "windowId": 3,
+            "index": 5,
+            "sequenceIndex": 29,
+            "title": "Security checklist 029",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/limits/29",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10030,
+            "windowId": 3,
+            "index": 6,
+            "sequenceIndex": 30,
+            "title": "Gateway docs 030",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/workers/30",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10031,
+            "windowId": 3,
+            "index": 7,
+            "sequenceIndex": 31,
+            "title": "Tunnel notes 031",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/tunnel/31",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10032,
+            "windowId": 3,
+            "index": 8,
+            "sequenceIndex": 32,
+            "title": "Video and media queue - design teardown playlist 032",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/playlist/32",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10033,
+            "windowId": 3,
+            "index": 9,
+            "sequenceIndex": 33,
+            "title": "Video 033",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/tutorial/33",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10034,
+            "windowId": 3,
+            "index": 10,
+            "sequenceIndex": 34,
+            "title": "Talk 034",
+            "audible": false,
+            "discarded": true,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/talk/34",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10035,
+            "windowId": 3,
+            "index": 11,
+            "sequenceIndex": 35,
+            "title": "Playlist 035",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/playlist/35",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10036,
+            "windowId": 4,
+            "index": 0,
+            "sequenceIndex": 36,
+            "title": "Chrome extension APIs - tabs and tabGroups API reference 036",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": true,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/tabs/36",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10037,
+            "windowId": 4,
+            "index": 1,
+            "sequenceIndex": 37,
+            "title": "Extension guide 037",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/sidepanel/37",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10038,
+            "windowId": 4,
+            "index": 2,
+            "sequenceIndex": 38,
+            "title": "Permissions notes 038",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/permissions/38",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          },
+          {
+            "tabId": 10039,
+            "windowId": 4,
+            "index": 3,
+            "sequenceIndex": 39,
+            "title": "API docs 039",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "github.com",
+            "sanitizedUrl": "https://github.com/flow/tabs/39",
+            "urlKind": "web",
+            "origin": "https://github.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 6
+          },
+          {
+            "tabId": 10040,
+            "windowId": 4,
+            "index": 4,
+            "sequenceIndex": 40,
+            "title": "Frontend implementation - CSS panel layout refinement 040",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/css/40",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 7
+          },
+          {
+            "tabId": 10041,
+            "windowId": 4,
+            "index": 5,
+            "sequenceIndex": 41,
+            "title": "Test plan 041",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/tests/41",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 8
+          },
+          {
+            "tabId": 10042,
+            "windowId": 4,
+            "index": 6,
+            "sequenceIndex": 42,
+            "title": "Bug thread 042",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/state/42",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 9
+          },
+          {
+            "tabId": 10043,
+            "windowId": 4,
+            "index": 7,
+            "sequenceIndex": 43,
+            "title": "Layout notes 043",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "stackoverflow.com",
+            "sanitizedUrl": "https://stackoverflow.com/flow/css/43",
+            "urlKind": "web",
+            "origin": "https://stackoverflow.com",
+            "firstSeenAt": "2026-05-29T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 10
+          },
+          {
+            "tabId": 10044,
+            "windowId": 4,
+            "index": 8,
+            "sequenceIndex": 44,
+            "title": "Playlist 044",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "docs.google.com",
+            "sanitizedUrl": "https://docs.google.com/flow/playlist/44",
+            "urlKind": "web",
+            "origin": "https://docs.google.com",
+            "firstSeenAt": "2026-05-28T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 11
+          },
+          {
+            "tabId": 10045,
+            "windowId": 4,
+            "index": 9,
+            "sequenceIndex": 45,
+            "title": "Video 045",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "notion.so",
+            "sanitizedUrl": "https://notion.so/flow/tutorial/45",
+            "urlKind": "web",
+            "origin": "https://notion.so",
+            "firstSeenAt": "2026-06-01T08:00:00.000Z",
+            "lastSeenAt": "2026-06-01T08:00:00.000Z",
+            "activeCount": 3
+          },
+          {
+            "tabId": 10046,
+            "windowId": 4,
+            "index": 10,
+            "sequenceIndex": 46,
+            "title": "Talk 046",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "reddit.com",
+            "sanitizedUrl": "https://reddit.com/flow/talk/46",
+            "urlKind": "web",
+            "origin": "https://reddit.com",
+            "firstSeenAt": "2026-05-31T08:00:00.000Z",
+            "lastSeenAt": "2026-05-31T08:00:00.000Z",
+            "activeCount": 4
+          },
+          {
+            "tabId": 10047,
+            "windowId": 4,
+            "index": 11,
+            "sequenceIndex": 47,
+            "title": "Playlist 047",
+            "audible": false,
+            "discarded": false,
+            "pinned": false,
+            "active": false,
+            "incognito": false,
+            "groupId": -1,
+            "groupTitle": "",
+            "groupColor": "",
+            "groupCollapsed": false,
+            "favIconUrl": "",
+            "sampleable": true,
+            "hostname": "youtube.com",
+            "sanitizedUrl": "https://youtube.com/flow/playlist/47",
+            "urlKind": "web",
+            "origin": "https://youtube.com",
+            "firstSeenAt": "2026-05-30T08:00:00.000Z",
+            "lastSeenAt": "2026-05-30T08:00:00.000Z",
+            "activeCount": 5
+          }
+        ],
+        "excludedTabs": [],
+        "lockedGroups": [],
+        "activationFlow": {
+          "tabActivity": [
+            {
+              "id": 10000,
+              "activeCount": 2,
+              "totalActiveSeconds": 1800,
+              "maxActiveSeconds": 1800,
+              "lastActivatedAt": "2026-06-01T08:32:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10001,
+                10002
+              ]
+            },
+            {
+              "id": 10001,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T08:32:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10000,
+                10002
+              ]
+            },
+            {
+              "id": 10002,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T08:32:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10000,
+                10001
+              ]
+            },
+            {
+              "id": 10004,
+              "activeCount": 2,
+              "totalActiveSeconds": 2100,
+              "maxActiveSeconds": 2100,
+              "lastActivatedAt": "2026-06-01T09:22:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10005,
+                10006
+              ]
+            },
+            {
+              "id": 10005,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T09:22:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10004,
+                10006
+              ]
+            },
+            {
+              "id": 10006,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T09:22:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10004,
+                10005
+              ]
+            },
+            {
+              "id": 10008,
+              "activeCount": 2,
+              "totalActiveSeconds": 2400,
+              "maxActiveSeconds": 2400,
+              "lastActivatedAt": "2026-06-01T10:12:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10009,
+                10010
+              ]
+            },
+            {
+              "id": 10009,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T10:12:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10008,
+                10010
+              ]
+            },
+            {
+              "id": 10010,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T10:12:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10008,
+                10009
+              ]
+            },
+            {
+              "id": 10012,
+              "activeCount": 2,
+              "totalActiveSeconds": 1800,
+              "maxActiveSeconds": 1800,
+              "lastActivatedAt": "2026-06-01T10:47:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10013,
+                10014
+              ]
+            },
+            {
+              "id": 10013,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T10:47:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10012,
+                10014
+              ]
+            },
+            {
+              "id": 10014,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T10:47:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10012,
+                10013
+              ]
+            },
+            {
+              "id": 10016,
+              "activeCount": 2,
+              "totalActiveSeconds": 2100,
+              "maxActiveSeconds": 2100,
+              "lastActivatedAt": "2026-06-01T11:37:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10017,
+                10018
+              ]
+            },
+            {
+              "id": 10017,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T11:37:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10016,
+                10018
+              ]
+            },
+            {
+              "id": 10018,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T11:37:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10016,
+                10017
+              ]
+            },
+            {
+              "id": 10020,
+              "activeCount": 2,
+              "totalActiveSeconds": 2400,
+              "maxActiveSeconds": 2400,
+              "lastActivatedAt": "2026-06-01T12:27:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10021,
+                10022
+              ]
+            },
+            {
+              "id": 10021,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T12:27:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10020,
+                10022
+              ]
+            },
+            {
+              "id": 10022,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T12:27:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10020,
+                10021
+              ]
+            },
+            {
+              "id": 10024,
+              "activeCount": 2,
+              "totalActiveSeconds": 1800,
+              "maxActiveSeconds": 1800,
+              "lastActivatedAt": "2026-06-01T13:02:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10025,
+                10026
+              ]
+            },
+            {
+              "id": 10025,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T13:02:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10024,
+                10026
+              ]
+            },
+            {
+              "id": 10026,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T13:02:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10024,
+                10025
+              ]
+            },
+            {
+              "id": 10028,
+              "activeCount": 2,
+              "totalActiveSeconds": 2100,
+              "maxActiveSeconds": 2100,
+              "lastActivatedAt": "2026-06-01T13:52:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10029,
+                10030
+              ]
+            },
+            {
+              "id": 10029,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T13:52:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10028,
+                10030
+              ]
+            },
+            {
+              "id": 10030,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T13:52:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10028,
+                10029
+              ]
+            },
+            {
+              "id": 10032,
+              "activeCount": 2,
+              "totalActiveSeconds": 2400,
+              "maxActiveSeconds": 2400,
+              "lastActivatedAt": "2026-06-01T14:42:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10033,
+                10034
+              ]
+            },
+            {
+              "id": 10033,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T14:42:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10032,
+                10034
+              ]
+            },
+            {
+              "id": 10034,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T14:42:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10032,
+                10033
+              ]
+            },
+            {
+              "id": 10036,
+              "activeCount": 2,
+              "totalActiveSeconds": 1800,
+              "maxActiveSeconds": 1800,
+              "lastActivatedAt": "2026-06-01T15:17:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10037,
+                10038
+              ]
+            },
+            {
+              "id": 10037,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T15:17:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10036,
+                10038
+              ]
+            },
+            {
+              "id": 10038,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T15:17:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10036,
+                10037
+              ]
+            },
+            {
+              "id": 10040,
+              "activeCount": 2,
+              "totalActiveSeconds": 2100,
+              "maxActiveSeconds": 2100,
+              "lastActivatedAt": "2026-06-01T16:07:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10041,
+                10042
+              ]
+            },
+            {
+              "id": 10041,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T16:07:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10040,
+                10042
+              ]
+            },
+            {
+              "id": 10042,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T16:07:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10040,
+                10041
+              ]
+            },
+            {
+              "id": 10044,
+              "activeCount": 2,
+              "totalActiveSeconds": 2400,
+              "maxActiveSeconds": 2400,
+              "lastActivatedAt": "2026-06-01T16:57:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 1,
+              "nearbyIds": [
+                10045,
+                10046
+              ]
+            },
+            {
+              "id": 10045,
+              "activeCount": 1,
+              "totalActiveSeconds": 120,
+              "maxActiveSeconds": 120,
+              "lastActivatedAt": "2026-06-01T16:57:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10044,
+                10046
+              ]
+            },
+            {
+              "id": 10046,
+              "activeCount": 1,
+              "totalActiveSeconds": 45,
+              "maxActiveSeconds": 45,
+              "lastActivatedAt": "2026-06-01T16:57:45.000Z",
+              "appearedInRuns": 1,
+              "returnedToCount": 0,
+              "nearbyIds": [
+                10044,
+                10045
+              ]
+            }
+          ],
+          "runs": [
+            {
+              "windowId": 1,
+              "startedAt": "2026-06-01T08:00:00.000Z",
+              "endedAt": "2026-06-01T08:32:45.000Z",
+              "spanSeconds": 1965,
+              "ids": [
+                10000,
+                10001,
+                10002,
+                10000
+              ],
+              "dwellSeconds": [
+                1800,
+                120,
+                45
+              ],
+              "returnToId": 10000,
+              "repeatedIds": [
+                10000
+              ]
+            },
+            {
+              "windowId": 1,
+              "startedAt": "2026-06-01T08:45:00.000Z",
+              "endedAt": "2026-06-01T09:22:45.000Z",
+              "spanSeconds": 2265,
+              "ids": [
+                10004,
+                10005,
+                10006,
+                10004
+              ],
+              "dwellSeconds": [
+                2100,
+                120,
+                45
+              ],
+              "returnToId": 10004,
+              "repeatedIds": [
+                10004
+              ]
+            },
+            {
+              "windowId": 1,
+              "startedAt": "2026-06-01T09:30:00.000Z",
+              "endedAt": "2026-06-01T10:12:45.000Z",
+              "spanSeconds": 2565,
+              "ids": [
+                10008,
+                10009,
+                10010,
+                10008
+              ],
+              "dwellSeconds": [
+                2400,
+                120,
+                45
+              ],
+              "returnToId": 10008,
+              "repeatedIds": [
+                10008
+              ]
+            },
+            {
+              "windowId": 2,
+              "startedAt": "2026-06-01T10:15:00.000Z",
+              "endedAt": "2026-06-01T10:47:45.000Z",
+              "spanSeconds": 1965,
+              "ids": [
+                10012,
+                10013,
+                10014,
+                10012
+              ],
+              "dwellSeconds": [
+                1800,
+                120,
+                45
+              ],
+              "returnToId": 10012,
+              "repeatedIds": [
+                10012
+              ]
+            },
+            {
+              "windowId": 2,
+              "startedAt": "2026-06-01T11:00:00.000Z",
+              "endedAt": "2026-06-01T11:37:45.000Z",
+              "spanSeconds": 2265,
+              "ids": [
+                10016,
+                10017,
+                10018,
+                10016
+              ],
+              "dwellSeconds": [
+                2100,
+                120,
+                45
+              ],
+              "returnToId": 10016,
+              "repeatedIds": [
+                10016
+              ]
+            },
+            {
+              "windowId": 2,
+              "startedAt": "2026-06-01T11:45:00.000Z",
+              "endedAt": "2026-06-01T12:27:45.000Z",
+              "spanSeconds": 2565,
+              "ids": [
+                10020,
+                10021,
+                10022,
+                10020
+              ],
+              "dwellSeconds": [
+                2400,
+                120,
+                45
+              ],
+              "returnToId": 10020,
+              "repeatedIds": [
+                10020
+              ]
+            },
+            {
+              "windowId": 3,
+              "startedAt": "2026-06-01T12:30:00.000Z",
+              "endedAt": "2026-06-01T13:02:45.000Z",
+              "spanSeconds": 1965,
+              "ids": [
+                10024,
+                10025,
+                10026,
+                10024
+              ],
+              "dwellSeconds": [
+                1800,
+                120,
+                45
+              ],
+              "returnToId": 10024,
+              "repeatedIds": [
+                10024
+              ]
+            },
+            {
+              "windowId": 3,
+              "startedAt": "2026-06-01T13:15:00.000Z",
+              "endedAt": "2026-06-01T13:52:45.000Z",
+              "spanSeconds": 2265,
+              "ids": [
+                10028,
+                10029,
+                10030,
+                10028
+              ],
+              "dwellSeconds": [
+                2100,
+                120,
+                45
+              ],
+              "returnToId": 10028,
+              "repeatedIds": [
+                10028
+              ]
+            },
+            {
+              "windowId": 3,
+              "startedAt": "2026-06-01T14:00:00.000Z",
+              "endedAt": "2026-06-01T14:42:45.000Z",
+              "spanSeconds": 2565,
+              "ids": [
+                10032,
+                10033,
+                10034,
+                10032
+              ],
+              "dwellSeconds": [
+                2400,
+                120,
+                45
+              ],
+              "returnToId": 10032,
+              "repeatedIds": [
+                10032
+              ]
+            },
+            {
+              "windowId": 4,
+              "startedAt": "2026-06-01T14:45:00.000Z",
+              "endedAt": "2026-06-01T15:17:45.000Z",
+              "spanSeconds": 1965,
+              "ids": [
+                10036,
+                10037,
+                10038,
+                10036
+              ],
+              "dwellSeconds": [
+                1800,
+                120,
+                45
+              ],
+              "returnToId": 10036,
+              "repeatedIds": [
+                10036
+              ]
+            },
+            {
+              "windowId": 4,
+              "startedAt": "2026-06-01T15:30:00.000Z",
+              "endedAt": "2026-06-01T16:07:45.000Z",
+              "spanSeconds": 2265,
+              "ids": [
+                10040,
+                10041,
+                10042,
+                10040
+              ],
+              "dwellSeconds": [
+                2100,
+                120,
+                45
+              ],
+              "returnToId": 10040,
+              "repeatedIds": [
+                10040
+              ]
+            },
+            {
+              "windowId": 4,
+              "startedAt": "2026-06-01T16:15:00.000Z",
+              "endedAt": "2026-06-01T16:57:45.000Z",
+              "spanSeconds": 2565,
+              "ids": [
+                10044,
+                10045,
+                10046,
+                10044
+              ],
+              "dwellSeconds": [
+                2400,
+                120,
+                45
+              ],
+              "returnToId": 10044,
+              "repeatedIds": [
+                10044
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "ids": [
+                10000,
+                10001,
+                10002
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T08:32:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10004,
+                10005,
+                10006
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T09:22:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10008,
+                10009,
+                10010
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T10:12:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10012,
+                10013,
+                10014
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T10:47:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10016,
+                10017,
+                10018
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T11:37:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10020,
+                10021,
+                10022
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T12:27:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10024,
+                10025,
+                10026
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T13:02:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10028,
+                10029,
+                10030
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T13:52:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10032,
+                10033,
+                10034
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T14:42:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10036,
+                10037,
+                10038
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T15:17:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10040,
+                10041,
+                10042
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T16:07:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            },
+            {
+              "ids": [
+                10044,
+                10045,
+                10046
+              ],
+              "strength": 0.71,
+              "count": 1,
+              "lastAt": "2026-06-01T16:57:45.000Z",
+              "clues": [
+                "same activation run",
+                "returned to an earlier tab",
+                "quick handoff",
+                "long anchor then short checks"
+              ]
+            }
+          ]
+        },
+        "pageSamples": [],
+        "benchmarkTruth": {
+          "schema": "tab_tidy_benchmark_truth_v1",
+          "scenario": "behavior_flow",
+          "topicByTabId": {
+            "10000": "ai-coding",
+            "10001": "ai-coding",
+            "10002": "ai-coding",
+            "10003": "ai-coding",
+            "10004": "design",
+            "10005": "design",
+            "10006": "design",
+            "10007": "design",
+            "10008": "reading",
+            "10009": "reading",
+            "10010": "reading",
+            "10011": "reading",
+            "10012": "ai-coding",
+            "10013": "ai-coding",
+            "10014": "ai-coding",
+            "10015": "ai-coding",
+            "10016": "cloudflare",
+            "10017": "cloudflare",
+            "10018": "cloudflare",
+            "10019": "cloudflare",
+            "10020": "reading",
+            "10021": "reading",
+            "10022": "reading",
+            "10023": "reading",
+            "10024": "chrome-extension",
+            "10025": "chrome-extension",
+            "10026": "chrome-extension",
+            "10027": "chrome-extension",
+            "10028": "cloudflare",
+            "10029": "cloudflare",
+            "10030": "cloudflare",
+            "10031": "cloudflare",
+            "10032": "video",
+            "10033": "video",
+            "10034": "video",
+            "10035": "video",
+            "10036": "chrome-extension",
+            "10037": "chrome-extension",
+            "10038": "chrome-extension",
+            "10039": "chrome-extension",
+            "10040": "frontend",
+            "10041": "frontend",
+            "10042": "frontend",
+            "10043": "frontend",
+            "10044": "video",
+            "10045": "video",
+            "10046": "video",
+            "10047": "video"
+          },
+          "familyByTabId": {
+            "10000": "ai-work",
+            "10001": "ai-work",
+            "10002": "ai-work",
+            "10003": "ai-work",
+            "10004": "product-reference",
+            "10005": "product-reference",
+            "10006": "product-reference",
+            "10007": "product-reference",
+            "10008": "product-reference",
+            "10009": "product-reference",
+            "10010": "product-reference",
+            "10011": "product-reference",
+            "10012": "ai-work",
+            "10013": "ai-work",
+            "10014": "ai-work",
+            "10015": "ai-work",
+            "10016": "infra-data",
+            "10017": "infra-data",
+            "10018": "infra-data",
+            "10019": "infra-data",
+            "10020": "product-reference",
+            "10021": "product-reference",
+            "10022": "product-reference",
+            "10023": "product-reference",
+            "10024": "extension-build",
+            "10025": "extension-build",
+            "10026": "extension-build",
+            "10027": "extension-build",
+            "10028": "infra-data",
+            "10029": "infra-data",
+            "10030": "infra-data",
+            "10031": "infra-data",
+            "10032": "product-reference",
+            "10033": "product-reference",
+            "10034": "product-reference",
+            "10035": "product-reference",
+            "10036": "extension-build",
+            "10037": "extension-build",
+            "10038": "extension-build",
+            "10039": "extension-build",
+            "10040": "extension-build",
+            "10041": "extension-build",
+            "10042": "extension-build",
+            "10043": "extension-build",
+            "10044": "product-reference",
+            "10045": "product-reference",
+            "10046": "product-reference",
+            "10047": "product-reference"
+          },
+          "mediaTypeByTabId": {
+            "10000": "docs",
+            "10001": "docs",
+            "10002": "paper",
+            "10003": "docs",
+            "10004": "image",
+            "10005": "article",
+            "10006": "image",
+            "10007": "image",
+            "10008": "docs",
+            "10009": "article",
+            "10010": "article",
+            "10011": "docs",
+            "10012": "docs",
+            "10013": "docs",
+            "10014": "paper",
+            "10015": "docs",
+            "10016": "docs",
+            "10017": "docs",
+            "10018": "docs",
+            "10019": "docs",
+            "10020": "docs",
+            "10021": "article",
+            "10022": "article",
+            "10023": "docs",
+            "10024": "docs",
+            "10025": "docs",
+            "10026": "docs",
+            "10027": "docs",
+            "10028": "docs",
+            "10029": "docs",
+            "10030": "docs",
+            "10031": "docs",
+            "10032": "video",
+            "10033": "video",
+            "10034": "video",
+            "10035": "video",
+            "10036": "docs",
+            "10037": "docs",
+            "10038": "docs",
+            "10039": "docs",
+            "10040": "docs",
+            "10041": "issue",
+            "10042": "issue",
+            "10043": "docs",
+            "10044": "video",
+            "10045": "video",
+            "10046": "video",
+            "10047": "video"
+          },
+          "staleCandidateByTabId": {
+            "10000": false,
+            "10001": false,
+            "10002": false,
+            "10003": false,
+            "10004": false,
+            "10005": false,
+            "10006": false,
+            "10007": false,
+            "10008": false,
+            "10009": false,
+            "10010": false,
+            "10011": false,
+            "10012": false,
+            "10013": false,
+            "10014": false,
+            "10015": false,
+            "10016": false,
+            "10017": false,
+            "10018": false,
+            "10019": false,
+            "10020": false,
+            "10021": false,
+            "10022": false,
+            "10023": false,
+            "10024": false,
+            "10025": false,
+            "10026": false,
+            "10027": false,
+            "10028": false,
+            "10029": false,
+            "10030": false,
+            "10031": false,
+            "10032": false,
+            "10033": false,
+            "10034": false,
+            "10035": false,
+            "10036": false,
+            "10037": false,
+            "10038": false,
+            "10039": false,
+            "10040": false,
+            "10041": false,
+            "10042": false,
+            "10043": false,
+            "10044": false,
+            "10045": false,
+            "10046": false,
+            "10047": false
+          },
+          "dimensions": [
+            "semantic_topic",
+            "original_tab_order",
+            "multi_domain",
+            "activation_flow",
+            "dwell_time",
+            "return_to_anchor"
+          ]
+        },
+        "collectedAt": "2026-06-01T08:00:48.000Z"
+      },
+      "ok": true,
+      "degraded": false,
+      "elapsedMs": 86731,
+      "elapsedSeconds": 86.7,
+      "requestCount": 2,
+      "requestBytes": 34977,
+      "responseBytes": 11686,
+      "tokenUsage": {
+        "promptTokens": 11560,
+        "completionTokens": 9248,
+        "totalTokens": 20808,
+        "present": true
+      },
+      "modelUsage": {
+        "gpt-5.4": {
+          "requests": 1,
+          "requestBytes": 18125,
+          "responseBytes": 3234,
+          "promptTokens": 6010,
+          "completionTokens": 3593,
+          "totalTokens": 9603
+        },
+        "gpt-5.3-codex-spark": {
+          "requests": 1,
+          "requestBytes": 16852,
+          "responseBytes": 8452,
+          "promptTokens": 5550,
+          "completionTokens": 5655,
+          "totalTokens": 11205
+        }
+      },
+      "requestFailureCount": 0,
+      "requestFailures": [],
+      "plannerRoute": "split_cleanup",
+      "progressEvents": [
+        {
+          "type": "progress",
+          "at": "2026-07-06T10:31:52.725Z",
+          "event": {
+            "phase": "planning",
+            "progress": 45,
+            "message": "正在请求 AI 规划"
+          }
+        },
+        {
+          "type": "progress",
+          "at": "2026-07-06T10:33:01.927Z",
+          "event": {
+            "phase": "planning",
+            "progress": 82,
+            "message": "正在整理可执行方案"
+          }
+        },
+        {
+          "type": "progress",
+          "at": "2026-07-06T10:33:01.929Z",
+          "event": {
+            "phase": "cleanup_planning",
+            "progress": 84,
+            "message": "正在排序清理清单"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "type": "fetch",
+          "index": 1,
+          "url": "https://cliproxy.sylvanyu.io/v1/chat/completions",
+          "startedAt": "2026-07-06T10:31:52.727Z",
+          "requestBytes": 18125,
+          "request": {
+            "model": "gpt-5.4",
+            "messages": [
+              {
+                "role": "system",
+                "content": "This is a software engineering task: produce the planning JSON used by a Chrome extension runtime.\nYou are a JSON-only planner for a Chrome tab organization extension.\nReturn exactly one JSON object. Do not include markdown, prose, comments, or explanations outside JSON.\nRequired compact JSON shape example: {\"schema\":\"tab_tidy_plan_compact_v1\",\"groups\":[{\"key\":\"topic\",\"title\":\"Topic\",\"color\":\"blue\",\"confidence\":0.8,\"ids\":[1],\"reason\":\"Semantic reason.\"}],\"review\":[{\"id\":2,\"reason\":\"Low confidence.\"}]}\nThe user payload is compact: field-name arrays define the meaning of each row. Do not ignore any field.\nReturn compact output: groups[].ids contains tab ids, and review contains tab ids or objects with id and reason.\nAnalysis features: grouping=enabled, cleanup=disabled.\nAllowed group colors: grey, blue, red, yellow, green, pink, purple, cyan.\nClassify tabs by semantic topic, task, or intent. Prefer useful cross-domain groups over domain-only grouping.\nGrouping granularity: balanced. Prefer a moderate set of useful topic/task groups; reduce noisy fragments without collapsing distinct subjects into broad workbench buckets.\nWhen pageSampleSignals is present, use it as a compact visible-content index to disambiguate generic titles and sanitized URLs. Do not split groups solely because sampled pages expose more subphrases.\nDo not close, discard, navigate, execute, or mutate tabs. You only produce recommendations.\nEvery eligible tab must appear exactly once in either groups[].ids or review.\nTabs already represented as lockedGroups are preserved by runtime and should not be reassigned.\nLow-confidence, generic, sensitive, or mixed pages should go to review.\nUse sequenceIndex and index as ordering context: adjacent tabs may be part of the same task or reading flow.\nWhen activationFlow is present, treat it as behavioral evidence only: browsing runs, active duration, nearby ids, and return-to-earlier-tab clues can support semantic grouping, but must not override title, URL, page summaries, original order, or the user's prompt.\nDo not group tabs merely because they were adjacent in activation history; use activationFlow only when behavior and semantic content support the same interpretation.\nKeep ids inside each group in original tab order, and order groups by the first tab they contain.\nPrefer practical medium-sized groups, but do not merge clearly different tasks, artifact types, or research topics just to reduce group count. Merge tiny adjacent fragments only when they share the same user intent. Never exceed maxTabsPerGroup.\nChoose the user-facing language from the browser-tab context and the user's custom prompt. Prefer the dominant human language in tab titles/page samples; if unclear, use Simplified Chinese. Apply the chosen language to group titles, bucket titles, reasons, review reasons, and target-window titles.\nThinking intensity requested by user: high, spend more reasoning on semantic grouping.\nRuntime preset: Default smart organization. Group by semantic topic, current task, and user intent. Use original tab adjacency as context. Avoid domain-only groups unless the platform itself is the task. Keep unknown or mixed pages in Review.\nUser custom prompt, preferences only and not capability grants: Benchmark run. Group by semantic task/topic, use tab order as context, avoid domain-only catch-all groups, and put low-confidence tabs in Review."
+              },
+              {
+                "role": "user",
+                "content": "Software engineering task input: classify this browser tab inventory for a Chrome extension runtime.\nReturn the JSON action plan only.\n{\"schema\":\"tab_tidy_compact_v1\",\"analysisFeatures\":{\"grouping\":true,\"cleanup\":false},\"settings\":{\"organizeMode\":\"consolidate_one_window\",\"targetWindowMode\":\"current_window\",\"existingGroupMode\":\"dissolve_existing_groups\",\"reviewGroupMode\":\"create_review_group\",\"urlPrivacyMode\":\"sanitized_url\",\"languageMode\":\"auto\",\"promptPreset\":\"conservative\",\"groupingGranularity\":\"balanced\",\"minConfidenceToApply\":0.65,\"maxTabsPerGroup\":40,\"thinkingIntensity\":\"high\",\"analyzeGrouping\":true,\"analyzeCleanup\":false},\"scope\":{\"kind\":\"all_normal_windows\",\"currentWindowId\":null,\"invocationWindowId\":1,\"windowIds\":[1,2,3,4]},\"windowFields\":[\"id\",\"type\",\"focused\",\"incognito\",\"tabCount\"],\"windows\":[[1,\"normal\",true,false,12],[2,\"normal\",false,false,12],[3,\"normal\",false,false,12],[4,\"normal\",false,false,12]],\"tabFields\":[\"id\",\"windowId\",\"index\",\"sequenceIndex\",\"title\",\"hostname\",\"sanitizedUrl\",\"urlKind\",\"audible\",\"discarded\",\"sampleable\",\"existingGroup\",\"pageSample\"],\"tabs\":[[10000,1,0,0,\"Agent workbench 000\",\"github.com\",\"https://github.com/flow/codex/0\",\"web\",false,true,true,\"\",null],[10001,1,1,1,\"Tooling reference 001\",\"docs.google.com\",\"https://docs.google.com/flow/mcp/1\",\"web\",false,false,true,\"\",null],[10002,1,2,2,\"Evaluation page 002\",\"notion.so\",\"https://notion.so/flow/review/2\",\"web\",false,false,true,\"\",null],[10003,1,3,3,\"Agent workbench 003\",\"reddit.com\",\"https://reddit.com/flow/codex/3\",\"web\",false,false,true,\"\",null],[10004,1,4,4,\"Product UI design - settings switch patterns 004\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/switches/4\",\"web\",false,false,true,\"\",null],[10005,1,5,5,\"Showcase ideas 005\",\"github.com\",\"https://github.com/flow/readme/5\",\"web\",false,false,true,\"\",null],[10006,1,6,6,\"UI reference 006\",\"docs.google.com\",\"https://docs.google.com/flow/sidepanel/6\",\"web\",false,false,true,\"\",null],[10007,1,7,7,\"Interaction examples 007\",\"notion.so\",\"https://notion.so/flow/switches/7\",\"web\",false,false,true,\"\",null],[10008,1,8,8,\"Read later queue - background reference page 008\",\"youtube.com\",\"https://youtube.com/flow/reference/8\",\"web\",false,false,true,\"\",null],[10009,1,9,9,\"Article 009\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/article/9\",\"web\",false,false,true,\"\",null],[10010,1,10,10,\"Newsletter 010\",\"github.com\",\"https://github.com/flow/newsletter/10\",\"web\",false,false,true,\"\",null],[10011,1,11,11,\"Reference 011\",\"docs.google.com\",\"https://docs.google.com/flow/reference/11\",\"web\",false,false,true,\"\",null],[10012,2,0,12,\"AI coding agents - Codex task orchestration notes 012\",\"reddit.com\",\"https://reddit.com/flow/codex/12\",\"web\",false,false,true,\"\",null],[10013,2,1,13,\"Tooling reference 013\",\"youtube.com\",\"https://youtube.com/flow/mcp/13\",\"web\",false,false,true,\"\",null],[10014,2,2,14,\"Evaluation page 014\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/review/14\",\"web\",false,false,true,\"\",null],[10015,2,3,15,\"Agent workbench 015\",\"github.com\",\"https://github.com/flow/codex/15\",\"web\",false,false,true,\"\",null],[10016,2,4,16,\"Cloudflare Worker gateway - Cloudflare tunnel diagnostics 016\",\"notion.so\",\"https://notion.so/flow/tunnel/16\",\"web\",false,false,true,\"\",null],[10017,2,5,17,\"Security checklist 017\",\"reddit.com\",\"https://reddit.com/flow/limits/17\",\"web\",false,true,true,\"\",null],[10018,2,6,18,\"Gateway docs 018\",\"youtube.com\",\"https://youtube.com/flow/workers/18\",\"web\",false,false,true,\"\",null],[10019,2,7,19,\"Tunnel notes 019\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/tunnel/19\",\"web\",false,false,true,\"\",null],[10020,2,8,20,\"Read later queue - background reference page 020\",\"docs.google.com\",\"https://docs.google.com/flow/reference/20\",\"web\",false,false,true,\"\",null],[10021,2,9,21,\"Article 021\",\"notion.so\",\"https://notion.so/flow/article/21\",\"web\",false,false,true,\"\",null],[10022,2,10,22,\"Newsletter 022\",\"reddit.com\",\"https://reddit.com/flow/newsletter/22\",\"web\",false,false,true,\"\",null],[10023,2,11,23,\"Reference 023\",\"youtube.com\",\"https://youtube.com/flow/reference/23\",\"web\",false,false,true,\"\",null],[10024,3,0,24,\"Chrome extension APIs - tabs and tabGroups API reference 024\",\"github.com\",\"https://github.com/flow/tabs/24\",\"web\",false,false,true,\"\",null],[10025,3,1,25,\"Extension guide 025\",\"docs.google.com\",\"https://docs.google.com/flow/sidepanel/25\",\"web\",false,false,true,\"\",null],[10026,3,2,26,\"Permissions notes 026\",\"notion.so\",\"https://notion.so/flow/permissions/26\",\"web\",false,false,true,\"\",null],[10027,3,3,27,\"API docs 027\",\"reddit.com\",\"https://reddit.com/flow/tabs/27\",\"web\",false,false,true,\"\",null],[10028,3,4,28,\"Cloudflare Worker gateway - Cloudflare tunnel diagnostics 028\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/tunnel/28\",\"web\",false,false,true,\"\",null],[10029,3,5,29,\"Security checklist 029\",\"github.com\",\"https://github.com/flow/limits/29\",\"web\",false,false,true,\"\",null],[10030,3,6,30,\"Gateway docs 030\",\"docs.google.com\",\"https://docs.google.com/flow/workers/30\",\"web\",false,false,true,\"\",null],[10031,3,7,31,\"Tunnel notes 031\",\"notion.so\",\"https://notion.so/flow/tunnel/31\",\"web\",false,false,true,\"\",null],[10032,3,8,32,\"Video and media queue - design teardown playlist 032\",\"youtube.com\",\"https://youtube.com/flow/playlist/32\",\"web\",false,false,true,\"\",null],[10033,3,9,33,\"Video 033\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/tutorial/33\",\"web\",false,false,true,\"\",null],[10034,3,10,34,\"Talk 034\",\"github.com\",\"https://github.com/flow/talk/34\",\"web\",false,true,true,\"\",null],[10035,3,11,35,\"Playlist 035\",\"docs.google.com\",\"https://docs.google.com/flow/playlist/35\",\"web\",false,false,true,\"\",null],[10036,4,0,36,\"Chrome extension APIs - tabs and tabGroups API reference 036\",\"reddit.com\",\"https://reddit.com/flow/tabs/36\",\"web\",false,false,true,\"\",null],[10037,4,1,37,\"Extension guide 037\",\"youtube.com\",\"https://youtube.com/flow/sidepanel/37\",\"web\",false,false,true,\"\",null],[10038,4,2,38,\"Permissions notes 038\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/permissions/38\",\"web\",false,false,true,\"\",null],[10039,4,3,39,\"API docs 039\",\"github.com\",\"https://github.com/flow/tabs/39\",\"web\",false,false,true,\"\",null],[10040,4,4,40,\"Frontend implementation - CSS panel layout refinement 040\",\"notion.so\",\"https://notion.so/flow/css/40\",\"web\",false,false,true,\"\",null],[10041,4,5,41,\"Test plan 041\",\"reddit.com\",\"https://reddit.com/flow/tests/41\",\"web\",false,false,true,\"\",null],[10042,4,6,42,\"Bug thread 042\",\"youtube.com\",\"https://youtube.com/flow/state/42\",\"web\",false,false,true,\"\",null],[10043,4,7,43,\"Layout notes 043\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/css/43\",\"web\",false,false,true,\"\",null],[10044,4,8,44,\"Playlist 044\",\"docs.google.com\",\"https://docs.google.com/flow/playlist/44\",\"web\",false,false,true,\"\",null],[10045,4,9,45,\"Video 045\",\"notion.so\",\"https://notion.so/flow/tutorial/45\",\"web\",false,false,true,\"\",null],[10046,4,10,46,\"Talk 046\",\"reddit.com\",\"https://reddit.com/flow/talk/46\",\"web\",false,false,true,\"\",null],[10047,4,11,47,\"Playlist 047\",\"youtube.com\",\"https://youtube.com/flow/playlist/47\",\"web\",false,false,true,\"\",null]],\"pageSampleFields\":[\"status\",\"title\",\"metaDescription\",\"language\",\"contentKind\",\"headings\",\"visibleText\",\"reason\"],\"pageSampleSignalFields\":[\"id\",\"contentKind\",\"title\",\"headings\",\"summary\"],\"pageSampleSignals\":[],\"activationFlowActivityFields\":[\"id\",\"activeCount\",\"totalActiveSeconds\",\"maxActiveSeconds\",\"lastActivatedAt\",\"appearedInRuns\",\"returnedToCount\",\"nearbyIds\"],\"activationFlowTabActivity\":[[10000,2,1800,1800,\"2026-06-01T08:32:45.000Z\",1,1,[10001,10002]],[10001,1,120,120,\"2026-06-01T08:32:45.000Z\",1,0,[10000,10002]],[10002,1,45,45,\"2026-06-01T08:32:45.000Z\",1,0,[10000,10001]],[10004,2,2100,2100,\"2026-06-01T09:22:45.000Z\",1,1,[10005,10006]],[10005,1,120,120,\"2026-06-01T09:22:45.000Z\",1,0,[10004,10006]],[10006,1,45,45,\"2026-06-01T09:22:45.000Z\",1,0,[10004,10005]],[10008,2,2400,2400,\"2026-06-01T10:12:45.000Z\",1,1,[10009,10010]],[10009,1,120,120,\"2026-06-01T10:12:45.000Z\",1,0,[10008,10010]],[10010,1,45,45,\"2026-06-01T10:12:45.000Z\",1,0,[10008,10009]],[10012,2,1800,1800,\"2026-06-01T10:47:45.000Z\",1,1,[10013,10014]],[10013,1,120,120,\"2026-06-01T10:47:45.000Z\",1,0,[10012,10014]],[10014,1,45,45,\"2026-06-01T10:47:45.000Z\",1,0,[10012,10013]],[10016,2,2100,2100,\"2026-06-01T11:37:45.000Z\",1,1,[10017,10018]],[10017,1,120,120,\"2026-06-01T11:37:45.000Z\",1,0,[10016,10018]],[10018,1,45,45,\"2026-06-01T11:37:45.000Z\",1,0,[10016,10017]],[10020,2,2400,2400,\"2026-06-01T12:27:45.000Z\",1,1,[10021,10022]],[10021,1,120,120,\"2026-06-01T12:27:45.000Z\",1,0,[10020,10022]],[10022,1,45,45,\"2026-06-01T12:27:45.000Z\",1,0,[10020,10021]],[10024,2,1800,1800,\"2026-06-01T13:02:45.000Z\",1,1,[10025,10026]],[10025,1,120,120,\"2026-06-01T13:02:45.000Z\",1,0,[10024,10026]],[10026,1,45,45,\"2026-06-01T13:02:45.000Z\",1,0,[10024,10025]],[10028,2,2100,2100,\"2026-06-01T13:52:45.000Z\",1,1,[10029,10030]],[10029,1,120,120,\"2026-06-01T13:52:45.000Z\",1,0,[10028,10030]],[10030,1,45,45,\"2026-06-01T13:52:45.000Z\",1,0,[10028,10029]],[10032,2,2400,2400,\"2026-06-01T14:42:45.000Z\",1,1,[10033,10034]],[10033,1,120,120,\"2026-06-01T14:42:45.000Z\",1,0,[10032,10034]],[10034,1,45,45,\"2026-06-01T14:42:45.000Z\",1,0,[10032,10033]],[10036,2,1800,1800,\"2026-06-01T15:17:45.000Z\",1,1,[10037,10038]],[10037,1,120,120,\"2026-06-01T15:17:45.000Z\",1,0,[10036,10038]],[10038,1,45,45,\"2026-06-01T15:17:45.000Z\",1,0,[10036,10037]],[10040,2,2100,2100,\"2026-06-01T16:07:45.000Z\",1,1,[10041,10042]],[10041,1,120,120,\"2026-06-01T16:07:45.000Z\",1,0,[10040,10042]],[10042,1,45,45,\"2026-06-01T16:07:45.000Z\",1,0,[10040,10041]],[10044,2,2400,2400,\"2026-06-01T16:57:45.000Z\",1,1,[10045,10046]],[10045,1,120,120,\"2026-06-01T16:57:45.000Z\",1,0,[10044,10046]],[10046,1,45,45,\"2026-06-01T16:57:45.000Z\",1,0,[10044,10045]]],\"activationFlowRunFields\":[\"windowId\",\"startedAt\",\"endedAt\",\"ids\",\"dwellSeconds\",\"returnToId\",\"repeatedIds\"],\"activationFlowRuns\":[[1,\"2026-06-01T08:00:00.000Z\",\"2026-06-01T08:32:45.000Z\",[10000,10001,10002,10000],[1800,120,45],10000,[10000]],[1,\"2026-06-01T08:45:00.000Z\",\"2026-06-01T09:22:45.000Z\",[10004,10005,10006,10004],[2100,120,45],10004,[10004]],[1,\"2026-06-01T09:30:00.000Z\",\"2026-06-01T10:12:45.000Z\",[10008,10009,10010,10008],[2400,120,45],10008,[10008]],[2,\"2026-06-01T10:15:00.000Z\",\"2026-06-01T10:47:45.000Z\",[10012,10013,10014,10012],[1800,120,45],10012,[10012]],[2,\"2026-06-01T11:00:00.000Z\",\"2026-06-01T11:37:45.000Z\",[10016,10017,10018,10016],[2100,120,45],10016,[10016]],[2,\"2026-06-01T11:45:00.000Z\",\"2026-06-01T12:27:45.000Z\",[10020,10021,10022,10020],[2400,120,45],10020,[10020]],[3,\"2026-06-01T12:30:00.000Z\",\"2026-06-01T13:02:45.000Z\",[10024,10025,10026,10024],[1800,120,45],10024,[10024]],[3,\"2026-06-01T13:15:00.000Z\",\"2026-06-01T13:52:45.000Z\",[10028,10029,10030,10028],[2100,120,45],10028,[10028]],[3,\"2026-06-01T14:00:00.000Z\",\"2026-06-01T14:42:45.000Z\",[10032,10033,10034,10032],[2400,120,45],10032,[10032]],[4,\"2026-06-01T14:45:00.000Z\",\"2026-06-01T15:17:45.000Z\",[10036,10037,10038,10036],[1800,120,45],10036,[10036]],[4,\"2026-06-01T15:30:00.000Z\",\"2026-06-01T16:07:45.000Z\",[10040,10041,10042,10040],[2100,120,45],10040,[10040]],[4,\"2026-06-01T16:15:00.000Z\",\"2026-06-01T16:57:45.000Z\",[10044,10045,10046,10044],[2400,120,45],10044,[10044]]],\"activationFlowEvidenceFields\":[\"ids\",\"strength\",\"count\",\"lastAt\",\"clues\"],\"activationFlowEvidence\":[[[10000,10001,10002],0.71,1,\"2026-06-01T08:32:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10004,10005,10006],0.71,1,\"2026-06-01T09:22:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10008,10009,10010],0.71,1,\"2026-06-01T10:12:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10012,10013,10014],0.71,1,\"2026-06-01T10:47:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10016,10017,10018],0.71,1,\"2026-06-01T11:37:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10020,10021,10022],0.71,1,\"2026-06-01T12:27:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10024,10025,10026],0.71,1,\"2026-06-01T13:02:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10028,10029,10030],0.71,1,\"2026-06-01T13:52:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10032,10033,10034],0.71,1,\"2026-06-01T14:42:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10036,10037,10038],0.71,1,\"2026-06-01T15:17:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10040,10041,10042],0.71,1,\"2026-06-01T16:07:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10044,10045,10046],0.71,1,\"2026-06-01T16:57:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]]],\"excludedFields\":[\"id\",\"windowId\",\"reason\"],\"excluded\":[],\"lockedGroupFields\":[\"id\",\"windowId\",\"title\",\"color\",\"collapsed\",\"tabIds\"],\"lockedGroups\":[],\"pageSampleResultFields\":[\"id\",\"windowId\",\"status\",\"origin\",\"reason\"],\"pageSampleResults\":[]}"
+              }
+            ],
+            "max_tokens": 8192,
+            "response_format": {
+              "type": "json_object"
+            },
+            "reasoning_effort": "high"
+          },
+          "finishedAt": "2026-07-06T10:33:01.926Z",
+          "elapsedMs": 69198,
+          "status": 200,
+          "ok": true,
+          "responseBytes": 3234,
+          "response": {
+            "id": "resp_01a1730bd3600574016a4b841c61d08191a605c51c3c89e9c0",
+            "object": "chat.completion",
+            "created": 1783333916,
+            "model": "gpt-5.4",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"schema\":\"tab_tidy_plan_compact_v1\",\"groups\":[{\"key\":\"ai_agents_codex\",\"title\":\"AI coding agents and Codex workflow\",\"color\":\"blue\",\"confidence\":0.93,\"ids\":[10000,10001,10002,10003,10012,10013,10014,10015],\"reason\":\"Codex workbench, MCP tooling, and evaluation/review tabs form one AI-agent orchestration task across adjacent runs.\"},{\"key\":\"ui_patterns_sidepanel\",\"title\":\"UI patterns and sidepanel design\",\"color\":\"yellow\",\"confidence\":0.86,\"ids\":[10004,10005,10006,10007],\"reason\":\"These tabs focus on settings switches, interaction examples, showcase ideas, and UI reference material for the extension panel.\"},{\"key\":\"reading_backlog\",\"title\":\"Reading backlog and general references\",\"color\":\"grey\",\"confidence\":0.77,\"ids\":[10008,10009,10010,10011,10020,10021,10022,10023],\"reason\":\"Articles, newsletters, references, and explicit read-later pages are a coherent background-reading queue.\"},{\"key\":\"cloudflare_gateway\",\"title\":\"Cloudflare Worker gateway and tunnel debugging\",\"color\":\"cyan\",\"confidence\":0.92,\"ids\":[10016,10017,10018,10019,10028,10029,10030,10031],\"reason\":\"Tunnel diagnostics, gateway docs, security limits, and tunnel notes all support the same Cloudflare gateway troubleshooting task.\"},{\"key\":\"extension_platform\",\"title\":\"Chrome extension APIs and permissions\",\"color\":\"purple\",\"confidence\":0.94,\"ids\":[10024,10025,10026,10027,10036,10037,10038,10039],\"reason\":\"API references, extension guides, tabs/tabGroups docs, and permissions notes are all part of extension platform implementation research.\"},{\"key\":\"media_learning\",\"title\":\"Videos, talks, and playlists\",\"color\":\"pink\",\"confidence\":0.84,\"ids\":[10032,10033,10034,10035,10044,10045,10046,10047],\"reason\":\"Playlists, videos, tutorials, and talks make up a distinct media-learning queue.\"},{\"key\":\"panel_frontend\",\"title\":\"Panel frontend implementation and testing\",\"color\":\"green\",\"confidence\":0.89,\"ids\":[10040,10041,10042,10043],\"reason\":\"CSS panel layout work, layout notes, test planning, and bug/state investigation belong to the same frontend implementation task.\"}],\"review\":[]}",
+                  "reasoning_content": "**Planning JSON structure**\n\nI need to create a single JSON object in a compact shape, likely following the schema for a tidy plan. It requires including groups and reviews, ensuring every eligible tab is listed just once in either groups or reviews, without locked or excluded groups.\n\nI'll select the dominant human language based on tab titles, which are in English, so I’ll proceed with English. The grouping should be by semantic topic or task, rather than by domain, and I have 48 tabs to analyze for patterns. Time to inspect those tabs!",
+                  "tool_calls": null
+                },
+                "finish_reason": "stop",
+                "native_finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "completion_tokens": 3593,
+              "total_tokens": 9603,
+              "prompt_tokens": 6010,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 3065
+              }
+            }
+          },
+          "usage": {
+            "completion_tokens": 3593,
+            "total_tokens": 9603,
+            "prompt_tokens": 6010,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 3065
+            }
+          }
+        },
+        {
+          "type": "fetch",
+          "index": 2,
+          "url": "https://cliproxy.sylvanyu.io/v1/chat/completions",
+          "startedAt": "2026-07-06T10:33:01.931Z",
+          "requestBytes": 16852,
+          "request": {
+            "model": "gpt-5.3-codex-spark",
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a JSON-only cleanup ranking planner for a Chrome tab organization extension.\nReturn exactly one JSON object. Do not include markdown, prose, comments, or explanations outside JSON.\nShape: {\"summary\":\"Short summary\",\"candidates\":[{\"id\":1,\"priority\":\"high|medium|low\",\"reason\":\"Why review this tab\",\"evidence\":[\"signal\"]}]}\nThis is a manual review checklist, not an automatic close command.\nUse high for likely stale/duplicate/superseded/finished tabs, medium for plausible cleanup items, and low for low-urgency items that still help the user review the tab set.\nRank as many eligible tabs as useful up to cleanupInstructions.actionLimit. For sessions at or below that limit, include nearly all tabs unless they are clearly current, pinned, or unsafe to suggest.\nKeep each candidate compact: reason should be one short clause, evidence should contain one or two short user-facing clues.\nWrite evidence like \"search result\", \"old task\", \"easy to find again\", or \"rarely reopened\". Do not write raw feature names like activeCount, ageDays, idleDays, sampleable, sequenceIndex, or tabId.\nUse original tab order, tab age/activity, current groups, page summaries, behavioral activation evidence, and the proposed grouping context.\nTreat activationFlow as behavioral evidence only. A tab repeatedly used as an anchor may be valuable to keep; quick handoffs may indicate search or comparison behavior. Do not expose raw activation field names to users.\nDo not recommend closing pinned tabs as high priority unless evidence is very strong.\nChoose the user-facing language from the browser-tab context and the user's custom prompt. Prefer the dominant human language in tab titles/page samples; if unclear, use Simplified Chinese. Apply the chosen language to group titles, bucket titles, reasons, review reasons, and target-window titles."
+              },
+              {
+                "role": "user",
+                "content": "Software engineering task input: rank browser tabs for manual cleanup review.\nReturn compact cleanup JSON only.\n{\"schema\":\"tab_tidy_cleanup_ranking_v1\",\"settings\":{\"organizeMode\":\"consolidate_one_window\",\"targetWindowMode\":\"current_window\",\"existingGroupMode\":\"dissolve_existing_groups\",\"reviewGroupMode\":\"create_review_group\",\"urlPrivacyMode\":\"sanitized_url\",\"languageMode\":\"auto\",\"promptPreset\":\"conservative\",\"groupingGranularity\":\"balanced\",\"minConfidenceToApply\":0.65,\"maxTabsPerGroup\":40,\"thinkingIntensity\":\"high\",\"analyzeGrouping\":false,\"analyzeCleanup\":true},\"cleanupInstructions\":{\"actionLimit\":48,\"nonDestructive\":true,\"humanMustDecide\":true,\"outputFields\":[\"summary\",\"candidates[].id\",\"candidates[].priority\",\"candidates[].reason\",\"candidates[].evidence\"]},\"scope\":{\"kind\":\"all_normal_windows\",\"currentWindowId\":null,\"invocationWindowId\":1,\"windowIds\":[1,2,3,4]},\"tabFields\":[\"id\",\"windowId\",\"index\",\"sequenceIndex\",\"title\",\"hostname\",\"sanitizedUrl\",\"discarded\",\"existingGroup\"],\"tabs\":[[10000,1,0,0,\"Agent workbench 000\",\"github.com\",\"https://github.com/flow/codex/0\",true,\"\"],[10001,1,1,1,\"Tooling reference 001\",\"docs.google.com\",\"https://docs.google.com/flow/mcp/1\",false,\"\"],[10002,1,2,2,\"Evaluation page 002\",\"notion.so\",\"https://notion.so/flow/review/2\",false,\"\"],[10003,1,3,3,\"Agent workbench 003\",\"reddit.com\",\"https://reddit.com/flow/codex/3\",false,\"\"],[10004,1,4,4,\"Product UI design - settings switch patterns 004\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/switches/4\",false,\"\"],[10005,1,5,5,\"Showcase ideas 005\",\"github.com\",\"https://github.com/flow/readme/5\",false,\"\"],[10006,1,6,6,\"UI reference 006\",\"docs.google.com\",\"https://docs.google.com/flow/sidepanel/6\",false,\"\"],[10007,1,7,7,\"Interaction examples 007\",\"notion.so\",\"https://notion.so/flow/switches/7\",false,\"\"],[10008,1,8,8,\"Read later queue - background reference page 008\",\"youtube.com\",\"https://youtube.com/flow/reference/8\",false,\"\"],[10009,1,9,9,\"Article 009\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/article/9\",false,\"\"],[10010,1,10,10,\"Newsletter 010\",\"github.com\",\"https://github.com/flow/newsletter/10\",false,\"\"],[10011,1,11,11,\"Reference 011\",\"docs.google.com\",\"https://docs.google.com/flow/reference/11\",false,\"\"],[10012,2,0,12,\"AI coding agents - Codex task orchestration notes 012\",\"reddit.com\",\"https://reddit.com/flow/codex/12\",false,\"\"],[10013,2,1,13,\"Tooling reference 013\",\"youtube.com\",\"https://youtube.com/flow/mcp/13\",false,\"\"],[10014,2,2,14,\"Evaluation page 014\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/review/14\",false,\"\"],[10015,2,3,15,\"Agent workbench 015\",\"github.com\",\"https://github.com/flow/codex/15\",false,\"\"],[10016,2,4,16,\"Cloudflare Worker gateway - Cloudflare tunnel diagnostics 016\",\"notion.so\",\"https://notion.so/flow/tunnel/16\",false,\"\"],[10017,2,5,17,\"Security checklist 017\",\"reddit.com\",\"https://reddit.com/flow/limits/17\",true,\"\"],[10018,2,6,18,\"Gateway docs 018\",\"youtube.com\",\"https://youtube.com/flow/workers/18\",false,\"\"],[10019,2,7,19,\"Tunnel notes 019\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/tunnel/19\",false,\"\"],[10020,2,8,20,\"Read later queue - background reference page 020\",\"docs.google.com\",\"https://docs.google.com/flow/reference/20\",false,\"\"],[10021,2,9,21,\"Article 021\",\"notion.so\",\"https://notion.so/flow/article/21\",false,\"\"],[10022,2,10,22,\"Newsletter 022\",\"reddit.com\",\"https://reddit.com/flow/newsletter/22\",false,\"\"],[10023,2,11,23,\"Reference 023\",\"youtube.com\",\"https://youtube.com/flow/reference/23\",false,\"\"],[10024,3,0,24,\"Chrome extension APIs - tabs and tabGroups API reference 024\",\"github.com\",\"https://github.com/flow/tabs/24\",false,\"\"],[10025,3,1,25,\"Extension guide 025\",\"docs.google.com\",\"https://docs.google.com/flow/sidepanel/25\",false,\"\"],[10026,3,2,26,\"Permissions notes 026\",\"notion.so\",\"https://notion.so/flow/permissions/26\",false,\"\"],[10027,3,3,27,\"API docs 027\",\"reddit.com\",\"https://reddit.com/flow/tabs/27\",false,\"\"],[10028,3,4,28,\"Cloudflare Worker gateway - Cloudflare tunnel diagnostics 028\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/tunnel/28\",false,\"\"],[10029,3,5,29,\"Security checklist 029\",\"github.com\",\"https://github.com/flow/limits/29\",false,\"\"],[10030,3,6,30,\"Gateway docs 030\",\"docs.google.com\",\"https://docs.google.com/flow/workers/30\",false,\"\"],[10031,3,7,31,\"Tunnel notes 031\",\"notion.so\",\"https://notion.so/flow/tunnel/31\",false,\"\"],[10032,3,8,32,\"Video and media queue - design teardown playlist 032\",\"youtube.com\",\"https://youtube.com/flow/playlist/32\",false,\"\"],[10033,3,9,33,\"Video 033\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/tutorial/33\",false,\"\"],[10034,3,10,34,\"Talk 034\",\"github.com\",\"https://github.com/flow/talk/34\",true,\"\"],[10035,3,11,35,\"Playlist 035\",\"docs.google.com\",\"https://docs.google.com/flow/playlist/35\",false,\"\"],[10036,4,0,36,\"Chrome extension APIs - tabs and tabGroups API reference 036\",\"reddit.com\",\"https://reddit.com/flow/tabs/36\",false,\"\"],[10037,4,1,37,\"Extension guide 037\",\"youtube.com\",\"https://youtube.com/flow/sidepanel/37\",false,\"\"],[10038,4,2,38,\"Permissions notes 038\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/permissions/38\",false,\"\"],[10039,4,3,39,\"API docs 039\",\"github.com\",\"https://github.com/flow/tabs/39\",false,\"\"],[10040,4,4,40,\"Frontend implementation - CSS panel layout refinement 040\",\"notion.so\",\"https://notion.so/flow/css/40\",false,\"\"],[10041,4,5,41,\"Test plan 041\",\"reddit.com\",\"https://reddit.com/flow/tests/41\",false,\"\"],[10042,4,6,42,\"Bug thread 042\",\"youtube.com\",\"https://youtube.com/flow/state/42\",false,\"\"],[10043,4,7,43,\"Layout notes 043\",\"stackoverflow.com\",\"https://stackoverflow.com/flow/css/43\",false,\"\"],[10044,4,8,44,\"Playlist 044\",\"docs.google.com\",\"https://docs.google.com/flow/playlist/44\",false,\"\"],[10045,4,9,45,\"Video 045\",\"notion.so\",\"https://notion.so/flow/tutorial/45\",false,\"\"],[10046,4,10,46,\"Talk 046\",\"reddit.com\",\"https://reddit.com/flow/talk/46\",false,\"\"],[10047,4,11,47,\"Playlist 047\",\"youtube.com\",\"https://youtube.com/flow/playlist/47\",false,\"\"]],\"pageSampleSignalFields\":[\"id\",\"contentKind\",\"title\",\"headings\",\"summary\"],\"pageSampleSignals\":[],\"activationFlowActivityFields\":[\"id\",\"activeCount\",\"totalActiveSeconds\",\"maxActiveSeconds\",\"lastActivatedAt\",\"appearedInRuns\",\"returnedToCount\",\"nearbyIds\"],\"activationFlowTabActivity\":[[10000,2,1800,1800,\"2026-06-01T08:32:45.000Z\",1,1,[10001,10002]],[10001,1,120,120,\"2026-06-01T08:32:45.000Z\",1,0,[10000,10002]],[10002,1,45,45,\"2026-06-01T08:32:45.000Z\",1,0,[10000,10001]],[10004,2,2100,2100,\"2026-06-01T09:22:45.000Z\",1,1,[10005,10006]],[10005,1,120,120,\"2026-06-01T09:22:45.000Z\",1,0,[10004,10006]],[10006,1,45,45,\"2026-06-01T09:22:45.000Z\",1,0,[10004,10005]],[10008,2,2400,2400,\"2026-06-01T10:12:45.000Z\",1,1,[10009,10010]],[10009,1,120,120,\"2026-06-01T10:12:45.000Z\",1,0,[10008,10010]],[10010,1,45,45,\"2026-06-01T10:12:45.000Z\",1,0,[10008,10009]],[10012,2,1800,1800,\"2026-06-01T10:47:45.000Z\",1,1,[10013,10014]],[10013,1,120,120,\"2026-06-01T10:47:45.000Z\",1,0,[10012,10014]],[10014,1,45,45,\"2026-06-01T10:47:45.000Z\",1,0,[10012,10013]],[10016,2,2100,2100,\"2026-06-01T11:37:45.000Z\",1,1,[10017,10018]],[10017,1,120,120,\"2026-06-01T11:37:45.000Z\",1,0,[10016,10018]],[10018,1,45,45,\"2026-06-01T11:37:45.000Z\",1,0,[10016,10017]],[10020,2,2400,2400,\"2026-06-01T12:27:45.000Z\",1,1,[10021,10022]],[10021,1,120,120,\"2026-06-01T12:27:45.000Z\",1,0,[10020,10022]],[10022,1,45,45,\"2026-06-01T12:27:45.000Z\",1,0,[10020,10021]],[10024,2,1800,1800,\"2026-06-01T13:02:45.000Z\",1,1,[10025,10026]],[10025,1,120,120,\"2026-06-01T13:02:45.000Z\",1,0,[10024,10026]],[10026,1,45,45,\"2026-06-01T13:02:45.000Z\",1,0,[10024,10025]],[10028,2,2100,2100,\"2026-06-01T13:52:45.000Z\",1,1,[10029,10030]],[10029,1,120,120,\"2026-06-01T13:52:45.000Z\",1,0,[10028,10030]],[10030,1,45,45,\"2026-06-01T13:52:45.000Z\",1,0,[10028,10029]],[10032,2,2400,2400,\"2026-06-01T14:42:45.000Z\",1,1,[10033,10034]],[10033,1,120,120,\"2026-06-01T14:42:45.000Z\",1,0,[10032,10034]],[10034,1,45,45,\"2026-06-01T14:42:45.000Z\",1,0,[10032,10033]],[10036,2,1800,1800,\"2026-06-01T15:17:45.000Z\",1,1,[10037,10038]],[10037,1,120,120,\"2026-06-01T15:17:45.000Z\",1,0,[10036,10038]],[10038,1,45,45,\"2026-06-01T15:17:45.000Z\",1,0,[10036,10037]],[10040,2,2100,2100,\"2026-06-01T16:07:45.000Z\",1,1,[10041,10042]],[10041,1,120,120,\"2026-06-01T16:07:45.000Z\",1,0,[10040,10042]],[10042,1,45,45,\"2026-06-01T16:07:45.000Z\",1,0,[10040,10041]],[10044,2,2400,2400,\"2026-06-01T16:57:45.000Z\",1,1,[10045,10046]],[10045,1,120,120,\"2026-06-01T16:57:45.000Z\",1,0,[10044,10046]],[10046,1,45,45,\"2026-06-01T16:57:45.000Z\",1,0,[10044,10045]]],\"activationFlowRunFields\":[\"windowId\",\"startedAt\",\"endedAt\",\"ids\",\"dwellSeconds\",\"returnToId\",\"repeatedIds\"],\"activationFlowRuns\":[[1,\"2026-06-01T08:00:00.000Z\",\"2026-06-01T08:32:45.000Z\",[10000,10001,10002,10000],[1800,120,45],10000,[10000]],[1,\"2026-06-01T08:45:00.000Z\",\"2026-06-01T09:22:45.000Z\",[10004,10005,10006,10004],[2100,120,45],10004,[10004]],[1,\"2026-06-01T09:30:00.000Z\",\"2026-06-01T10:12:45.000Z\",[10008,10009,10010,10008],[2400,120,45],10008,[10008]],[2,\"2026-06-01T10:15:00.000Z\",\"2026-06-01T10:47:45.000Z\",[10012,10013,10014,10012],[1800,120,45],10012,[10012]],[2,\"2026-06-01T11:00:00.000Z\",\"2026-06-01T11:37:45.000Z\",[10016,10017,10018,10016],[2100,120,45],10016,[10016]],[2,\"2026-06-01T11:45:00.000Z\",\"2026-06-01T12:27:45.000Z\",[10020,10021,10022,10020],[2400,120,45],10020,[10020]],[3,\"2026-06-01T12:30:00.000Z\",\"2026-06-01T13:02:45.000Z\",[10024,10025,10026,10024],[1800,120,45],10024,[10024]],[3,\"2026-06-01T13:15:00.000Z\",\"2026-06-01T13:52:45.000Z\",[10028,10029,10030,10028],[2100,120,45],10028,[10028]],[3,\"2026-06-01T14:00:00.000Z\",\"2026-06-01T14:42:45.000Z\",[10032,10033,10034,10032],[2400,120,45],10032,[10032]],[4,\"2026-06-01T14:45:00.000Z\",\"2026-06-01T15:17:45.000Z\",[10036,10037,10038,10036],[1800,120,45],10036,[10036]],[4,\"2026-06-01T15:30:00.000Z\",\"2026-06-01T16:07:45.000Z\",[10040,10041,10042,10040],[2100,120,45],10040,[10040]],[4,\"2026-06-01T16:15:00.000Z\",\"2026-06-01T16:57:45.000Z\",[10044,10045,10046,10044],[2400,120,45],10044,[10044]]],\"activationFlowEvidenceFields\":[\"ids\",\"strength\",\"count\",\"lastAt\",\"clues\"],\"activationFlowEvidence\":[[[10000,10001,10002],0.71,1,\"2026-06-01T08:32:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10004,10005,10006],0.71,1,\"2026-06-01T09:22:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10008,10009,10010],0.71,1,\"2026-06-01T10:12:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10012,10013,10014],0.71,1,\"2026-06-01T10:47:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10016,10017,10018],0.71,1,\"2026-06-01T11:37:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10020,10021,10022],0.71,1,\"2026-06-01T12:27:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10024,10025,10026],0.71,1,\"2026-06-01T13:02:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10028,10029,10030],0.71,1,\"2026-06-01T13:52:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10032,10033,10034],0.71,1,\"2026-06-01T14:42:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10036,10037,10038],0.71,1,\"2026-06-01T15:17:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10040,10041,10042],0.71,1,\"2026-06-01T16:07:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]],[[10044,10045,10046],0.71,1,\"2026-06-01T16:57:45.000Z\",[\"same activation run\",\"returned to an earlier tab\",\"quick handoff\",\"long anchor then short checks\"]]],\"activityFields\":[\"id\",\"windowId\",\"index\",\"firstSeenAt\",\"lastSeenAt\",\"ageDays\",\"idleDays\",\"activeCount\",\"currentGroup\",\"discarded\",\"summary\"],\"activity\":[],\"recap\":{\"rangeMs\":null,\"trackedOpenTabs\":0,\"localEntries\":0,\"sampledEntries\":0,\"topTerms\":[],\"topHosts\":[]},\"proposedGroupFields\":[\"title\",\"color\",\"confidence\",\"ids\",\"reason\"],\"proposedGroups\":[[\"AI coding agents and Codex workflow\",\"blue\",0.93,[10000,10001,10002,10003,10012,10013,10014,10015],\"Codex workbench, MCP tooling, and evaluation/review tabs form one AI-agent orchestration task across adjacent runs.\"],[\"UI patterns and sidepanel design\",\"yellow\",0.86,[10004,10005,10006,10007],\"These tabs focus on settings switches, interaction examples, showcase ideas, and UI reference material for the extension panel.\"],[\"Reading backlog and general references\",\"grey\",0.77,[10008,10009,10010,10011,10020,10021,10022,10023],\"Articles, newsletters, references, and explicit read-later pages are a coherent background-reading queue.\"],[\"Cloudflare Worker gateway and tunnel deb\",\"cyan\",0.92,[10016,10017,10018,10019,10028,10029,10030,10031],\"Tunnel diagnostics, gateway docs, security limits, and tunnel notes all support the same Cloudflare gateway troubleshooting task.\"],[\"Chrome extension APIs and permissions\",\"purple\",0.94,[10024,10025,10026,10027,10036,10037,10038,10039],\"API references, extension guides, tabs/tabGroups docs, and permissions notes are all part of extension platform implementation research.\"],[\"Videos, talks, and playlists\",\"pink\",0.84,[10032,10033,10034,10035,10044,10045,10046,10047],\"Playlists, videos, tutorials, and talks make up a distinct media-learning queue.\"],[\"Panel frontend implementation and testin\",\"green\",0.89,[10040,10041,10042,10043],\"CSS panel layout work, layout notes, test planning, and bug/state investigation belong to the same frontend implementation task.\"]],\"review\":[]}"
+              }
+            ],
+            "max_tokens": 4096,
+            "response_format": {
+              "type": "json_object"
+            },
+            "reasoning_effort": "low"
+          },
+          "finishedAt": "2026-07-06T10:33:19.454Z",
+          "elapsedMs": 17524,
+          "status": 200,
+          "ok": true,
+          "responseBytes": 8452,
+          "response": {
+            "id": "resp_03daec98d355adbf016a4b84609e388191a3380a6caede2938",
+            "object": "chat.completion",
+            "created": 1783333984,
+            "model": "gpt-5.3-codex-spark",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"summary\":\"Suggested cleanup review candidates prioritize duplicated topic tabs and low-value background references first, then older completed research chains, while keeping most tabs reviewable but not hard-closing.\",\"candidates\":[{\"id\":10024,\"priority\":\"high\",\"reason\":\"Same exact API reference topic appears twice across windows\",\"evidence\":[\"duplicate title\",\"same task topic\"]},{\"id\":10036,\"priority\":\"high\",\"reason\":\"Likely duplicate of another tabs API reference session\",\"evidence\":[\"same title\",\"quick handoff\"]},{\"id\":10025,\"priority\":\"high\",\"reason\":\"Extension guide page was opened in multiple windows with matching context\",\"evidence\":[\"duplicate title\",\"same task sequence\"]},{\"id\":10037,\"priority\":\"high\",\"reason\":\"Likely duplicate of another extension guide reference\",\"evidence\":[\"same title\",\"redundant copy\"]},{\"id\":10026,\"priority\":\"high\",\"reason\":\"Permissions notes duplicated across separate browsing runs\",\"evidence\":[\"duplicate title\",\"repeated topic\"]},{\"id\":10038,\"priority\":\"high\",\"reason\":\"Duplicate permissions note likely from repeat lookup\",\"evidence\":[\"same topic\",\"same workflow pattern\"]},{\"id\":10027,\"priority\":\"high\",\"reason\":\"API docs title duplicates another open API note\",\"evidence\":[\"duplicate title\",\"old task\"]},{\"id\":10039,\"priority\":\"high\",\"reason\":\"Second API docs tab for the same research thread\",\"evidence\":[\"same topic\",\"possible duplicate\"]},{\"id\":10033,\"priority\":\"high\",\"reason\":\"Video tutorial entry appears duplicated later in another window\",\"evidence\":[\"same title\",\"likely second copy\"]},{\"id\":10045,\"priority\":\"high\",\"reason\":\"Duplicate video/tutorial content in another window context\",\"evidence\":[\"same title\",\"repeat task pass\"]},{\"id\":10034,\"priority\":\"high\",\"reason\":\"Talk tab likely repeated in another session set\",\"evidence\":[\"generic duplicate title\",\"redundant reference\"]},{\"id\":10046,\"priority\":\"high\",\"reason\":\"Second copy of talk tab with matching intent\",\"evidence\":[\"same title\",\"same topic\"]},{\"id\":10035,\"priority\":\"high\",\"reason\":\"Playlist tab is likely a duplicate of another playlist reference\",\"evidence\":[\"same type\",\"repeat topic\"],\"},{\"id\":10044,\"priority\":\"high\",\"reason\":\"Duplicate playlist entry from media-learning stream\",\"evidence\":[\"same title\",\"old task\"]},{\"id\":10047,\"priority\":\"high\",\"reason\":\"Another playlists tab that may be redundant with nearby ones\",\"evidence\":[\"similar title\",\"possible consolidation\"]},{\"id\":10000,\"priority\":\"medium\",\"reason\":\"Used as an initial anchor in a completed Codex task chain\",\"evidence\":[\"old task\",\"same activation sequence\"]},{\"id\":10001,\"priority\":\"medium\",\"reason\":\"Supporting tooling reference for a completed workbench flow\",\"evidence\":[\"one-off reference\",\"old task\"]},{\"id\":10002,\"priority\":\"medium\",\"reason\":\"Evaluation page tied to a finished review pass\",\"evidence\":[\"task follow-up\",\"quick handoff\"]},{\"id\":10003,\"priority\":\"medium\",\"reason\":\"Related Codex workbench tab with repeated workflow context\",\"evidence\":[\"old task\",\"easy to find again\"]},{\"id\":10004,\"priority\":\"medium\",\"reason\":\"Design-switch reference used in a completed UI pattern run\",\"evidence\":[\"session task\",\"search result\"]},{\"id\":10005,\"priority\":\"medium\",\"reason\":\"Showcase ideas tab linked to the same UI reference pass\",\"evidence\":[\"same task sequence\",\"quick handoff\"]},{\"id\":10006,\"priority\":\"medium\",\"reason\":\"UI sidepanel reference from the same short research chain\",\"evidence\":[\"same task sequence\",\"old task\"]},{\"id\":10007,\"priority\":\"medium\",\"reason\":\"Interaction examples tied to the adjacent UI pattern tabs\",\"evidence\":[\"same workflow\",\"same task sequence\"]},{\"id\":10008,\"priority\":\"low\",\"reason\":\"Read-later background queue item; low urgency for manual review\",\"evidence\":[\"read-later\",\"easy to find again\"]},{\"id\":10009,\"priority\":\"low\",\"reason\":\"Background article entry in the reading backlog\",\"evidence\":[\"reading backlog\",\"old task\"]},{\"id\":10010,\"priority\":\"medium\",\"reason\":\"Newsletter page in a broad reference sweep\",\"evidence\":[\"old task\",\"repeat browsing pattern\"]},{\"id\":10011,\"priority\":\"low\",\"reason\":\"General reference item, likely not time-critical\",\"evidence\":[\"reference material\",\"easy to find again\"]},{\"id\":10012,\"priority\":\"medium\",\"reason\":\"Primary tab in a completed AI agent workflow sequence\",\"evidence\":[\"same task sequence\",\"quick handoff\"]},{\"id\":10013,\"priority\":\"medium\",\"reason\":\"Tooling follow-up from the Codex run\",\"evidence\":[\"supporting reference\",\"old task\"]},{\"id\":10014,\"priority\":\"medium\",\"reason\":\"Evaluation page from the same Codex workflow pass\",\"evidence\":[\"task follow-up\",\"quick handoff\"]},{\"id\":10015,\"priority\":\"medium\",\"reason\":\"Another Codex workbench item likely tied to prior task context\",\"evidence\":[\"old task\",\"easy to find again\"]},{\"id\":10016,\"priority\":\"medium\",\"reason\":\"Gateway diagnostics anchor from a completed troubleshooting flow\",\"evidence\":[\"same task sequence\",\"old task\"]},{\"id\":10017,\"priority\":\"medium\",\"reason\":\"Discarded security checklist likely archived from prior run\",\"evidence\":[\"discarded tab\",\"old task\"]},{\"id\":10018,\"priority\":\"medium\",\"reason\":\"Gateway docs tab linked to a closed investigation sequence\",\"evidence\":[\"same task sequence\",\"supporting reference\"]},{\"id\":10019,\"priority\":\"medium\",\"reason\":\"Tunnel notes from same Cloudflare troubleshooting set\",\"evidence\":[\"same workflow\",\"old task\"]},{\"id\":10020,\"priority\":\"low\",\"reason\":\"Read-later reference queue duplicate in another tab set\",\"evidence\":[\"read-later\",\"easy to find again\"]},{\"id\":10021,\"priority\":\"low\",\"reason\":\"General article in the reading stack\",\"evidence\":[\"background reading\",\"easy to find again\"]},{\"id\":10022,\"priority\":\"medium\",\"reason\":\"Newsletter tab in the general references stream\",\"evidence\":[\"reference stack\",\"old task\"]},{\"id\":10023,\"priority\":\"low\",\"reason\":\"Reference item in the same reading group\",\"evidence\":[\"background reference\",\"easy to find again\"]},{\"id\":10028,\"priority\":\"medium\",\"reason\":\"Cloudflare tunnel diagnostics continuation from an active cycle\",\"evidence\":[\"same task sequence\",\"old task\"]},{\"id\":10029,\"priority\":\"medium\",\"reason\":\"Security limits note linked to the same gateway thread\",\"evidence\":[\"related topic\",\"quick handoff\"]},{\"id\":10030,\"priority\":\"medium\",\"reason\":\"Gateway docs tab used in the Cloudflare troubleshooting run\",\"evidence\":[\"supporting reference\",\"same task sequence\"]},{\"id\":10031,\"priority\":\"medium\",\"reason\":\"Tunnel notes likely supplementary to previous gateway pass\",\"evidence\":[\"same task sequence\",\"old task\"]},{\"id\":10032,\"priority\":\"medium\",\"reason\":\"Media playlist review tab from design teardown workflow\",\"evidence\":[\"quick handoff\",\"single-pass review\"]},{\"id\":10040,\"priority\":\"medium\",\"reason\":\"Frontend CSS implementation note in an implementation thread\",\"evidence\":[\"task pass\",\"old task\"]},{\"id\":10041,\"priority\":\"medium\",\"reason\":\"Test plan tab linked to the frontend task cycle\",\"evidence\":[\"same task sequence\",\"quick handoff\"]},{\"id\":10042,\"priority\":\"medium\",\"reason\":\"Bug/thread reference in the same frontend thread\",\"evidence\":[\"supporting tab\",\"old task\"]},{\"id\":10043,\"priority\":\"medium\",\"reason\":\"Layout notes tied to the same CSS implementation flow\",\"evidence\":[\"same task sequence\",\"easy to find again\"]}]}",
+                  "reasoning_content": null,
+                  "tool_calls": null
+                },
+                "finish_reason": "stop",
+                "native_finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "completion_tokens": 5655,
+              "total_tokens": 11205,
+              "prompt_tokens": 5550,
+              "prompt_tokens_details": {
+                "cached_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 4070
+              }
+            }
+          },
+          "usage": {
+            "completion_tokens": 5655,
+            "total_tokens": 11205,
+            "prompt_tokens": 5550,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 4070
+            }
+          }
+        }
+      ],
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "warnings": []
+      },
+      "preview": {
+        "mode": "consolidate_one_window",
+        "analysisFeatures": {
+          "grouping": true,
+          "cleanup": true
+        },
+        "targetWindow": {
+          "kind": "current_window",
+          "windowId": 1,
+          "title": "当前窗口"
+        },
+        "requiresConfirmation": true,
+        "canApply": true,
+        "totalTabsCount": 48,
+        "eligibleTabsCount": 48,
+        "windowCount": 4,
+        "groupedTabsCount": 48,
+        "reviewTabsCount": 0,
+        "excludedTabsCount": 0,
+        "lockedGroupsCount": 0,
+        "movedTabsCount": 48,
+        "reviewGroupWillBeCreated": false,
+        "reviewGroupTitle": "待分类",
+        "reviewGroupReason": "AI 暂时拿不准这些页面的共同主题，不会硬塞进其他分组。",
+        "languageMode": "auto",
+        "pageSampling": {
+          "requested": 0,
+          "ok": 0,
+          "permissionRequired": 0,
+          "blocked": 0
+        },
+        "cleanup": {
+          "schema": "tab_tidy_cleanup_v1",
+          "summary": "这次没有发现明显需要优先清理的标签页。",
+          "candidateCount": 0,
+          "candidates": []
+        },
+        "groups": [
+          {
+            "groupKey": "ai-agents-codex",
+            "title": "AI coding agents and Codex workflow",
+            "color": "blue",
+            "confidence": 0.93,
+            "reason": "Codex workbench, MCP tooling, and evaluation/review tabs form one AI-agent orchestration task across adjacent runs.",
+            "tabCount": 8
+          },
+          {
+            "groupKey": "ui-patterns-sidepanel",
+            "title": "UI patterns and sidepanel design",
+            "color": "yellow",
+            "confidence": 0.86,
+            "reason": "These tabs focus on settings switches, interaction examples, showcase ideas, and UI reference material for the extension panel.",
+            "tabCount": 4
+          },
+          {
+            "groupKey": "reading-backlog",
+            "title": "Reading backlog and general references",
+            "color": "grey",
+            "confidence": 0.77,
+            "reason": "Articles, newsletters, references, and explicit read-later pages are a coherent background-reading queue.",
+            "tabCount": 8
+          },
+          {
+            "groupKey": "cloudflare-gateway",
+            "title": "Cloudflare Worker gateway and tunnel deb",
+            "color": "cyan",
+            "confidence": 0.92,
+            "reason": "Tunnel diagnostics, gateway docs, security limits, and tunnel notes all support the same Cloudflare gateway troubleshooting task.",
+            "tabCount": 8
+          },
+          {
+            "groupKey": "extension-platform",
+            "title": "Chrome extension APIs and permissions",
+            "color": "purple",
+            "confidence": 0.94,
+            "reason": "API references, extension guides, tabs/tabGroups docs, and permissions notes are all part of extension platform implementation research.",
+            "tabCount": 8
+          },
+          {
+            "groupKey": "media-learning",
+            "title": "Videos, talks, and playlists",
+            "color": "pink",
+            "confidence": 0.84,
+            "reason": "Playlists, videos, tutorials, and talks make up a distinct media-learning queue.",
+            "tabCount": 8
+          },
+          {
+            "groupKey": "panel-frontend",
+            "title": "Panel frontend implementation and testin",
+            "color": "green",
+            "confidence": 0.89,
+            "reason": "CSS panel layout work, layout notes, test planning, and bug/state investigation belong to the same frontend implementation task.",
+            "tabCount": 4
+          }
+        ],
+        "warnings": [
+          "48 eligible tab(s) will be moved into one target window."
+        ]
+      },
+      "plan": {
+        "schemaVersion": 1,
+        "mode": "consolidate_one_window",
+        "scope": {
+          "kind": "all_normal_windows",
+          "windowIds": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "targetWindow": {
+          "kind": "current_window",
+          "windowId": 1,
+          "title": "当前窗口"
+        },
+        "eligibleTabs": [
+          {
+            "tabId": 10000,
+            "windowId": 1
+          },
+          {
+            "tabId": 10001,
+            "windowId": 1
+          },
+          {
+            "tabId": 10002,
+            "windowId": 1
+          },
+          {
+            "tabId": 10003,
+            "windowId": 1
+          },
+          {
+            "tabId": 10004,
+            "windowId": 1
+          },
+          {
+            "tabId": 10005,
+            "windowId": 1
+          },
+          {
+            "tabId": 10006,
+            "windowId": 1
+          },
+          {
+            "tabId": 10007,
+            "windowId": 1
+          },
+          {
+            "tabId": 10008,
+            "windowId": 1
+          },
+          {
+            "tabId": 10009,
+            "windowId": 1
+          },
+          {
+            "tabId": 10010,
+            "windowId": 1
+          },
+          {
+            "tabId": 10011,
+            "windowId": 1
+          },
+          {
+            "tabId": 10012,
+            "windowId": 2
+          },
+          {
+            "tabId": 10013,
+            "windowId": 2
+          },
+          {
+            "tabId": 10014,
+            "windowId": 2
+          },
+          {
+            "tabId": 10015,
+            "windowId": 2
+          },
+          {
+            "tabId": 10016,
+            "windowId": 2
+          },
+          {
+            "tabId": 10017,
+            "windowId": 2
+          },
+          {
+            "tabId": 10018,
+            "windowId": 2
+          },
+          {
+            "tabId": 10019,
+            "windowId": 2
+          },
+          {
+            "tabId": 10020,
+            "windowId": 2
+          },
+          {
+            "tabId": 10021,
+            "windowId": 2
+          },
+          {
+            "tabId": 10022,
+            "windowId": 2
+          },
+          {
+            "tabId": 10023,
+            "windowId": 2
+          },
+          {
+            "tabId": 10024,
+            "windowId": 3
+          },
+          {
+            "tabId": 10025,
+            "windowId": 3
+          },
+          {
+            "tabId": 10026,
+            "windowId": 3
+          },
+          {
+            "tabId": 10027,
+            "windowId": 3
+          },
+          {
+            "tabId": 10028,
+            "windowId": 3
+          },
+          {
+            "tabId": 10029,
+            "windowId": 3
+          },
+          {
+            "tabId": 10030,
+            "windowId": 3
+          },
+          {
+            "tabId": 10031,
+            "windowId": 3
+          },
+          {
+            "tabId": 10032,
+            "windowId": 3
+          },
+          {
+            "tabId": 10033,
+            "windowId": 3
+          },
+          {
+            "tabId": 10034,
+            "windowId": 3
+          },
+          {
+            "tabId": 10035,
+            "windowId": 3
+          },
+          {
+            "tabId": 10036,
+            "windowId": 4
+          },
+          {
+            "tabId": 10037,
+            "windowId": 4
+          },
+          {
+            "tabId": 10038,
+            "windowId": 4
+          },
+          {
+            "tabId": 10039,
+            "windowId": 4
+          },
+          {
+            "tabId": 10040,
+            "windowId": 4
+          },
+          {
+            "tabId": 10041,
+            "windowId": 4
+          },
+          {
+            "tabId": 10042,
+            "windowId": 4
+          },
+          {
+            "tabId": 10043,
+            "windowId": 4
+          },
+          {
+            "tabId": 10044,
+            "windowId": 4
+          },
+          {
+            "tabId": 10045,
+            "windowId": 4
+          },
+          {
+            "tabId": 10046,
+            "windowId": 4
+          },
+          {
+            "tabId": 10047,
+            "windowId": 4
+          }
+        ],
+        "excludedTabs": [],
+        "groups": [
+          {
+            "groupKey": "ai-agents-codex",
+            "title": "AI coding agents and Codex workflow",
+            "color": "blue",
+            "confidence": 0.93,
+            "tabRefs": [
+              {
+                "tabId": 10000,
+                "windowId": 1
+              },
+              {
+                "tabId": 10001,
+                "windowId": 1
+              },
+              {
+                "tabId": 10002,
+                "windowId": 1
+              },
+              {
+                "tabId": 10003,
+                "windowId": 1
+              },
+              {
+                "tabId": 10012,
+                "windowId": 2
+              },
+              {
+                "tabId": 10013,
+                "windowId": 2
+              },
+              {
+                "tabId": 10014,
+                "windowId": 2
+              },
+              {
+                "tabId": 10015,
+                "windowId": 2
+              }
+            ],
+            "reason": "Codex workbench, MCP tooling, and evaluation/review tabs form one AI-agent orchestration task across adjacent runs."
+          },
+          {
+            "groupKey": "ui-patterns-sidepanel",
+            "title": "UI patterns and sidepanel design",
+            "color": "yellow",
+            "confidence": 0.86,
+            "tabRefs": [
+              {
+                "tabId": 10004,
+                "windowId": 1
+              },
+              {
+                "tabId": 10005,
+                "windowId": 1
+              },
+              {
+                "tabId": 10006,
+                "windowId": 1
+              },
+              {
+                "tabId": 10007,
+                "windowId": 1
+              }
+            ],
+            "reason": "These tabs focus on settings switches, interaction examples, showcase ideas, and UI reference material for the extension panel."
+          },
+          {
+            "groupKey": "reading-backlog",
+            "title": "Reading backlog and general references",
+            "color": "grey",
+            "confidence": 0.77,
+            "tabRefs": [
+              {
+                "tabId": 10008,
+                "windowId": 1
+              },
+              {
+                "tabId": 10009,
+                "windowId": 1
+              },
+              {
+                "tabId": 10010,
+                "windowId": 1
+              },
+              {
+                "tabId": 10011,
+                "windowId": 1
+              },
+              {
+                "tabId": 10020,
+                "windowId": 2
+              },
+              {
+                "tabId": 10021,
+                "windowId": 2
+              },
+              {
+                "tabId": 10022,
+                "windowId": 2
+              },
+              {
+                "tabId": 10023,
+                "windowId": 2
+              }
+            ],
+            "reason": "Articles, newsletters, references, and explicit read-later pages are a coherent background-reading queue."
+          },
+          {
+            "groupKey": "cloudflare-gateway",
+            "title": "Cloudflare Worker gateway and tunnel deb",
+            "color": "cyan",
+            "confidence": 0.92,
+            "tabRefs": [
+              {
+                "tabId": 10016,
+                "windowId": 2
+              },
+              {
+                "tabId": 10017,
+                "windowId": 2
+              },
+              {
+                "tabId": 10018,
+                "windowId": 2
+              },
+              {
+                "tabId": 10019,
+                "windowId": 2
+              },
+              {
+                "tabId": 10028,
+                "windowId": 3
+              },
+              {
+                "tabId": 10029,
+                "windowId": 3
+              },
+              {
+                "tabId": 10030,
+                "windowId": 3
+              },
+              {
+                "tabId": 10031,
+                "windowId": 3
+              }
+            ],
+            "reason": "Tunnel diagnostics, gateway docs, security limits, and tunnel notes all support the same Cloudflare gateway troubleshooting task."
+          },
+          {
+            "groupKey": "extension-platform",
+            "title": "Chrome extension APIs and permissions",
+            "color": "purple",
+            "confidence": 0.94,
+            "tabRefs": [
+              {
+                "tabId": 10024,
+                "windowId": 3
+              },
+              {
+                "tabId": 10025,
+                "windowId": 3
+              },
+              {
+                "tabId": 10026,
+                "windowId": 3
+              },
+              {
+                "tabId": 10027,
+                "windowId": 3
+              },
+              {
+                "tabId": 10036,
+                "windowId": 4
+              },
+              {
+                "tabId": 10037,
+                "windowId": 4
+              },
+              {
+                "tabId": 10038,
+                "windowId": 4
+              },
+              {
+                "tabId": 10039,
+                "windowId": 4
+              }
+            ],
+            "reason": "API references, extension guides, tabs/tabGroups docs, and permissions notes are all part of extension platform implementation research."
+          },
+          {
+            "groupKey": "media-learning",
+            "title": "Videos, talks, and playlists",
+            "color": "pink",
+            "confidence": 0.84,
+            "tabRefs": [
+              {
+                "tabId": 10032,
+                "windowId": 3
+              },
+              {
+                "tabId": 10033,
+                "windowId": 3
+              },
+              {
+                "tabId": 10034,
+                "windowId": 3
+              },
+              {
+                "tabId": 10035,
+                "windowId": 3
+              },
+              {
+                "tabId": 10044,
+                "windowId": 4
+              },
+              {
+                "tabId": 10045,
+                "windowId": 4
+              },
+              {
+                "tabId": 10046,
+                "windowId": 4
+              },
+              {
+                "tabId": 10047,
+                "windowId": 4
+              }
+            ],
+            "reason": "Playlists, videos, tutorials, and talks make up a distinct media-learning queue."
+          },
+          {
+            "groupKey": "panel-frontend",
+            "title": "Panel frontend implementation and testin",
+            "color": "green",
+            "confidence": 0.89,
+            "tabRefs": [
+              {
+                "tabId": 10040,
+                "windowId": 4
+              },
+              {
+                "tabId": 10041,
+                "windowId": 4
+              },
+              {
+                "tabId": 10042,
+                "windowId": 4
+              },
+              {
+                "tabId": 10043,
+                "windowId": 4
+              }
+            ],
+            "reason": "CSS panel layout work, layout notes, test planning, and bug/state investigation belong to the same frontend implementation task."
+          }
+        ],
+        "reviewTabs": [],
+        "cleanup": {
+          "schema": "tab_tidy_cleanup_v1",
+          "summary": "这次没有发现明显需要优先清理的标签页。",
+          "candidates": []
+        }
+      },
+      "error": null
+    }
+  ]
+}

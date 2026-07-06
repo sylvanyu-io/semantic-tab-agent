@@ -17,7 +17,7 @@
 - 33 tabs 页面摘要场景是低信号样本，最终路线为 `gpt-5.5 high` 分组 + `gpt-5.3-codex-spark low` 清理，耗时 `41.3s`，Topic F1 保持 `98.7%`。
 - 50/120/300 tabs 当前规模测试是 `task_bursts` metadata-only 场景，主要走 spark 路线，分别为 `11.8s / 36.6s / 69.9s`。
 - 当前优化结论是“同条件下更快且质量不降”，不是“tab 数越少一定越快”。
-- 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；当前结论只证明输入形态、安全边界和回归测试，不等同于 live LLM 质量提升。
+- 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；2026-07-06 的单次 live A/B 中，带行为证据 Topic F1 为 `100.0%`，剥离后为 `84.9%`。这支持继续保留该路线，但仍需要更多真实浏览会话验证。
 
 ## 原始数据
 
@@ -27,3 +27,5 @@
 - 33 tabs final: `data/planner-scale-2026-06-26T21-07-15-117Z-pid65535.json`
 - 50 tabs final: `data/planner-scale-2026-06-26T20-54-51-676Z-pid40765.json`
 - 120/300 tabs final: `data/planner-scale-2026-06-26T20-52-24-931Z-pid36868.json`
+- Activation flow A/B with flow: `data/planner-scale-2026-07-06T10-31-52-720Z-pid19058.json`
+- Activation flow A/B without flow: `data/planner-scale-2026-07-06T10-34-02-822Z-pid21095.json`
