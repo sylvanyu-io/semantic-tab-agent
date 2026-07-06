@@ -3,6 +3,7 @@ import test from "node:test";
 import { getSettings, saveSettings } from "../src/core/controller.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import {
+  createSettingsExport,
   DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
   GATEWAY_PROVIDER_MODES,
@@ -10,6 +11,7 @@ import {
   LANGUAGE_MODES,
   PAGE_SAMPLING_CONSENT_MODES,
   PROMPT_PRESETS,
+  readSettingsImportPayload,
   THINKING_INTENSITIES,
   UNDO_TARGET_WINDOW_MODES
 } from "../src/shared/settings.js";
@@ -201,6 +203,72 @@ test("gateway key is not persisted unless explicitly remembered", async () => {
   });
   const persisted = await getSettings(chrome);
   assert.equal(persisted.gatewayApiKey, "gateway-test-key");
+});
+
+test("settings export omits custom gateway secrets while keeping portable preferences", () => {
+  const payload = createSettingsExport(
+    {
+      ...DEFAULT_SETTINGS,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+      gatewayBaseUrl: "https://api.deepseek.com/v1",
+      gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+      gatewayCustomModel: "deepseek-v4",
+      gatewayCustomAuxiliaryModel: "glm-5.2",
+      gatewayApiKey: "secret-key-that-must-not-export",
+      rememberProviderKeys: true,
+      customPrompt: "把研究方向分开"
+    },
+    { now: "2026-07-06T08:00:00.000Z" }
+  );
+
+  assert.equal(payload.app, "TabRecap");
+  assert.equal(payload.schemaVersion, 1);
+  assert.equal(payload.exportedAt, "2026-07-06T08:00:00.000Z");
+  assert.equal(payload.settings.gatewayBaseUrl, "https://api.deepseek.com/v1");
+  assert.equal(payload.settings.gatewayCustomModel, "deepseek-v4");
+  assert.equal(payload.settings.gatewayCustomAuxiliaryModel, "glm-5.2");
+  assert.equal(payload.settings.customPrompt, "把研究方向分开");
+  assert.equal(payload.settings.gatewayApiKey, "");
+  assert.equal(payload.settings.rememberProviderKeys, false);
+  assert.doesNotMatch(JSON.stringify(payload), /secret-key-that-must-not-export/);
+});
+
+test("settings import accepts wrapped or raw settings and always strips custom gateway secrets", () => {
+  const imported = readSettingsImportPayload({
+    app: "TabRecap",
+    schemaVersion: 1,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+      gatewayBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
+      gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+      gatewayCustomModel: "glm-5.2",
+      gatewayCustomAuxiliaryModel: "glm-5.1",
+      gatewayApiKey: "imported-secret",
+      rememberProviderKeys: true,
+      groupingGranularity: GROUPING_GRANULARITIES.DETAILED
+    }
+  });
+
+  assert.equal(imported.gatewayBaseUrl, "https://open.bigmodel.cn/api/paas/v4");
+  assert.equal(imported.gatewayProviderMode, GATEWAY_PROVIDER_MODES.CUSTOM);
+  assert.equal(imported.gatewayCustomModel, "glm-5.2");
+  assert.equal(imported.gatewayCustomAuxiliaryModel, "glm-5.1");
+  assert.equal(imported.groupingGranularity, GROUPING_GRANULARITIES.DETAILED);
+  assert.equal(imported.gatewayApiKey, "");
+  assert.equal(imported.rememberProviderKeys, false);
+
+  const raw = readSettingsImportPayload({
+    ...DEFAULT_SETTINGS,
+    gatewayBaseUrl: "javascript:alert(1)",
+    gatewayApiKey: "raw-secret",
+    rememberProviderKeys: true,
+    maxTabsPerGroup: "12"
+  });
+  assert.equal(raw.gatewayBaseUrl, "");
+  assert.equal(raw.gatewayApiKey, "");
+  assert.equal(raw.rememberProviderKeys, false);
+  assert.equal(raw.maxTabsPerGroup, 12);
 });
 
 test("turning off continuous summaries preserves cached page summaries for recaps", async () => {

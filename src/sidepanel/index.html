@@ -375,6 +375,18 @@
               </span>
               <button id="clearLocalMemoryBtn" type="button">清空</button>
             </div>
+            <div class="settings-transfer-row">
+              <span>
+                <strong>设置迁移</strong>
+                <small>导出偏好和模型配置，不包含自定义密钥</small>
+              </span>
+              <div class="settings-transfer-actions">
+                <button id="settingsExportBtn" type="button">导出</button>
+                <button id="settingsImportBtn" type="button">导入</button>
+              </div>
+              <input id="settingsImportFile" type="file" accept="application/json,.json" hidden />
+              <small id="settingsTransferStatus" class="settings-transfer-status" aria-live="polite"></small>
+            </div>
           </div>
 
         <div class="number-grid organize-only-setting">

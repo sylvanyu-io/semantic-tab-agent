@@ -14,6 +14,10 @@ test("static side panel recap copy matches the product-facing runtime defaults",
   assert.match(html, /AI 只生成整理、清理和回顾建议，不会自动关闭标签页/);
   assert.match(html, /清空活动记录、页面摘要和时间线记录，不会关闭标签页/);
   assert.match(html, /id="clearLocalMemoryBtn"/);
+  assert.match(html, /设置迁移/);
+  assert.match(html, /导出偏好和模型配置，不包含自定义密钥/);
+  assert.match(html, /id="settingsExportBtn"/);
+  assert.match(html, /id="settingsImportBtn"/);
   assert.match(html, /data-recap-preset="today">本日<\/button>/);
   assert.doesNotMatch(html, /根据本机活动、标题、网址和可用页面摘要生成/);
   assert.doesNotMatch(html, /data-recap-preset="today">今天<\/button>/);

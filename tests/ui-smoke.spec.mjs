@@ -225,6 +225,10 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#existingGroupMode")).toBeHidden();
   await expect(page.locator("#reviewGroupMode")).toBeHidden();
   await expect(page.locator("#undoTargetWindowMode")).toBeHidden();
+  await expect(page.locator(".settings-transfer-row")).toContainText("设置迁移");
+  await expect(page.locator(".settings-transfer-row")).toContainText("导出偏好和模型配置，不包含自定义密钥");
+  await expect(page.getByRole("button", { name: "导出" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "导入" })).toBeVisible();
   await expect(page.locator(".advanced-switch-list .compact-switch")).toHaveCount(5);
   await expect(page.locator(".advanced-switch-list")).toContainText("包含固定标签页");
   await expect(page.locator(".advanced-switch-list")).toContainText("整理后收起分组");

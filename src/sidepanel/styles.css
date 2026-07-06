@@ -1270,7 +1270,8 @@ button:focus-visible {
   opacity: 0.55;
 }
 
-.local-memory-row {
+.local-memory-row,
+.settings-transfer-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -1279,41 +1280,74 @@ button:focus-visible {
   padding: 10px 12px;
 }
 
-.local-memory-row span {
+.local-memory-row span,
+.settings-transfer-row > span {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.local-memory-row strong {
+.local-memory-row strong,
+.settings-transfer-row strong {
   color: var(--text);
   font-size: 13px;
   font-weight: 820;
   line-height: 1.25;
 }
 
-.local-memory-row small {
+.local-memory-row small,
+.settings-transfer-row small {
   color: var(--muted);
   font-size: 11px;
   font-weight: 650;
   line-height: 1.35;
 }
 
-.local-memory-row button {
+.local-memory-row button,
+.settings-transfer-row button {
   min-height: 30px;
   padding: 5px 12px;
-  color: var(--danger);
-  background: var(--coral-soft);
-  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 820;
   box-shadow: inset 0 -1px 0 rgba(42, 38, 31, 0.08);
 }
 
+.local-memory-row button {
+  color: var(--danger);
+  background: var(--coral-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+}
+
+.settings-transfer-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.settings-transfer-row button {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
+}
+
 .local-memory-row button:disabled {
   cursor: wait;
   opacity: 0.55;
+}
+
+.settings-transfer-row button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.settings-transfer-status {
+  grid-column: 1 / -1;
+}
+
+.settings-transfer-status[data-error="true"] {
+  color: var(--danger);
 }
 
 .prompt-field {

@@ -139,6 +139,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   privacyDisclosureDismissed: false
 });
 
+export const SETTINGS_EXPORT_SCHEMA_VERSION = 1;
+export const SETTINGS_EXPORT_APP = "TabRecap";
+
 const enumValues = {
   organizeMode: Object.values(ORGANIZE_MODES),
   targetWindowMode: Object.values(TARGET_WINDOW_MODES),
@@ -205,6 +208,35 @@ export function normalizeSettings(input = {}) {
   merged.selectedTargetWindowId = Number.isInteger(selectedTargetWindowId) && selectedTargetWindowId > 0 ? selectedTargetWindowId : null;
 
   return merged;
+}
+
+export function sanitizeSettingsForTransfer(input = {}) {
+  const settings = normalizeSettings({
+    ...(input || {}),
+    gatewayApiKey: "",
+    rememberProviderKeys: false
+  });
+  settings.gatewayApiKey = "";
+  settings.rememberProviderKeys = false;
+  return settings;
+}
+
+export function createSettingsExport(input = {}, options = {}) {
+  const exportedAt = new Date(options.now || Date.now()).toISOString();
+  return {
+    app: SETTINGS_EXPORT_APP,
+    schemaVersion: SETTINGS_EXPORT_SCHEMA_VERSION,
+    exportedAt,
+    settings: sanitizeSettingsForTransfer(input)
+  };
+}
+
+export function readSettingsImportPayload(payload = {}) {
+  const candidate = payload?.settings && typeof payload.settings === "object" ? payload.settings : payload;
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    throw new TypeError("Invalid TabRecap settings export.");
+  }
+  return sanitizeSettingsForTransfer(candidate);
 }
 
 function clampNumber(value, min, max, fallback) {

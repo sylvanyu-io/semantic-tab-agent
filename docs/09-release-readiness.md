@@ -99,10 +99,12 @@ Blocking gates:
 - Store packages remove `activeTab`, `scripting`, and optional host permissions,
   so page-body sampling controls and custom gateway host permission requests are
   unavailable in that channel.
+- Settings can be exported and imported for migration without exporting custom
+  gateway keys, local activity records, page summaries, timeline logs, jobs, or
+  rollback snapshots.
 
 Recommended before public listing:
 
-- Add export/import settings without exporting custom gateway keys by default.
 - Keep the local-memory clearing control visible before recap history becomes a
   first-class history surface.
 - Add larger real-browser recap benchmarks for 30, 120, and 300 tab sessions.
