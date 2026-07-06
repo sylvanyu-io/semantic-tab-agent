@@ -420,6 +420,94 @@ test("time recap cancellation is scoped per source window", async () => {
   }
 });
 
+test("time recap newer same-window requests replace stale ones", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Recap race research", url: "https://example.com/race", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (_url, init = {}) => {
+    const request = {
+      requestId: init.headers?.["x-tab-recap-request-id"] || "",
+      aborted: false
+    };
+    requests.push(request);
+    if (request.requestId === "recap_superseded") {
+      return new Promise((_resolve, reject) => {
+        init.signal?.addEventListener(
+          "abort",
+          () => {
+            request.aborted = true;
+            reject(new Error("fetch aborted"));
+          },
+          { once: true }
+        );
+      });
+    }
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                schema: "tab_tidy_time_recap_v1",
+                language: "zh-CN",
+                headline: "第二次回顾生效",
+                summary: "新的同窗口回顾结果应该保留下来。",
+                themes: [],
+                timeline: [],
+                followUps: [],
+                coverageNote: "使用最新请求。"
+              })
+            }
+          }
+        ]
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  };
+
+  try {
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    };
+    const superseded = handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      operationId: "recap_superseded",
+      windowId: 1,
+      settings,
+      range: { preset: "7d" }
+    });
+    await waitForCondition(() => requests.length === 1, "Timed out waiting for the superseded recap request.");
+    const supersededRejection = assert.rejects(superseded, /已停止生成回顾/);
+
+    const latest = await handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      operationId: "recap_latest",
+      windowId: 1,
+      settings,
+      range: { preset: "7d" }
+    });
+
+    await supersededRejection;
+    assert.equal(requests.find((request) => request.requestId === "recap_superseded")?.aborted, true);
+    assert.equal(latest.source, "ai");
+    assert.equal(latest.recap.headline, "第二次回顾生效");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("time recap local themes do not use existing browser groups as the primary axis", async () => {
   const chrome = seededRecapChrome();
 
