@@ -2,9 +2,11 @@ import { analyzeTabs } from "../src/core/controller.js";
 import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS, PLANNER_PROVIDERS } from "../src/shared/settings.js";
 import { createFakeChrome } from "../tests/helpers/fake-chrome.mjs";
 import { checkBuiltInGatewayService } from "./lib/gateway-smoke-service-checks.mjs";
+import { resolveMonitorToken } from "./lib/monitor-token.mjs";
 
 const key = process.env.GATEWAY_API_KEY || "";
 const requestedBaseUrl = process.env.GATEWAY_BASE_URL || BUILTIN_GATEWAY_BASE_URL;
+const monitorToken = resolveMonitorToken();
 
 const settings = {
   ...DEFAULT_SETTINGS,
@@ -20,7 +22,7 @@ const serviceChecks = await checkBuiltInGatewayService({
   gatewayBaseUrl: settings.gatewayBaseUrl,
   gatewayBaseUrlExplicit: Boolean(process.env.GATEWAY_BASE_URL),
   gatewayServiceBaseUrl: process.env.GATEWAY_SERVICE_BASE_URL || "",
-  monitorToken: process.env.MONITOR_TOKEN || "",
+  monitorToken: monitorToken.token,
   forceServiceCheck: process.env.GATEWAY_CHECK_SERVICE === "1"
 });
 

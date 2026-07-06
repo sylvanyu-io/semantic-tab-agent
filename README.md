@@ -119,9 +119,10 @@ npm run release:check
 发布前如果要同时检查默认 AI 服务、隧道、告警配置和真实模型请求，运行 live gate：
 
 ```bash
-TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
-MONITOR_TOKEN="$TOKEN" npm run release:check:live
+npm run release:check:live
 ```
+
+它会优先读取 `MONITOR_TOKEN`，其次读取 `MONITOR_TOKEN_FILE`，最后读取这台机器上的默认 runtime secret 文件。
 
 生成 README 图片资源：
 

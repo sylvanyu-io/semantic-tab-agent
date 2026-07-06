@@ -446,20 +446,19 @@ Default recovery:
 Release smoke with Worker monitor verification:
 
 ```bash
-TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
-MONITOR_TOKEN="$TOKEN" npm run smoke:gateway
+npm run smoke:gateway
 ```
 
 This checks the product-facing Worker health path, origin readiness path,
 `/monitor/status` configuration, and a real chat-completions request. It fails
 if `config.email` is not `configured` or if the latest monitor snapshot reports
-`down`.
+`down`. The script reads `MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then this
+machine's default local runtime token file.
 
 Full pre-release live gate:
 
 ```bash
-TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
-MONITOR_TOKEN="$TOKEN" npm run release:check:live
+npm run release:check:live
 ```
 
 This runs the full local release gate first, then the same live default-gateway

@@ -79,8 +79,9 @@ Blocking gates:
 
 - `npm run check` passes.
 - `npm run release:check` passes and produces a clean extension package.
-- `MONITOR_TOKEN="$TOKEN" npm run release:check:live` passes before public
-  releases that depend on the built-in default AI service.
+- `npm run release:check:live` passes before public releases that depend on the
+  built-in default AI service. It reads `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`,
+  or this machine's default local runtime token file.
 - `npm run stress:extension` validates current-window apply/undo and
   consolidate-to-one-window apply/undo on a throwaway Chromium profile.
 - AI gateway live smoke verifies Worker health, origin readiness, monitor email

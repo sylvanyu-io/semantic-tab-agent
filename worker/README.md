@@ -233,10 +233,11 @@ Production gateway smoke:
 npm run smoke:gateway
 ```
 
-For the built-in gateway, the smoke script checks `/healthz`, `/readyz`, and a
-real chat-completions request. Include `MONITOR_TOKEN` when you also want it to
-verify `/monitor/status` and fail if email monitoring is not configured:
+For the built-in gateway, the smoke script checks `/healthz`, `/readyz`,
+`/monitor/status`, and a real chat-completions request. It reads
+`MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then this machine's default local
+runtime token file. On another machine, point it at the copied monitor token:
 
 ```bash
-MONITOR_TOKEN="$MONITOR_TOKEN" npm run smoke:gateway
+MONITOR_TOKEN_FILE="/path/to/cliproxy-monitor-token" npm run smoke:gateway
 ```
