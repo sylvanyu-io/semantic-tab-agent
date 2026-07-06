@@ -35,6 +35,10 @@ includes `worker/wrangler.toml` for the current public route. For another
 deployment, copy `worker/wrangler.toml.example` to your own config and fill in
 the KV namespace ID.
 
+The current production Worker service name is still `tab-tidy-gateway`. That is
+intentional deploy continuity from the earlier product name, not user-facing
+branding. Rename it only when intentionally migrating to a new Cloudflare Worker.
+
 Use a Worker route for the public extension domain:
 
 ```toml
