@@ -293,6 +293,99 @@ test("planner payload segments scoped activation runs without dwell drift", () =
   ]);
 });
 
+test("planner payload keeps behavior evidence compact and sanitized", () => {
+  const payload = buildPlannerPayload(
+    {
+      ...inventory,
+      plannerTabs: [
+        {
+          tabId: 21,
+          windowId: 1,
+          index: 0,
+          sequenceIndex: 0,
+          title: "Sensitive work doc",
+          hostname: "docs.example",
+          sanitizedUrl: "https://docs.example/work",
+          fullUrl: "https://docs.example/work/SECRET123456789012?token=SHOULD_NOT_LEAK#section",
+          urlKind: "web"
+        },
+        {
+          tabId: 22,
+          windowId: 1,
+          index: 1,
+          sequenceIndex: 1,
+          title: "Related issue",
+          hostname: "github.com",
+          sanitizedUrl: "https://github.com/org/repo/issues",
+          fullUrl: "https://github.com/org/repo/issues/42?email=person@example.com",
+          urlKind: "web"
+        }
+      ],
+      pageSamples: [],
+      activationFlow: {
+        tabActivity: [
+          {
+            id: 21,
+            activeCount: 2,
+            totalActiveSeconds: 600,
+            maxActiveSeconds: 540,
+            lastActivatedAt: "2026-06-25T01:10:00.000Z",
+            appearedInRuns: 1,
+            returnedToCount: 1,
+            nearbyIds: [22]
+          }
+        ],
+        runs: [
+          {
+            windowId: 1,
+            startedAt: "2026-06-25T01:00:00.000Z",
+            endedAt: "2026-06-25T01:11:00.000Z",
+            ids: [21, 22, 21],
+            dwellSeconds: [540, 120],
+            returnToId: 21,
+            repeatedIds: [21]
+          }
+        ],
+        transitions: [
+          {
+            fromId: 21,
+            toId: 22,
+            count: 1,
+            avgDwellSeconds: 540,
+            maxDwellSeconds: 540,
+            lastAt: "2026-06-25T01:09:00.000Z",
+            clues: ["long source dwell", "returned to source later"]
+          }
+        ],
+        evidence: [
+          {
+            ids: [21, 22],
+            strength: 0.8,
+            count: 1,
+            lastAt: "2026-06-25T01:11:00.000Z",
+            clues: ["same activation run", "returned to an earlier tab"]
+          }
+        ]
+      }
+    },
+    DEFAULT_SETTINGS
+  );
+  const serializedFlow = JSON.stringify({
+    activity: payload.activationFlowTabActivity,
+    runs: payload.activationFlowRuns,
+    transitions: payload.activationFlowTransitions,
+    evidence: payload.activationFlowEvidence
+  });
+  const serializedPayload = JSON.stringify(payload);
+
+  assert.equal(serializedFlow.includes("Sensitive work doc"), false);
+  assert.equal(serializedFlow.includes("docs.example"), false);
+  assert.equal(serializedFlow.includes("github.com"), false);
+  assert.equal(serializedPayload.includes("token=SHOULD_NOT_LEAK"), false);
+  assert.equal(serializedPayload.includes("SECRET123456789012"), false);
+  assert.deepEqual(payload.tabs.map((row) => row[6]), ["https://docs.example/work", "https://github.com/org/repo/issues"]);
+});
+
 test("AI gateway planner returns cleanup candidates in the same full-detail plan request", async () => {
   const activityOverview = {
     rangeMs: 2592000000,
