@@ -107,6 +107,62 @@ test("gateway smoke fails when required monitor checks are skipped by a custom g
   );
 });
 
+test("gateway smoke accepts a fresh ok monitor status when required", async () => {
+  const result = await checkBuiltInGatewayService({
+    gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+    monitorToken: "monitor-secret",
+    requireMonitor: true,
+    nowMs: Date.parse("2026-07-02T01:00:00.000Z"),
+    fetchImpl: async (url) => {
+      if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+      if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+      if (url.endsWith("/monitor/status")) return monitorStatusResponse({ lastStatusAt: "2026-07-02T00:30:00.000Z" });
+      return jsonResponse({ ok: false }, 404);
+    }
+  });
+
+  assert.equal(result.monitor.status, "ok");
+  assert.equal(result.monitor.lastStatusAt, "2026-07-02T00:30:00.000Z");
+});
+
+test("gateway smoke fails when a required monitor status is unknown", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+        monitorToken: "monitor-secret",
+        requireMonitor: true,
+        fetchImpl: async (url) => {
+          if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+          if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+          if (url.endsWith("/monitor/status")) return monitorStatusResponse({ status: "unknown", lastStatusAt: "" });
+          return jsonResponse({ ok: false }, 404);
+        }
+      }),
+    /monitor\/status is unknown/
+  );
+});
+
+test("gateway smoke fails when a required monitor status is stale", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+        monitorToken: "monitor-secret",
+        requireMonitor: true,
+        nowMs: Date.parse("2026-07-02T03:00:00.000Z"),
+        maxMonitorAgeMs: 60 * 60 * 1000,
+        fetchImpl: async (url) => {
+          if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+          if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+          if (url.endsWith("/monitor/status")) return monitorStatusResponse({ lastStatusAt: "2026-07-02T01:30:00.000Z" });
+          return jsonResponse({ ok: false }, 404);
+        }
+      }),
+    /monitor\/status is stale/
+  );
+});
+
 test("gateway smoke fails when monitor email alerts are not configured", async () => {
   await assert.rejects(
     () =>
@@ -133,6 +189,25 @@ test("gateway smoke fails when monitor email alerts are not configured", async (
     /monitor\/status email is resend_api_key_missing/
   );
 });
+
+function monitorStatusResponse(overrides = {}) {
+  return jsonResponse({
+    ok: true,
+    monitor: {
+      status: overrides.status || "ok",
+      lastStatusAt: overrides.lastStatusAt || "2026-07-02T00:00:00.000Z",
+      lastSummary: {
+        readyzCode: overrides.readyzCode || "ready",
+        llmCode: overrides.llmCode || "llm_ready"
+      }
+    },
+    config: {
+      stateStore: "configured",
+      email: "configured",
+      upstream: "configured"
+    }
+  });
+}
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {

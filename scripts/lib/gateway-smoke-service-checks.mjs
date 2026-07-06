@@ -1,5 +1,7 @@
 import { BUILTIN_GATEWAY_BASE_URL } from "../../src/shared/settings.js";
 
+const DEFAULT_REQUIRED_MONITOR_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+
 export async function checkBuiltInGatewayService(options = {}) {
   const gatewayBaseUrl = options.gatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL;
   const configuredServiceBaseUrl = options.gatewayServiceBaseUrl || serviceBaseUrlFromGatewayBaseUrl(gatewayBaseUrl);
@@ -33,12 +35,22 @@ export async function checkBuiltInGatewayService(options = {}) {
     if (monitor.json?.config?.stateStore !== "configured") throw new Error("monitor/status state store is not configured");
     if (monitor.json?.config?.email !== "configured") throw new Error(`monitor/status email is ${monitor.json?.config?.email || "unknown"}`);
     if (monitor.json?.config?.upstream !== "configured") throw new Error(`monitor/status upstream is ${monitor.json?.config?.upstream || "unknown"}`);
-    if (monitor.json?.monitor?.status === "down") {
+    const monitorStatus = monitor.json?.monitor?.status || "unknown";
+    if (requireMonitor && monitorStatus !== "ok") {
+      throw new Error(`monitor/status is ${monitorStatus}; the last scheduled monitor has not reported ok.`);
+    }
+    if (monitorStatus === "down") {
       throw new Error(
         `monitor/status reports down: readyz=${monitor.json?.monitor?.lastSummary?.readyzCode || "unknown"} llm=${
           monitor.json?.monitor?.lastSummary?.llmCode || "unknown"
         }`
       );
+    }
+    if (requireMonitor) {
+      requireFreshMonitorStatus(monitor.json?.monitor?.lastStatusAt, {
+        nowMs: Number.isFinite(options.nowMs) ? options.nowMs : Date.now(),
+        maxAgeMs: positiveMs(options.maxMonitorAgeMs, DEFAULT_REQUIRED_MONITOR_MAX_AGE_MS)
+      });
     }
   }
 
@@ -54,6 +66,7 @@ export async function checkBuiltInGatewayService(options = {}) {
       ? {
           ...pickServiceCheck(monitor),
           status: monitor.json?.monitor?.status || "unknown",
+          lastStatusAt: monitor.json?.monitor?.lastStatusAt || "",
           readyzCode: monitor.json?.monitor?.lastSummary?.readyzCode || "",
           llmCode: monitor.json?.monitor?.lastSummary?.llmCode || "",
           email: monitor.json?.config?.email || "unknown"
@@ -93,4 +106,23 @@ function pickServiceCheck(check) {
     ok: check.ok,
     status: check.status
   };
+}
+
+function requireFreshMonitorStatus(lastStatusAt, options) {
+  const checkedAt = Date.parse(lastStatusAt || "");
+  if (!Number.isFinite(checkedAt)) {
+    throw new Error("monitor/status has no valid lastStatusAt; wait for the scheduled monitor to run.");
+  }
+  const ageMs = options.nowMs - checkedAt;
+  if (ageMs < 0) return;
+  if (ageMs > options.maxAgeMs) {
+    const ageMinutes = Math.round(ageMs / 60000);
+    const maxAgeMinutes = Math.round(options.maxAgeMs / 60000);
+    throw new Error(`monitor/status is stale: last scheduled check was ${ageMinutes} minutes ago, max ${maxAgeMinutes} minutes.`);
+  }
+}
+
+function positiveMs(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
 }
