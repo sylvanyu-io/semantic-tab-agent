@@ -656,13 +656,7 @@ function buildActivationFlowActivityRows(inventory = {}) {
 
 function buildActivationFlowRunRows(inventory = {}) {
   const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
-  return (inventory.activationFlow?.runs || [])
-    .map((run) => ({
-      ...run,
-      ids: (run.ids || []).filter((id) => tabIds.has(id)),
-      repeatedIds: (run.repeatedIds || []).filter((id) => tabIds.has(id))
-    }))
-    .filter((run) => uniqueNumbers(run.ids).length >= 2)
+  return activationRunSegmentsForTabIds(inventory.activationFlow?.runs || [], tabIds)
     .map((run) => [
       run.windowId,
       run.startedAt || "",
@@ -673,6 +667,75 @@ function buildActivationFlowRunRows(inventory = {}) {
       run.repeatedIds.slice(0, 6)
     ])
     .slice(0, 24);
+}
+
+function activationRunSegmentsForTabIds(runs = [], tabIds = new Set()) {
+  const segments = [];
+  for (const run of runs || []) {
+    const ids = (run.ids || []).filter(Number.isInteger);
+    if (ids.length < 2) continue;
+
+    let startIndex = -1;
+    for (let index = 0; index < ids.length; index += 1) {
+      if (tabIds.has(ids[index])) {
+        if (startIndex < 0) startIndex = index;
+      } else {
+        appendActivationRunSegment(segments, run, ids, startIndex, index - 1);
+        startIndex = -1;
+      }
+    }
+    appendActivationRunSegment(segments, run, ids, startIndex, ids.length - 1);
+  }
+  return segments;
+}
+
+function appendActivationRunSegment(segments, run, ids, startIndex, endIndex) {
+  if (startIndex < 0 || endIndex - startIndex < 1) return;
+  const dwellSeconds = (run.dwellSeconds || []).map((seconds) => Math.max(0, Number(seconds || 0)));
+  const segmentIds = ids.slice(startIndex, endIndex + 1);
+  const segmentDwellSeconds = dwellSeconds.slice(startIndex, endIndex);
+  const secondsBefore = sumNumbers(dwellSeconds.slice(0, startIndex));
+  const secondsUntilEnd = sumNumbers(dwellSeconds.slice(0, endIndex));
+
+  segments.push({
+    ...run,
+    startedAt: offsetIsoTime(run.startedAt, secondsBefore, run.startedAt || ""),
+    endedAt: offsetIsoTime(run.startedAt, secondsUntilEnd, run.endedAt || ""),
+    spanSeconds: Math.max(1, sumNumbers(segmentDwellSeconds)),
+    ids: segmentIds,
+    dwellSeconds: segmentDwellSeconds,
+    returnToId: firstRepeatedId(segmentIds),
+    repeatedIds: repeatedIdsInOrder(segmentIds)
+  });
+}
+
+function offsetIsoTime(startedAt, offsetSeconds, fallback = "") {
+  const start = Date.parse(startedAt || "");
+  if (!Number.isFinite(start)) return fallback;
+  return new Date(start + Math.max(0, Number(offsetSeconds || 0)) * 1000).toISOString();
+}
+
+function sumNumbers(values = []) {
+  return values.reduce((sum, value) => sum + Math.max(0, Number(value || 0)), 0);
+}
+
+function firstRepeatedId(ids = []) {
+  return repeatedIdsInOrder(ids)[0] || null;
+}
+
+function repeatedIdsInOrder(ids = []) {
+  const seen = new Set();
+  const repeated = new Set();
+  const result = [];
+  for (const id of ids) {
+    if (!Number.isInteger(id)) continue;
+    if (seen.has(id) && !repeated.has(id)) {
+      repeated.add(id);
+      result.push(id);
+    }
+    seen.add(id);
+  }
+  return result;
 }
 
 function buildActivationFlowTransitionRows(inventory = {}) {
@@ -1403,8 +1466,7 @@ function subsetInventory(inventory, refs) {
 function subsetActivationFlow(activationFlow = {}, ids) {
   return {
     tabActivity: (activationFlow.tabActivity || []).filter((activity) => ids.has(activity.id)),
-    runs: (activationFlow.runs || [])
-      .filter((run) => uniqueNumbers(run.ids || []).every((id) => ids.has(id)) && uniqueNumbers(run.ids || []).length >= 2),
+    runs: activationRunSegmentsForTabIds(activationFlow.runs || [], ids),
     transitions: (activationFlow.transitions || []).filter((transition) => ids.has(transition.fromId) && ids.has(transition.toId)),
     evidence: (activationFlow.evidence || [])
       .map((evidence) => ({ ...evidence, ids: (evidence.ids || []).filter((id) => ids.has(id)) }))

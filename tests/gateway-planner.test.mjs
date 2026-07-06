@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPlannerSystemPrompt, createGatewayPlan, testGatewayConnection } from "../src/core/gateway-planner.js";
+import { buildPlannerPayload, buildPlannerSystemPrompt, createGatewayPlan, testGatewayConnection } from "../src/core/gateway-planner.js";
 import { validatePlan } from "../src/core/plan-validator.js";
 import {
   DEFAULT_SETTINGS,
@@ -256,6 +256,41 @@ test("AI gateway planner posts a chat-completions JSON request", async () => {
   );
 
   assert.deepEqual(plan, expectedPlan);
+});
+
+test("planner payload segments scoped activation runs without dwell drift", () => {
+  const payload = buildPlannerPayload(
+    {
+      ...inventory,
+      plannerTabs: [
+        { tabId: 11, windowId: 1, index: 0, sequenceIndex: 0, title: "Chrome tabs docs", hostname: "developer.chrome.com" },
+        { tabId: 12, windowId: 1, index: 1, sequenceIndex: 1, title: "Side panel API", hostname: "developer.chrome.com" },
+        { tabId: 14, windowId: 1, index: 2, sequenceIndex: 2, title: "Follow-up issue", hostname: "github.com" }
+      ],
+      pageSamples: [],
+      activationFlow: {
+        tabActivity: [],
+        runs: [
+          {
+            windowId: 1,
+            startedAt: "2026-06-25T00:00:00.000Z",
+            endedAt: "2026-06-25T00:10:00.000Z",
+            ids: [10, 11, 12, 13, 14],
+            dwellSeconds: [30, 90, 180, 300],
+            returnToId: null,
+            repeatedIds: []
+          }
+        ],
+        transitions: [],
+        evidence: []
+      }
+    },
+    DEFAULT_SETTINGS
+  );
+
+  assert.deepEqual(payload.activationFlowRuns, [
+    [1, "2026-06-25T00:00:30.000Z", "2026-06-25T00:02:00.000Z", [11, 12], [90], null, []]
+  ]);
 });
 
 test("AI gateway planner returns cleanup candidates in the same full-detail plan request", async () => {
@@ -1461,7 +1496,23 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
       { tabId: 13, windowId: 1, title: "GitHub pull request", hostname: "github.com" },
       { tabId: 14, windowId: 1, title: "Home", hostname: "example.com" }
     ],
-    pageSamples: []
+    pageSamples: [],
+    activationFlow: {
+      tabActivity: [],
+      runs: [
+        {
+          windowId: 1,
+          startedAt: "2026-06-25T00:00:00.000Z",
+          endedAt: "2026-06-25T00:06:00.000Z",
+          ids: [10, 14, 11, 12],
+          dwellSeconds: [60, 120, 180],
+          returnToId: null,
+          repeatedIds: []
+        }
+      ],
+      transitions: [],
+      evidence: []
+    }
   };
   const requests = [];
   const responses = [
@@ -1562,6 +1613,10 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
   assert.match(requests[0].messages[0].content, /fast first-pass/);
   assert.match(requests[0].messages[0].content, /Write every user-facing string in English/);
   assert.match(requests[1].messages[0].content, /JSON-only planner/);
+  const refinePayload = JSON.parse(requests[1].messages[1].content.slice(requests[1].messages[1].content.indexOf("{")));
+  assert.deepEqual(refinePayload.activationFlowRuns, [
+    [1, "2026-06-25T00:03:00.000Z", "2026-06-25T00:06:00.000Z", [11, 12], [180], null, []]
+  ]);
   assert.equal(validation.ok, true, validation.errors.join(" "));
   assert.deepEqual(
     [...plan.groups.flatMap((group) => group.tabRefs.map((ref) => ref.tabId)), ...plan.reviewTabs.map((ref) => ref.tabId)].sort(
