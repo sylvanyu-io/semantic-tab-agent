@@ -53,6 +53,8 @@ export function summarizeStressArtifact(artifact) {
   return {
     runId: artifact.runId,
     file: artifact.artifactPath ? basename(artifact.artifactPath) : "",
+    status: artifact.status || "unknown",
+    failure: artifact.failure || null,
     totalTabs: artifact.totalTabs,
     windowCount: artifact.windowCount,
     gatewayTabs: artifact.gatewayTabs || 0,
@@ -77,6 +79,7 @@ export function formatStressSummaryMarkdown(summary) {
   const lines = [
     `Stress artifact: \`${summary.file || `${summary.runId}.json`}\``,
     `- Run: \`${summary.runId}\``,
+    `- Status: ${summary.status}`,
     `- Scope: ${summary.totalTabs} tabs across ${summary.windowCount} windows`,
     `- All-window apply/undo: ${formatGroups(summary.allWindow?.groups)}, restored ${formatCount(summary.allWindow?.restoredTabs)} tabs`,
     `- Current-window apply/undo: ${formatGroups(summary.currentWindow?.groups)} for ${formatCount(summary.currentWindow?.windowTabs)} tabs`,
@@ -86,6 +89,9 @@ export function formatStressSummaryMarkdown(summary) {
     `- Gateway branch: ${formatGateway(summary.gateway)}`,
     `- Key timings: all-window analyze ${formatMs(summary.timings.allWindowAnalyzeMs)}, full page sampling ${formatMs(summary.timings.fullPageSamplingMs)}`
   ];
+  if (summary.status === "failed" && summary.failure?.message) {
+    lines.splice(3, 0, `- Failure: ${summary.failure.message}`);
+  }
   return lines.join("\n");
 }
 

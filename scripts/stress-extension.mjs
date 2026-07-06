@@ -41,6 +41,7 @@ const userDataDir = await mkdtemp(join(tmpdir(), "tab-recap-stress-"));
 const runtimeExtensionDir = await prepareStressExtension(extensionDir, baseUrl);
 
 const results = [];
+let stressError = null;
 
 try {
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -158,7 +159,8 @@ try {
       runUiSamplingAnalyze(control, {
         expectedSamples: totalTabs,
         runId,
-        organizeMode: "consolidate_one_window"
+        organizeMode: "consolidate_one_window",
+        sourceWindowId: createdWindows[0].id
       })
     );
     assert(uiSamplingJob.validation.ok, `UI sampling plan invalid: ${uiSamplingJob.validation.errors?.join(" ")}`);
@@ -212,20 +214,13 @@ try {
   } finally {
     await context.close();
   }
-
-  await mkdir("dist/stress", { recursive: true });
-  const summaryPath = resolve("dist/stress", `${runId}.json`);
-  const summary = {
-    runId,
-    totalTabs,
-    windowCount,
-    gatewayTabs: gatewayKey ? gatewayTabs : 0,
-    summaryPath,
-    results
-  };
-  await writeFile(summaryPath, JSON.stringify(summary, null, 2));
-  console.log(JSON.stringify(summary, null, 2));
+} catch (error) {
+  stressError = error;
+  throw error;
 } finally {
+  await writeStressSummary(stressError).catch((error) => {
+    console.warn(`[stress] failed to write stress summary: ${error?.message || error}`);
+  });
   await new Promise((resolveClose) => server.close(resolveClose));
   await rm(runtimeExtensionDir, { recursive: true, force: true });
   await rm(userDataDir, { recursive: true, force: true });
@@ -386,6 +381,9 @@ async function sendRuntime(page, message) {
 }
 
 async function runUiSamplingAnalyze(page, options) {
+  if (options.sourceWindowId) {
+    await sendRuntime(page, { type: "tabs:clearAnalysisState", windowId: options.sourceWindowId }).catch(() => null);
+  }
   await page.evaluate(({ organizeMode }) => {
     window.__semanticTabAgentAllowFakeProvider = true;
     const set = (selector, value, dispatch = true) => {
@@ -418,29 +416,7 @@ async function runUiSamplingAnalyze(page, options) {
       throw new Error(`Timed out waiting for page sampling origin cache: ${error.message}; ${JSON.stringify(debug)}`);
     });
   await page.click("#analyzeBtn");
-  await page
-    .waitForFunction(() => {
-      const text = document.querySelector("#detailsText")?.textContent || "";
-      return text.includes('"pageSamples"') && text.includes('"pageSampling"');
-    }, null, { timeout: 180000 })
-    .catch(async (error) => {
-      const debug = await page.evaluate(async () => {
-        const activeJobResponse = await chrome.runtime.sendMessage({ type: "tabs:getActiveJob" }).catch(() => null);
-        return {
-          status: document.querySelector("#statusText")?.textContent || "",
-          progress: document.querySelector("#progressLabel")?.textContent || "",
-          details: document.querySelector("#detailsText")?.textContent?.slice(0, 500) || "",
-          activeJob: activeJobResponse?.result || null,
-          ackSampling: document.querySelector("#ackSampling")?.checked,
-          pageContextMode: document.querySelector("#pageContextMode")?.value,
-          hostPermissionRequestMode: document.querySelector("#hostPermissionRequestMode")?.value,
-          organizeMode: document.querySelector("#organizeMode")?.value,
-          originCache: window.__semanticTabAgentPageSamplingOrigins || null
-        };
-      });
-      throw new Error(`Timed out waiting for UI sampling result: ${error.message}; ${JSON.stringify(debug)}`);
-    });
-  const job = await page.evaluate(() => JSON.parse(document.querySelector("#detailsText").textContent));
+  const job = await waitForLastJob(page, options.sourceWindowId, 180000);
   const statuses = countBy((job.inventory.pageSamples || []).map((sample) => sample.status));
   if (job.preview.pageSampling.ok !== options.expectedSamples) {
     const uiDebug = await page.evaluate(async () => {
@@ -467,6 +443,90 @@ async function runUiSamplingAnalyze(page, options) {
     "UI details should not include sampled page body text"
   );
   return job;
+}
+
+async function waitForLastJob(page, windowId, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = null;
+  while (Date.now() < deadline) {
+    const [activeJob, lastJob] = await Promise.all([
+      sendRuntime(page, { type: "tabs:getActiveJob", windowId }).catch((error) => {
+        lastError = error;
+        return null;
+      }),
+      sendRuntime(page, { type: "tabs:getLastJob", windowId }).catch((error) => {
+        lastError = error;
+        return null;
+      })
+    ]);
+    if (lastJob?.preview?.pageSampling && Array.isArray(lastJob.inventory?.pageSamples)) {
+      return lastJob;
+    }
+    if (activeJob?.status === "error") {
+      throw new Error(`UI sampling job failed: ${activeJob.error || activeJob.message || "unknown error"}`);
+    }
+    await page.waitForTimeout(500);
+  }
+
+  const debug = await samplingUiDebug(page, windowId);
+  throw new Error(
+    `Timed out waiting for UI sampling result${lastError ? `: ${lastError.message}` : ""}; ${JSON.stringify(debug)}`
+  );
+}
+
+async function samplingUiDebug(page, windowId) {
+  return page.evaluate(async (sourceWindowId) => {
+    const activeJobResponse = await chrome.runtime
+      .sendMessage({ type: "tabs:getActiveJob", windowId: sourceWindowId })
+      .catch(() => null);
+    const lastJobResponse = await chrome.runtime
+      .sendMessage({ type: "tabs:getLastJob", windowId: sourceWindowId })
+      .catch(() => null);
+    return {
+      status: document.querySelector("#statusText")?.textContent || "",
+      progress: document.querySelector("#progressLabel")?.textContent || "",
+      details: document.querySelector("#detailsText")?.textContent?.slice(0, 500) || "",
+      activeJob: activeJobResponse?.result || null,
+      lastJob: lastJobResponse?.result
+        ? {
+            operationId: lastJobResponse.result.operationId || "",
+            hasPreview: Boolean(lastJobResponse.result.preview),
+            pageSampling: lastJobResponse.result.preview?.pageSampling || null,
+            pageSamples: lastJobResponse.result.inventory?.pageSamples?.length || 0,
+            validationOk: lastJobResponse.result.validation?.ok
+          }
+        : null,
+      ackSampling: document.querySelector("#ackSampling")?.checked,
+      pageContextMode: document.querySelector("#pageContextMode")?.value,
+      hostPermissionRequestMode: document.querySelector("#hostPermissionRequestMode")?.value,
+      organizeMode: document.querySelector("#organizeMode")?.value,
+      originCache: window.__semanticTabAgentPageSamplingOrigins || null
+    };
+  }, windowId);
+}
+
+async function writeStressSummary(error = null) {
+  await mkdir("dist/stress", { recursive: true });
+  const summaryPath = resolve("dist/stress", `${runId}.json`);
+  const summary = {
+    runId,
+    totalTabs,
+    windowCount,
+    gatewayTabs: gatewayKey ? gatewayTabs : 0,
+    summaryPath,
+    status: error ? "failed" : "passed",
+    ...(error
+      ? {
+          failure: {
+            message: error?.message || String(error),
+            stack: String(error?.stack || "").slice(0, 4000)
+          }
+        }
+      : {}),
+    results
+  };
+  await writeFile(summaryPath, JSON.stringify(summary, null, 2));
+  console.log(JSON.stringify(summary, null, 2));
 }
 
 async function timed(label, operation) {

@@ -29,6 +29,7 @@ test("stress artifact summary extracts release evidence fields", () => {
 
   assert.equal(summary.runId, "sta-stress-test");
   assert.equal(summary.file, "sta-stress-test.json");
+  assert.equal(summary.status, "unknown");
   assert.equal(summary.totalTabs, 240);
   assert.equal(summary.windowCount, 4);
   assert.deepEqual(summary.allWindow, { groups: 6, restoredTabs: 240 });
@@ -42,6 +43,7 @@ test("stress artifact summary extracts release evidence fields", () => {
 test("stress artifact summary formats copy for release notes", () => {
   const markdown = formatStressSummaryMarkdown(summarizeStressArtifact(artifact));
 
+  assert.match(markdown, /Status: unknown/);
   assert.match(markdown, /Scope: 240 tabs across 4 windows/);
   assert.match(markdown, /All-window apply\/undo: 6 groups, restored 240 tabs/);
   assert.match(markdown, /Current-window apply\/undo: 6 groups for 60 tabs/);
@@ -52,4 +54,17 @@ test("stress artifact summary formats copy for release notes", () => {
 
 test("stress artifact summary rejects malformed artifacts", () => {
   assert.throws(() => summarizeStressArtifact({ runId: "bad" }), /missing totalTabs/);
+});
+
+test("stress artifact summary surfaces failed stress runs", () => {
+  const summary = summarizeStressArtifact({
+    ...artifact,
+    status: "failed",
+    failure: { message: "Timed out waiting for UI sampling result" }
+  });
+  const markdown = formatStressSummaryMarkdown(summary);
+
+  assert.equal(summary.status, "failed");
+  assert.match(markdown, /Status: failed/);
+  assert.match(markdown, /Failure: Timed out waiting for UI sampling result/);
 });
