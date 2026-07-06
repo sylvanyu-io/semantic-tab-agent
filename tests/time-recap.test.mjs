@@ -330,6 +330,96 @@ test("time recap runtime message can be canceled while AI is running", async () 
   }
 });
 
+test("time recap cancellation is scoped per source window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Window one research", url: "https://example.com/one", active: true }]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [{ id: 20, title: "Window two research", url: "https://example.com/two", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (_url, init = {}) => {
+    const request = {
+      requestId: init.headers?.["x-tab-recap-request-id"] || "",
+      aborted: false
+    };
+    requests.push(request);
+    return new Promise((_resolve, reject) => {
+      init.signal?.addEventListener(
+        "abort",
+        () => {
+          request.aborted = true;
+          reject(new Error("fetch aborted"));
+        },
+        { once: true }
+      );
+    });
+  };
+
+  try {
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    };
+    const pendingOne = handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      operationId: "recap_window_one",
+      windowId: 1,
+      settings,
+      range: { preset: "7d" }
+    });
+    const pendingTwo = handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      operationId: "recap_window_two",
+      windowId: 2,
+      settings,
+      range: { preset: "7d" }
+    });
+    await waitForCondition(() => requests.length === 2, "Timed out waiting for both recap requests.");
+
+    const canceledOne = await handleRuntimeMessage(chrome, {
+      type: "activity:cancelTimeRecap",
+      operationId: "recap_window_one",
+      windowId: 1
+    });
+    assert.equal(canceledOne.canceled, true);
+    await assert.rejects(pendingOne, /已停止生成回顾/);
+    assert.equal(requests.find((request) => request.requestId === "recap_window_one")?.aborted, true);
+    assert.equal(requests.find((request) => request.requestId === "recap_window_two")?.aborted, false);
+
+    const wrongWindowCancel = await handleRuntimeMessage(chrome, {
+      type: "activity:cancelTimeRecap",
+      operationId: "recap_window_two",
+      windowId: 1
+    });
+    assert.equal(wrongWindowCancel.canceled, false);
+    assert.equal(requests.find((request) => request.requestId === "recap_window_two")?.aborted, false);
+
+    const canceledTwo = await handleRuntimeMessage(chrome, {
+      type: "activity:cancelTimeRecap",
+      operationId: "recap_window_two",
+      windowId: 2
+    });
+    assert.equal(canceledTwo.canceled, true);
+    await assert.rejects(pendingTwo, /已停止生成回顾/);
+    assert.equal(requests.find((request) => request.requestId === "recap_window_two")?.aborted, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("time recap local themes do not use existing browser groups as the primary axis", async () => {
   const chrome = seededRecapChrome();
 
@@ -474,4 +564,13 @@ function seededRecapChrome() {
     events: []
   };
   return chrome;
+}
+
+async function waitForCondition(predicate, message) {
+  const deadline = Date.now() + 1000;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.fail(message);
 }
