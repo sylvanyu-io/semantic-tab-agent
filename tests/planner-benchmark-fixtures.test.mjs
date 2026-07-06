@@ -84,3 +84,37 @@ test("multi-window fixture spreads related topics across windows", () => {
 
   assert.ok([...windowsByTopic.values()].some((windows) => windows.size >= 3));
 });
+
+test("behavior flow fixture adds interaction evidence without leaking truth labels", () => {
+  const inventory = buildBenchmarkInventory(48, { scenario: "behavior_flow", windowCount: 4 });
+  assert.ok(inventory.benchmarkTruth.dimensions.includes("activation_flow"));
+  assert.ok(inventory.activationFlow.runs.length > 0);
+  assert.ok(inventory.activationFlow.evidence.length > 0);
+  assert.ok(inventory.activationFlow.tabActivity.length > 0);
+  assert.ok(inventory.activationFlow.runs.every((run) => run.ids.length >= 3));
+  assert.ok(inventory.activationFlow.evidence.some((entry) => entry.clues.includes("returned to an earlier tab")));
+
+  const payload = buildPlannerPayload(inventory, DEFAULT_SETTINGS);
+  assert.ok(payload.activationFlowRuns.length > 0);
+  assert.ok(payload.activationFlowEvidence.length > 0);
+
+  const serializedFlow = JSON.stringify({
+    activity: payload.activationFlowTabActivity,
+    runs: payload.activationFlowRuns,
+    evidence: payload.activationFlowEvidence
+  });
+  for (const topic of Object.values(inventory.benchmarkTruth.topicByTabId)) {
+    assert.equal(serializedFlow.includes(topic), false);
+  }
+});
+
+test("behavior flow fixture can be stripped for A/B benchmark baselines", () => {
+  const inventory = buildBenchmarkInventory(48, { scenario: "behavior_flow", windowCount: 4, includeActivationFlow: false });
+  assert.equal(inventory.benchmarkTruth.dimensions.includes("activation_flow"), true);
+  assert.deepEqual(inventory.activationFlow, { tabActivity: [], runs: [], evidence: [] });
+
+  const payload = buildPlannerPayload(inventory, DEFAULT_SETTINGS);
+  assert.deepEqual(payload.activationFlowTabActivity, []);
+  assert.deepEqual(payload.activationFlowRuns, []);
+  assert.deepEqual(payload.activationFlowEvidence, []);
+});

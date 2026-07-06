@@ -27,6 +27,7 @@ const dataDir = resolve("docs/benchmarks/data");
 const dataPath = resolve(dataDir, `${runId}.json`);
 const reportPath = resolve(process.env.BENCHMARK_REPORT_PATH || "docs/benchmarks/archive/generated/gateway-planner-scale.md");
 const benchmarkPlannerOptions = parsePlannerOptionOverrides();
+const includeActivationFlow = process.env.BENCHMARK_ACTIVATION_FLOW !== "0";
 
 const settings = {
   ...DEFAULT_SETTINGS,
@@ -215,6 +216,7 @@ async function writeOutputs({ partial }) {
       gatewayThinkingIntensity: settings.gatewayThinkingIntensity,
       promptPreset: settings.promptPreset,
       groupingGranularity: settings.groupingGranularity,
+      activationFlow: includeActivationFlow ? "enabled" : "disabled",
       plannerOptionOverrides: benchmarkPlannerOptions,
       requestTimeoutMs: Number(process.env.BENCHMARK_TIMEOUT_MS || DEFAULT_BENCHMARK_TIMEOUT_MS),
       strategyTimeoutMs: Number(process.env.BENCHMARK_STRATEGY_TIMEOUT_MS || DEFAULT_STRATEGY_TIMEOUT_MS),
@@ -252,6 +254,7 @@ function renderReport(payload) {
     `- Thinking intensity: ${payload.environment.gatewayThinkingIntensity}`,
     `- Prompt preset: ${payload.environment.promptPreset}`,
     `- Grouping granularity: ${payload.environment.groupingGranularity}`,
+    `- Activation flow: ${payload.environment.activationFlow}`,
     payload.strategyFilter ? `- Strategy filter: ${payload.strategyFilter}` : "- Strategy filter: none",
     payload.scenarioFilter ? `- Scenario filter: ${payload.scenarioFilter}` : "- Scenario filter: task_bursts",
     `- Planner option overrides: ${formatPlannerOptionOverrides(payload.environment.plannerOptionOverrides || {})}`,
@@ -583,7 +586,7 @@ async function main() {
 
   for (const scenario of scenarios) {
     for (const tabCount of sizes) {
-      const inventory = buildBenchmarkInventory(tabCount, { scenario, windowCount: 4 });
+      const inventory = buildBenchmarkInventory(tabCount, { scenario, windowCount: 4, includeActivationFlow });
       for (const strategy of strategies) {
         console.log(`[benchmark] ${scenario} / ${tabCount} tabs / ${strategy.key} starting`);
         const result = await runStrategy({ inventory, tabCount, scenario, strategy });

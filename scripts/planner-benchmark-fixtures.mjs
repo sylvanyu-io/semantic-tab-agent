@@ -24,6 +24,10 @@ export const BENCHMARK_SCENARIOS = Object.freeze({
   multi_window: {
     label: "Multi-window context",
     description: "Related topics are split across browser windows and should still be grouped together."
+  },
+  behavior_flow: {
+    label: "Behavior flow evidence",
+    description: "Simulates user activation runs, dwell time, and return-to-anchor behavior without leaking fixture truth labels."
   }
 });
 
@@ -208,6 +212,8 @@ export function buildBenchmarkInventory(tabCount, options = {}) {
     window.tabCount = nextIndex;
   }
 
+  const activationFlow = options.includeActivationFlow === false ? emptyActivationFlow() : buildBenchmarkActivationFlow(tabs, truth, scenario);
+
   return {
     schemaVersion: 1,
     mode: ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW,
@@ -222,6 +228,7 @@ export function buildBenchmarkInventory(tabCount, options = {}) {
     plannerTabs: tabs,
     excludedTabs: [],
     lockedGroups: [],
+    activationFlow,
     pageSamples,
     benchmarkTruth: truth,
     collectedAt: new Date(BASE_TIME + tabCount * 1000).toISOString()
@@ -235,6 +242,7 @@ function scenarioDimensions(scenario) {
   if (scenario === "media_type") return ["media_type", "semantic_topic", "cross_domain"];
   if (scenario === "old_tabs") return [...common, "age_signal", "cleanup_signal"];
   if (scenario === "multi_window") return [...common, "cross_window"];
+  if (scenario === "behavior_flow") return [...common, "activation_flow", "dwell_time", "return_to_anchor"];
   return common;
 }
 
@@ -292,6 +300,10 @@ function topicForIndex(index, scenario) {
   if (scenario === "multi_window") return TOPICS[(index * 5 + Math.floor(index / 8)) % TOPICS.length];
   if (scenario === "domain_traps") return TOPICS[(index + Math.floor(index / SHARED_PLATFORMS.length)) % TOPICS.length];
   if (scenario === "media_type") return TOPICS[(index * 3 + Math.floor(index / 5)) % TOPICS.length];
+  if (scenario === "behavior_flow") {
+    const burst = Math.floor(index / 4);
+    return TOPICS[(burst * 3 + Math.floor(burst / 2)) % TOPICS.length];
+  }
   const session = Math.floor(index / 12);
   return TOPICS[(session * 7 + Math.floor(index / 3) + index) % TOPICS.length];
 }
@@ -319,6 +331,7 @@ function expectedFamilyFor({ scenario, topic, variant }) {
 
 function hostFor({ index, topic, scenario }) {
   if (scenario === "domain_traps") return SHARED_PLATFORMS[index % SHARED_PLATFORMS.length];
+  if (scenario === "behavior_flow") return SHARED_PLATFORMS[(index + Math.floor(index / 4)) % SHARED_PLATFORMS.length];
   if (scenario === "media_type") {
     const byMedia = {
       docs: ["developer.mozilla.org", "docs.google.com"],
@@ -342,6 +355,7 @@ function titleFor({ index, topic, variant, scenario }) {
   const suffix = String(index).padStart(3, "0");
   if (scenario === "low_signal_samples") return `${variant.genericTitle} ${suffix}`;
   if (scenario === "domain_traps" && index % 5 === 0) return `${variant.genericTitle} ${suffix}`;
+  if (scenario === "behavior_flow" && index % 4 !== 0) return `${variant.genericTitle} ${suffix}`;
   if (scenario === "media_type") return `${mediaTitle(variant.mediaType)} - ${variant.title} ${suffix}`;
   return index % 11 === 0 ? `${variant.genericTitle} ${suffix}` : `${topic.title} - ${variant.title} ${suffix}`;
 }
@@ -365,6 +379,7 @@ function mediaTitle(mediaType) {
 function pathFor({ index, topic, variant, scenario }) {
   if (scenario === "domain_traps") return `${variant.slug}/${topic.slug}/${index}`;
   if (scenario === "low_signal_samples") return `page/${index}`;
+  if (scenario === "behavior_flow") return `flow/${variant.slug}/${index}`;
   if (scenario === "media_type") return `${variant.mediaType}/${topic.slug}/${variant.slug}/${index}`;
   return `${topic.slug}/${variant.slug}/${index}`;
 }
@@ -382,7 +397,121 @@ function sequenceIndexFor(index, tabCount, scenario) {
     return oldBlockSize + ((index * 13) % Math.max(1, tabCount - oldBlockSize));
   }
   if (scenario === "multi_window") return (index * 11) % tabCount;
+  if (scenario === "behavior_flow") return index;
   return index;
+}
+
+function buildBenchmarkActivationFlow(tabs, truth, scenario) {
+  if (scenario !== "behavior_flow") return emptyActivationFlow();
+  const activityByTabId = new Map(tabs.map((tab) => [tab.tabId, createBenchmarkTabActivity(tab)]));
+  const runs = [];
+  const evidence = [];
+  let runIndex = 0;
+
+  for (const chunk of behaviorFlowChunks(tabs, truth)) {
+    if (chunk.length < 2) continue;
+    const anchor = chunk[0];
+    const ids = chunk.length >= 3 ? [anchor.tabId, chunk[1].tabId, chunk[2].tabId, anchor.tabId] : [anchor.tabId, chunk[1].tabId, anchor.tabId];
+    const dwellSeconds = ids.length === 4 ? [1800 + (runIndex % 3) * 300, 120, 45] : [900, 60];
+    const startedAtMs = BASE_TIME + runIndex * 45 * 60 * 1000;
+    const endedAtMs = startedAtMs + dwellSeconds.reduce((sum, seconds) => sum + seconds, 0) * 1000;
+    const uniqueIds = uniqueOrdered(ids);
+    const repeatedIds = [anchor.tabId];
+    const run = {
+      windowId: anchor.windowId,
+      startedAt: new Date(startedAtMs).toISOString(),
+      endedAt: new Date(endedAtMs).toISOString(),
+      spanSeconds: Math.max(1, Math.round((endedAtMs - startedAtMs) / 1000)),
+      ids,
+      dwellSeconds,
+      returnToId: anchor.tabId,
+      repeatedIds
+    };
+    runs.push(run);
+    updateBenchmarkActivity(activityByTabId, run);
+    evidence.push({
+      ids: uniqueIds,
+      strength: 0.71,
+      count: 1,
+      lastAt: run.endedAt,
+      clues: ["same activation run", "returned to an earlier tab", "quick handoff", "long anchor then short checks"]
+    });
+    runIndex += 1;
+  }
+
+  return {
+    tabActivity: [...activityByTabId.values()].filter(
+      (activity) => activity.activeCount || activity.totalActiveSeconds || activity.appearedInRuns || activity.nearbyIds.length
+    ),
+    runs: runs.slice(0, 24),
+    evidence: evidence.slice(0, 80)
+  };
+}
+
+function emptyActivationFlow() {
+  return { tabActivity: [], runs: [], evidence: [] };
+}
+
+function behaviorFlowChunks(tabs, truth) {
+  const byTopicAndWindow = new Map();
+  for (const tab of tabs) {
+    const topic = truth.topicByTabId[tab.tabId];
+    const key = `${topic}:${tab.windowId}`;
+    const group = byTopicAndWindow.get(key) || [];
+    group.push(tab);
+    byTopicAndWindow.set(key, group);
+  }
+  return [...byTopicAndWindow.values()]
+    .map((group) => group.sort((left, right) => left.sequenceIndex - right.sequenceIndex))
+    .filter((group) => group.length >= 2)
+    .sort((left, right) => left[0].sequenceIndex - right[0].sequenceIndex);
+}
+
+function createBenchmarkTabActivity(tab) {
+  return {
+    id: tab.tabId,
+    activeCount: 0,
+    totalActiveSeconds: 0,
+    maxActiveSeconds: 0,
+    lastActivatedAt: "",
+    appearedInRuns: 0,
+    returnedToCount: 0,
+    nearbyIds: []
+  };
+}
+
+function updateBenchmarkActivity(activityByTabId, run) {
+  const seen = new Set();
+  for (let index = 0; index < run.ids.length; index += 1) {
+    const id = run.ids[index];
+    const activity = activityByTabId.get(id);
+    if (!activity) continue;
+    activity.activeCount += 1;
+    activity.lastActivatedAt = run.endedAt;
+    if (!seen.has(id)) activity.appearedInRuns += 1;
+    if (seen.has(id)) activity.returnedToCount += 1;
+    seen.add(id);
+    const seconds = Number(run.dwellSeconds[index] || 0);
+    activity.totalActiveSeconds += seconds;
+    activity.maxActiveSeconds = Math.max(activity.maxActiveSeconds, seconds);
+  }
+  const uniqueIds = uniqueOrdered(run.ids);
+  for (const id of uniqueIds) {
+    const activity = activityByTabId.get(id);
+    if (!activity) continue;
+    activity.nearbyIds = uniqueIds.filter((nearbyId) => nearbyId !== id).slice(0, 6);
+  }
+}
+
+function uniqueOrdered(values) {
+  const seen = new Set();
+  const result = [];
+  for (const value of values || []) {
+    if (!Number.isInteger(value) || seen.has(value)) continue;
+    seen.add(value);
+    result.push(value);
+  }
+  return result;
 }
 
 function staleSignalFor(index, tabCount, scenario) {

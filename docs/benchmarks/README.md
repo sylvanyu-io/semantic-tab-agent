@@ -9,6 +9,7 @@
 3. [Model routing](03-model-routing.md) - 模型路由和 fallback 决策。
 4. [Model matrix 2026-06-26](04-model-matrix-2026-06-26.md) - 模型/思考强度矩阵记录。
 5. [Gateway model availability](05-gateway-model-availability-2026-06-26.md) - 网关可用模型诊断。
+6. [Activation flow evidence](06-activation-flow-evidence.md) - 标签页切换、停留和回到锚点等行为证据的设计与验证边界。
 
 ## 当前关键结论
 
@@ -16,6 +17,7 @@
 - 33 tabs 页面摘要场景是低信号样本，最终路线为 `gpt-5.5 high` 分组 + `gpt-5.3-codex-spark low` 清理，耗时 `41.3s`，Topic F1 保持 `98.7%`。
 - 50/120/300 tabs 当前规模测试是 `task_bursts` metadata-only 场景，主要走 spark 路线，分别为 `11.8s / 36.6s / 69.9s`。
 - 当前优化结论是“同条件下更快且质量不降”，不是“tab 数越少一定越快”。
+- 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；当前结论只证明输入形态、安全边界和回归测试，不等同于 live LLM 质量提升。
 
 ## 原始数据
 
