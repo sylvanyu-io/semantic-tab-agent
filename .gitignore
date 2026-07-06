@@ -3,4 +3,5 @@ coverage/
 test-results/
 playwright-report/
 dist/
+docs/benchmarks/private/
 .DS_Store

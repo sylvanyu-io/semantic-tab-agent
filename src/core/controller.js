@@ -22,6 +22,7 @@ import { buildPreview } from "./preview.js";
 import { STORAGE_KEYS, getLocal, removeLocal, setLocal } from "./storage.js";
 import { collectTabInventory } from "./tab-inventory.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS, generateTimeRecap } from "./time-recap.js";
+import { buildEvidenceSnapshot } from "./evidence-snapshot.js";
 import { validatePlan } from "./plan-validator.js";
 
 const activeAnalyses = new Map();
@@ -116,6 +117,8 @@ export async function handleRuntimeMessage(chromeApi, message) {
       await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
       return getActivityOverview(chromeApi, { rangeMs: message.rangeMs, includeIncognitoTabs: settings.includeIncognitoTabs });
     }
+    case "activity:getEvidenceSnapshot":
+      return getEvidenceSnapshotForMessage(chromeApi, message);
     case "activity:generateTimeRecap":
       return generateTimeRecapForMessage(chromeApi, message);
     case "activity:cancelTimeRecap":
@@ -138,6 +141,21 @@ export async function handleRuntimeMessage(chromeApi, message) {
     default:
       throw new Error(`Unknown message type: ${message?.type || "<missing>"}`);
   }
+}
+
+async function getEvidenceSnapshotForMessage(chromeApi, message = {}) {
+  const settings = normalizeSettings({
+    ...(await getSettings(chromeApi)),
+    ...(message.settings || {}),
+    languageMode: message.languageMode || message.settings?.languageMode
+  });
+  await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
+  return buildEvidenceSnapshot(chromeApi, settings, {
+    range: message.range || {},
+    windowId: message.windowId,
+    strictWindowId: Boolean(message.strictWindowId),
+    includePrivateFields: Boolean(message.includePrivateFields)
+  });
 }
 
 async function generateTimeRecapForMessage(chromeApi, message = {}) {

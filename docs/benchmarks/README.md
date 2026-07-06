@@ -10,6 +10,7 @@
 4. [Model matrix 2026-06-26](04-model-matrix-2026-06-26.md) - 模型/思考强度矩阵记录。
 5. [Gateway model availability](05-gateway-model-availability-2026-06-26.md) - 网关可用模型诊断。
 6. [Activation flow evidence](06-activation-flow-evidence.md) - 标签页切换、停留和回到锚点等行为证据的设计与验证边界。
+7. [Real session evidence snapshots](07-real-session-evidence-snapshots.md) - 真实浏览会话的脱敏快照，用于判断是否具备继续做 live A/B 的证据质量。
 
 ## 当前关键结论
 
@@ -18,6 +19,7 @@
 - 50/120/300 tabs 当前规模测试是 `task_bursts` metadata-only 场景，主要走 spark 路线，分别为 `11.8s / 36.6s / 69.9s`。
 - 当前优化结论是“同条件下更快且质量不降”，不是“tab 数越少一定越快”。
 - 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；2026-07-06 的单次 live A/B 中，带行为证据 Topic F1 为 `100.0%`，剥离后为 `84.9%`。这支持继续保留该路线，但仍需要更多真实浏览会话验证。
+- 真实会话验证应先导出 redacted evidence snapshot；只有 lifecycle events、activation runs 和 summary coverage 足够时，live A/B 结论才有解释价值。
 
 ## 原始数据
 
