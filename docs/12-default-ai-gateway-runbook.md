@@ -319,6 +319,10 @@ If `RESEND_API_KEY`, `ALERT_TO`, or `ALERT_FROM` is missing, the scheduled job
 returns before running the real LLM probe, so it does not spend model usage
 without a working alert channel.
 
+If monitor state storage is missing, the scheduled job also returns before
+`/readyz` or `/llm-readyz`. Without state storage it cannot suppress duplicate
+outage emails or send a correct recovery email.
+
 After every Worker deploy or secret change, verify the live monitor config:
 
 ```bash

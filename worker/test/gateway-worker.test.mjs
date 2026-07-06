@@ -190,6 +190,19 @@ test("scheduled monitor does not spend LLM tokens before email is configured", a
   assert.equal(calls.emails.length, 0);
 });
 
+test("scheduled monitor does not spend LLM tokens before state storage is configured", async () => {
+  const calls = monitorFetch();
+  const result = await runScheduledMonitor(monitorEnv({ RATE_LIMIT_KV: undefined, MONITOR_STATE_KV: undefined }), {
+    scheduledTime: Date.parse("2026-07-02T00:00:00.000Z"),
+    fetchImpl: calls.fetch
+  });
+
+  assert.equal(result.event, "not_configured");
+  assert.equal(result.summary.failed.includes("state"), true);
+  assert.equal(calls.calls.length, 0);
+  assert.equal(calls.emails.length, 0);
+});
+
 test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds later", async () => {
   const env = monitorEnv({ MONITOR_REMINDER_HOURS: "6" });
   const calls = monitorFetch({ llmStatus: 503, llmBody: "upstream temporarily unavailable" });

@@ -65,9 +65,18 @@ export async function runScheduledMonitor(env = {}, options = {}) {
       checks: {}
     };
   }
+  const stateStore = monitorStateStore(env);
+  if (!stateStore) {
+    console.warn(JSON.stringify({ event: "tab_recap_monitor_not_configured", requestId, code: "monitor_state_store_missing" }));
+    return {
+      ok: false,
+      event: "not_configured",
+      summary: { ok: false, status: "not_configured", failed: ["state"], requestId },
+      checks: {}
+    };
+  }
   const checks = await runGatewayMonitorChecks(env, { ...options, requestId });
   const summary = monitorSummary(checks);
-  const stateStore = monitorStateStore(env);
   const previousState = await readMonitorState(stateStore);
   const event = monitorNotificationEvent(previousState, summary, now, env);
   const nextState = nextMonitorState(previousState, summary, event, now);
