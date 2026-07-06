@@ -60,10 +60,10 @@ Implemented:
   being hidden in the title bar.
 - Recap advanced settings are scoped to recap-relevant controls and do not show
   organization-only switches.
-- Release checks clean stale artifacts, regenerate icons, run Node and
-  Playwright tests, scan current files and git history for provider-key
-  patterns, build both local and store packages, then audit the generated zip
-  artifacts against the unpacked extensions.
+- Release checks clean stale build artifacts and old local stress summaries,
+  regenerate icons, run Node and Playwright tests, scan current files and git
+  history for provider-key patterns, build both local and store packages, then
+  audit the generated zip artifacts against the unpacked extensions.
 
 Not production-complete yet:
 

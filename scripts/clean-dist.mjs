@@ -12,6 +12,7 @@ if (!existsSync(distDir)) {
 
 await rm(join(distDir, "extension"), { recursive: true, force: true });
 await rm(join(distDir, "extension-store"), { recursive: true, force: true });
+await rm(join(distDir, "stress"), { recursive: true, force: true });
 
 for (const entry of await readdir(distDir)) {
   if (entry.endsWith(".zip")) {

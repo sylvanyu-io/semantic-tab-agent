@@ -13,3 +13,12 @@ test("public release scripts include real extension stress and live gateway gate
   assert.match(scripts["release:check:live"], /npm run release:check:full/);
   assert.match(scripts["release:check:live"], /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
 });
+
+test("dist cleanup removes stale release and stress artifacts", async () => {
+  const cleanScript = await readFile("scripts/clean-dist.mjs", "utf8");
+
+  assert.match(cleanScript, /join\(distDir, "extension"\)/);
+  assert.match(cleanScript, /join\(distDir, "extension-store"\)/);
+  assert.match(cleanScript, /join\(distDir, "stress"\)/);
+  assert.match(cleanScript, /entry\.endsWith\("\.zip"\)/);
+});
