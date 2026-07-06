@@ -285,3 +285,25 @@ Current runtime note: launchd services were not loaded, but the three fallback `
 | `/llm-readyz` without token | 401 `monitor_token_required` |
 | `/llm-readyz` with token | 200, `gpt-5.4-mini`, 5.69 s |
 | Worker unit tests | 18/18 passed |
+
+2026-07-07 03:34 Asia/Shanghai release-gate recheck:
+
+| Check | Result |
+| --- | --- |
+| Worker version | `0f0170a3-11a8-4044-a0f0-fe98a25b14ab` |
+| `npm run release:check:live` | passed |
+| Node tests | 215/215 passed |
+| UI smoke tests | 33/33 passed |
+| Secret scan | clean |
+| Git history secret scan | clean |
+| Dev extension package | `dist/tab-recap-0.2.5.zip` |
+| Store extension package | `dist/tab-recap-0.2.5-store.zip` |
+| Release artifact audit | passed |
+| `/healthz` | 200 |
+| `/readyz` | 200, upstream ready |
+| `/monitor/status` | `ok`, `lastStatusAt=2026-07-06T19:30:36.000Z`, email configured |
+| Public chat smoke | 200, `gpt-5.4`, high reasoning |
+
+The live release gate now fails if `/monitor/status` is skipped, not `ok`, or
+older than two hours, so public release checks cannot pass on a stale green
+monitor snapshot.

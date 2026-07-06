@@ -443,17 +443,26 @@ Default recovery:
 /Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh smoke
 ```
 
-Release smoke with Worker monitor verification:
+Gateway smoke with Worker monitor verification:
 
 ```bash
 npm run smoke:gateway
 ```
 
 This checks the product-facing Worker health path, origin readiness path,
-`/monitor/status` configuration, and a real chat-completions request. It fails
-if `config.email` is not `configured` or if the latest monitor snapshot reports
-`down`. The script reads `MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then this
-machine's default local runtime token file.
+`/monitor/status` configuration when a monitor token is available, and a real
+chat-completions request. It fails if `config.email` is not `configured` or if
+the latest monitor snapshot reports `down`. The script reads `MONITOR_TOKEN`,
+then `MONITOR_TOKEN_FILE`, then this machine's default local runtime token file.
+
+For a release-blocking live check, require a fresh monitor snapshot:
+
+```bash
+GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway
+```
+
+This additionally fails if `/monitor/status` is skipped, not `ok`, or older
+than two hours.
 
 Full pre-release live gate:
 
@@ -462,7 +471,8 @@ npm run release:check:live
 ```
 
 This runs the full local release gate first, then the same live default-gateway
-smoke. Use it before publishing builds that rely on the built-in AI service.
+smoke with `GATEWAY_REQUIRE_MONITOR=1`. Use it before publishing builds that
+rely on the built-in AI service.
 
 If `cloudflared` is running but public checks still return 530, inspect
 Cloudflare tunnel logs. If logs show QUIC timeouts or no free edge addresses,
