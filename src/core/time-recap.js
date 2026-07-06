@@ -187,6 +187,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
     .map((page) => ({ ...page, score: pageScore(page, range) }))
     .sort((left, right) => right.score - left.score || compareIsoDesc(left.lastSeenAt, right.lastSeenAt));
   const clipped = scored.slice(MAX_RECAP_PAGES);
+  const includeUrlDetails = settings.urlPrivacyMode !== URL_PRIVACY_MODES.TITLE_ONLY;
   const pages = scored.slice(0, MAX_RECAP_PAGES).map((page, index) => ({
     id: index + 1,
     tabId: Number.isInteger(page.tabId) ? page.tabId : null,
@@ -194,8 +195,8 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
     index: Number.isFinite(page.index) ? page.index : null,
     open: Boolean(page.open),
     title: String(page.title || page.summary?.title || page.hostname || localizedText(settings.languageMode, "无标题", "Untitled")).slice(0, 180),
-    hostname: String(page.hostname || "").slice(0, 120),
-    sanitizedUrl: settings.urlPrivacyMode === URL_PRIVACY_MODES.TITLE_ONLY ? "" : String(page.sanitizedUrl || "").slice(0, 220),
+    hostname: includeUrlDetails ? String(page.hostname || "").slice(0, 120) : "",
+    sanitizedUrl: includeUrlDetails ? String(page.sanitizedUrl || "").slice(0, 220) : "",
     firstSeenAt: page.firstSeenAt || "",
     lastSeenAt: page.lastSeenAt || "",
     lastActivatedAt: page.lastActivatedAt || "",

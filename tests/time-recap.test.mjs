@@ -3,7 +3,7 @@ import test from "node:test";
 import { handleRuntimeMessage } from "../src/core/controller.js";
 import { buildTimeRecapInput, generateTimeRecap, normalizeTimeRecapRange } from "../src/core/time-recap.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
-import { DEFAULT_SETTINGS, PLANNER_PROVIDERS } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS, PLANNER_PROVIDERS, URL_PRIVACY_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
 
 const NOW = Date.parse("2026-06-27T06:00:00.000Z");
@@ -26,6 +26,25 @@ test("time recap input combines local activity, summaries, lifecycle, and curren
   assert.equal(serialized.includes("Readable forum discussion about browser extensions"), true);
   assert.equal(input.coverage.currentOpenTabs, 3);
   assert.equal(input.coverage.includedPages >= 3, true);
+});
+
+test("time recap input suppresses historical URL details in title-only mode", async () => {
+  const chrome = seededRecapChrome();
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN", urlPrivacyMode: URL_PRIVACY_MODES.TITLE_ONLY },
+    { range: { preset: "7d" }, now: NOW }
+  );
+  const serialized = JSON.stringify(input);
+
+  assert.equal(input.pages.length >= 3, true);
+  assert.equal(input.pages.every((page) => page.hostname === ""), true);
+  assert.equal(input.pages.every((page) => page.sanitizedUrl === ""), true);
+  assert.equal(serialized.includes("github.com"), false);
+  assert.equal(serialized.includes("forum.example.com"), false);
+  assert.equal(serialized.includes("https://github.com/acme"), false);
+  assert.equal(serialized.includes("TabRecap release checklist"), true);
 });
 
 test("time recap input keeps high-signal closed pages when many low-signal tabs are open", async () => {
