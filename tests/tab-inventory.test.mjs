@@ -51,3 +51,31 @@ test("tab inventory includes activation flow behavior context", async () => {
   assert.deepEqual(inventory.activationFlow.evidence[0].ids, [10, 11]);
   assert.equal(inventory.activationFlow.tabActivity.find((activity) => activity.id === 10).totalActiveSeconds, 6);
 });
+
+test("tab inventory keeps activation flow shape when behavior storage is unavailable", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          { id: 10, title: "Docs", url: "https://docs.example/a", active: true },
+          { id: 11, title: "Issue", url: "https://github.com/org/repo/issues/1", active: false }
+        ]
+      }
+    ]
+  });
+  chrome.storage.local.get = async () => {
+    throw new Error("storage temporarily unavailable");
+  };
+
+  const inventory = await collectTabInventory(chrome, DEFAULT_SETTINGS, { windowId: 1, strictWindowId: true });
+
+  assert.deepEqual(inventory.activationFlow, {
+    tabActivity: [],
+    runs: [],
+    transitions: [],
+    evidence: []
+  });
+  assert.equal(inventory.plannerTabs.length, 2);
+});

@@ -43,6 +43,7 @@ export async function collectTabInventory(chromeApi, rawSettings, invocation = {
   const activationFlow = await getTabActivationFlowContext(chromeApi, plannerTabs).catch(() => ({
     tabActivity: [],
     runs: [],
+    transitions: [],
     evidence: []
   }));
 
