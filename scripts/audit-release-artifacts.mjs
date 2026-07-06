@@ -1,0 +1,155 @@
+import { readdir, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, relative } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const rootDir = fileURLToPath(new URL("..", import.meta.url));
+const distDir = join(rootDir, "dist");
+const rootManifest = JSON.parse(await readFile(join(rootDir, "manifest.json"), "utf8"));
+
+const artifacts = [
+  {
+    channel: "dev",
+    extensionDir: join(distDir, "extension"),
+    zipPath: join(distDir, `tab-recap-${rootManifest.version}.zip`)
+  },
+  {
+    channel: "store",
+    extensionDir: join(distDir, "extension-store"),
+    zipPath: join(distDir, `tab-recap-${rootManifest.version}-store.zip`)
+  }
+];
+
+const allowedTopLevel = new Set(["manifest.json", "src", "icons"]);
+const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".svg"]);
+const forbiddenEntryPatterns = [
+  /^docs\//,
+  /^tests?\//,
+  /^worker\//,
+  /^scripts\//,
+  /^node_modules\//,
+  /^dist\//,
+  /^\.git\//,
+  /^\.github\//,
+  /(^|\/)\.DS_Store$/,
+  /(^|\/)package(?:-lock)?\.json$/,
+  /\.map$/,
+  /\.md$/,
+  /\.pem$/,
+  /\.key$/,
+  /\.env/
+];
+
+let failures = 0;
+
+for (const artifact of artifacts) {
+  auditExists(artifact.extensionDir, `${artifact.channel} unpacked extension`);
+  auditExists(artifact.zipPath, `${artifact.channel} zip`);
+  if (!existsSync(artifact.extensionDir) || !existsSync(artifact.zipPath)) continue;
+
+  const manifest = JSON.parse(await readFile(join(artifact.extensionDir, "manifest.json"), "utf8"));
+  const unpackedFiles = await listFiles(artifact.extensionDir);
+  const zipFiles = listZipFiles(artifact.zipPath).filter((entry) => !entry.endsWith("/"));
+
+  auditManifest(artifact.channel, manifest, unpackedFiles);
+  auditEntries(artifact.channel, unpackedFiles, zipFiles);
+}
+
+if (failures) {
+  console.error(`Release artifact audit failed with ${failures} issue(s).`);
+  process.exit(1);
+}
+
+console.log("Release artifact audit passed.");
+
+function auditExists(path, label) {
+  if (!existsSync(path)) fail(`${label} is missing: ${path}`);
+}
+
+function auditManifest(channel, manifest, files) {
+  if (manifest.manifest_version !== 3) fail(`${channel}: manifest_version must be 3.`);
+  if (manifest.name !== rootManifest.name) fail(`${channel}: manifest name changed unexpectedly.`);
+  if (manifest.version !== rootManifest.version) fail(`${channel}: manifest version does not match package source.`);
+
+  const requiredPaths = [
+    manifest.background?.service_worker,
+    manifest.side_panel?.default_path,
+    ...Object.values(manifest.icons || {}),
+    ...Object.values(manifest.action?.default_icon || {})
+  ].filter(Boolean);
+  for (const path of requiredPaths) {
+    if (!files.includes(path)) fail(`${channel}: manifest references missing file ${path}.`);
+  }
+
+  if (channel === "store") {
+    assertNotIncludes(manifest.permissions, "activeTab", `${channel}: store build must not request activeTab.`);
+    assertNotIncludes(manifest.optional_permissions, "scripting", `${channel}: store build must not request optional scripting.`);
+    if (manifest.optional_host_permissions) fail(`${channel}: store build must not include optional_host_permissions.`);
+  } else {
+    assertIncludes(manifest.permissions, "activeTab", `${channel}: dev build should keep activeTab for local diagnostics.`);
+    assertIncludes(manifest.optional_permissions, "scripting", `${channel}: dev build should keep optional scripting.`);
+    assertIncludes(manifest.optional_host_permissions, "https://*/*", `${channel}: dev build should keep optional https host permissions.`);
+    assertIncludes(manifest.optional_host_permissions, "http://*/*", `${channel}: dev build should keep optional http host permissions.`);
+  }
+}
+
+function auditEntries(channel, unpackedFiles, zipFiles) {
+  const unpackedSet = new Set(unpackedFiles);
+  const zipSet = new Set(zipFiles);
+  for (const file of unpackedSet) {
+    if (!zipSet.has(file)) fail(`${channel}: zip is missing unpacked file ${file}.`);
+  }
+  for (const file of zipSet) {
+    if (!unpackedSet.has(file)) fail(`${channel}: zip contains unexpected file ${file}.`);
+    const topLevel = file.split("/")[0];
+    if (!allowedTopLevel.has(topLevel)) fail(`${channel}: zip contains disallowed top-level entry ${file}.`);
+    if (!allowedExtensions.has(extensionOf(file))) fail(`${channel}: zip contains disallowed extension ${file}.`);
+    if (forbiddenEntryPatterns.some((pattern) => pattern.test(file))) fail(`${channel}: zip contains forbidden entry ${file}.`);
+  }
+}
+
+async function listFiles(dir) {
+  const files = [];
+  await walk(dir, dir, files);
+  return files.sort();
+}
+
+async function walk(root, dir, files) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const absolute = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await walk(root, absolute, files);
+    } else if (entry.isFile()) {
+      files.push(relative(root, absolute).replaceAll("\\", "/"));
+    }
+  }
+}
+
+function listZipFiles(zipPath) {
+  const result = spawnSync("unzip", ["-Z1", zipPath], { encoding: "utf8" });
+  if (result.status !== 0) {
+    fail(`Could not list zip entries for ${zipPath}: ${result.stderr || result.stdout}`);
+    return [];
+  }
+  return result.stdout.split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean).sort();
+}
+
+function extensionOf(file) {
+  const name = file.split("/").pop() || "";
+  const index = name.lastIndexOf(".");
+  return index >= 0 ? name.slice(index) : "";
+}
+
+function assertIncludes(values, expected, message) {
+  if (!Array.isArray(values) || !values.includes(expected)) fail(message);
+}
+
+function assertNotIncludes(values, forbidden, message) {
+  if (Array.isArray(values) && values.includes(forbidden)) fail(message);
+}
+
+function fail(message) {
+  failures += 1;
+  console.error(`- ${message}`);
+}

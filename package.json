@@ -15,12 +15,13 @@
     "assets:icons": "node scripts/generate-icons.mjs",
     "assets:readme": "node scripts/generate-readme-assets.mjs",
     "clean:dist": "node scripts/clean-dist.mjs",
+    "audit:release-artifacts": "node scripts/audit-release-artifacts.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "scan:secrets:history": "node scripts/scan-secrets-history.mjs",
     "build:extension": "node scripts/build-extension.mjs",
     "build:extension:store": "EXTENSION_CHANNEL=store node scripts/build-extension.mjs",
     "check": "npm test && npm run test:ui",
-    "release:check": "npm run clean:dist && npm run assets:icons && npm run check && npm run scan:secrets && npm run scan:secrets:history && npm run build:extension && npm run build:extension:store"
+    "release:check": "npm run clean:dist && npm run assets:icons && npm run check && npm run scan:secrets && npm run scan:secrets:history && npm run build:extension && npm run build:extension:store && npm run audit:release-artifacts"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"
