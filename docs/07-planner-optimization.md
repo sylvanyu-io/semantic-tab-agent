@@ -184,6 +184,12 @@ matching misses. They must remain supporting evidence: semantic content,
 original tab order, page summaries, URL privacy mode, and the user's prompt stay
 authoritative.
 
+When a large session is refined in bucket-sized subrequests, activation runs are
+scoped as contiguous in-bucket segments. The runtime keeps real adjacent
+handoffs such as `A -> B` when both tabs are in the refinement bucket, but it
+does not simply filter IDs out of a mixed run because that would misalign dwell
+durations and imply transitions the user did not actually make.
+
 ## Next Implementation Steps
 
 1. Continue refactoring `gateway-planner.js` into explicit planner stages:
