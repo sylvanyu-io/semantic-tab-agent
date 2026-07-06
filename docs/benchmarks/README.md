@@ -11,6 +11,7 @@
 5. [Gateway model availability](05-gateway-model-availability-2026-06-26.md) - 网关可用模型诊断。
 6. [Activation flow evidence](06-activation-flow-evidence.md) - 标签页切换、停留和回到锚点等行为证据的设计与验证边界。
 7. [Real session evidence snapshots](07-real-session-evidence-snapshots.md) - 真实浏览会话的脱敏快照，用于判断是否具备继续做 live A/B 的证据质量。
+8. [Time recap extension scale](08-time-recap-extension-scale.md) - 真实 Chromium 扩展运行时下的 30/120/300 标签页回顾规模验证。
 
 ## 当前关键结论
 
@@ -21,6 +22,7 @@
 - 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；2026-07-06 的单次 live A/B 中，带行为证据 Topic F1 为 `100.0%`，剥离后为 `84.9%`。这支持继续保留该路线，但仍需要更多真实浏览会话验证。
 - 行为证据现在包含 directed transition rows。48-tab 本地 fixture 中新增 36 条转移行，payload 增加 2,855 bytes / 20.4%，换来更直接的 `tab A -> tab B` 证据。
 - 真实会话验证应先导出 redacted evidence snapshot；只有 lifecycle events、activation runs 和 summary coverage 足够时，live A/B 结论才有解释价值。
+- 回顾模式新增真实扩展规模 benchmark：在独立 Chromium profile 加载 unpacked extension，构造 30/120/300 个本地标签页、写入 activity/summary/lifecycle 证据，再通过 `activity:generateTimeRecap` runtime message 验证本地回顾输入构建和 fallback 渲染。
 
 ## 原始数据
 

@@ -11,6 +11,7 @@
     "smoke:gateway": "node scripts/live-smoke-gateway.mjs",
     "benchmark:planner-scale": "node scripts/benchmark-gateway-planner-scale.mjs",
     "analyze:planner-quality": "node scripts/analyze-planner-benchmark-quality.mjs",
+    "benchmark:recap-extension-scale": "node scripts/benchmark-recap-extension-scale.mjs",
     "stress:extension": "node scripts/stress-extension.mjs",
     "assets:icons": "node scripts/generate-icons.mjs",
     "assets:readme": "node scripts/generate-readme-assets.mjs",

@@ -1,0 +1,89 @@
+{
+  "schema": "tab_recap_time_recap_extension_scale_benchmark_v1",
+  "runId": "time-recap-extension-scale-2026-07-06T16-49-36-734Z-pid94381",
+  "startedAt": "2026-07-06T16:49:36.761Z",
+  "finishedAt": "2026-07-06T16:50:33.604Z",
+  "extensionDir": "dist/extension",
+  "tabCounts": [
+    30,
+    120,
+    300
+  ],
+  "windowCount": 4,
+  "baseUrl": "http://127.0.0.1:<ephemeral>",
+  "note": "This benchmark uses a real Chromium extension runtime and synthetic local tab pages. It measures local recap input construction and fallback generation, not live AI gateway latency.",
+  "results": [
+    {
+      "tabCount": 30,
+      "windowCount": 4,
+      "elapsedMs": 18,
+      "source": "local",
+      "coverage": {
+        "activityEntries": 30,
+        "summaryEntries": 20,
+        "sampledEntries": 20,
+        "currentOpenTabs": 30,
+        "lifecycleSessions": 30,
+        "lifecycleEvents": 75,
+        "inferredClosed": 0,
+        "includedPages": 30,
+        "clippedPages": 0
+      },
+      "recap": {
+        "headline": "2026-07-06 的活动最集中，主题线索包括 与扩展发布、稍后阅读资料。",
+        "themeCount": 5,
+        "timelineCount": 1,
+        "followUpCount": 5,
+        "coverageNote": "已结合 30 个本机页面线索、20 个页面摘要、打开/关闭状态和活动记录。"
+      }
+    },
+    {
+      "tabCount": 120,
+      "windowCount": 4,
+      "elapsedMs": 1956,
+      "source": "local",
+      "coverage": {
+        "activityEntries": 120,
+        "summaryEntries": 80,
+        "sampledEntries": 80,
+        "currentOpenTabs": 120,
+        "lifecycleSessions": 120,
+        "lifecycleEvents": 656,
+        "inferredClosed": 0,
+        "includedPages": 120,
+        "clippedPages": 0
+      },
+      "recap": {
+        "headline": "2026-07-06 的活动最集中，主题线索包括 与扩展发布、稍后阅读资料。",
+        "themeCount": 5,
+        "timelineCount": 1,
+        "followUpCount": 5,
+        "coverageNote": "已结合 120 个本机页面线索、80 个页面摘要、打开/关闭状态和活动记录。"
+      }
+    },
+    {
+      "tabCount": 300,
+      "windowCount": 4,
+      "elapsedMs": 24790,
+      "source": "local",
+      "coverage": {
+        "activityEntries": 300,
+        "summaryEntries": 200,
+        "sampledEntries": 200,
+        "currentOpenTabs": 300,
+        "lifecycleSessions": 300,
+        "lifecycleEvents": 1799,
+        "inferredClosed": 0,
+        "includedPages": 300,
+        "clippedPages": 0
+      },
+      "recap": {
+        "headline": "2026-07-06 的活动最集中，主题线索包括 与扩展发布、稍后阅读资料。",
+        "themeCount": 5,
+        "timelineCount": 1,
+        "followUpCount": 5,
+        "coverageNote": "已结合 300 个本机页面线索、200 个页面摘要、打开/关闭状态和活动记录。"
+      }
+    }
+  ]
+}

@@ -43,6 +43,8 @@ Implemented:
 - Active analysis jobs expose coarse progress states in the side panel and can be
   canceled; cancellation aborts provider fetches when the request is still live.
 - Recap jobs expose the same side-panel bottom progress and stop controls.
+- Time recap local fallback has a repeatable real-extension scale benchmark for
+  30/120/300 tab sessions in an isolated Chromium profile.
 - Large AI gateway jobs use a coarse-then-refine planner: a low-effort coarse
   bucket pass, followed by high-effort refinement for oversized or uncertain
   buckets, then normal local validation.
@@ -107,7 +109,8 @@ Recommended before public listing:
 
 - Keep the local-memory clearing control visible before recap history becomes a
   first-class history surface.
-- Add larger real-browser recap benchmarks for 30, 120, and 300 tab sessions.
+- Re-run the 30/120/300-tab real-extension recap scale benchmark before larger
+  public releases.
 - Expand adaptive planning beyond the AI gateway path if other providers become
   first-class large-session targets.
 
