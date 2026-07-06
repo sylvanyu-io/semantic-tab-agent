@@ -448,7 +448,9 @@ Current first-use gate:
 
 Recommended before a broad public listing:
 
-- `npm run release:check` passes.
+- `npm run release:check` passes for the standard package gate.
+- `npm run release:check:full` passes before public packaging, including the
+  real-extension stress runner.
 - Real Chrome side panel smoke includes metadata-only recap, recap with continuous summaries enabled, denied page permission, sleeping tabs, language switch, and gateway failure fallback.
 - Larger real-browser recap benchmarks are added to `docs/benchmarks/`.
 - Local-memory clearing remains available before recap history becomes a first-class history surface.

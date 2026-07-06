@@ -79,13 +79,16 @@ Blocking gates:
 
 - `npm run check` passes.
 - `npm run release:check` passes and produces a clean extension package.
+- `npm run release:check:full` passes before public release packaging. It adds
+  the real-extension stress runner to the standard package gate.
 - `npm run release:check:live` passes before public releases that depend on the
-  built-in default AI service. It reads `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`,
-  or this machine's default local runtime token file, and fails if
-  `/monitor/status` is skipped, not `ok`, older than two hours, or missing
-  healthy `readyz` / `llm-readyz` summary codes.
+  built-in default AI service. It runs `release:check:full`, reads
+  `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`, or this machine's default local runtime
+  token file, and fails if `/monitor/status` is skipped, not `ok`, older than
+  two hours, or missing healthy `readyz` / `llm-readyz` summary codes.
 - `npm run stress:extension` validates current-window apply/undo and
-  consolidate-to-one-window apply/undo on a throwaway Chromium profile.
+  consolidate-to-one-window apply/undo on a throwaway Chromium profile. This is
+  called automatically by `release:check:full` and `release:check:live`.
 - AI gateway live smoke verifies Worker health, origin readiness, monitor email
   configuration, the latest monitor snapshot, and one real chat-completions
   request.
@@ -124,9 +127,12 @@ Blocking gates:
   a live model request, and does not expose upstream URLs, alert mailboxes, or
   provider secrets.
 
-Latest extension stress run:
+Latest full release gate:
 
-- `2026-07-07`: `npm run stress:extension` passed against an isolated Chromium
+- `2026-07-07`: `npm run release:check:full` passed. The standard gate covered
+  218 Node tests, 33 Playwright UI tests, current and history secret scans, dev
+  plus store builds, and release artifact audit.
+- The full gate then ran `npm run stress:extension` against an isolated Chromium
   profile with 240 tabs across 4 windows.
 - All-window organization created 6 groups, applied the plan, and restored all
   240 tabs through undo.
@@ -139,7 +145,7 @@ Latest extension stress run:
   sampling read 4 of 4 active pages.
 - The live gateway branch was intentionally skipped because `GATEWAY_API_KEY`
   was not set for this local stress run.
-- Ignored artifact: `dist/stress/sta-stress-mr9n8cov.json`.
+- Ignored artifact: `dist/stress/sta-stress-mr9novpp.json`.
 
 Recommended before public listing:
 
