@@ -226,3 +226,17 @@ npm run test:worker
 
 The tests use an in-memory KV and mocked upstream fetch. They never call the
 real LLM gateway.
+
+Production gateway smoke:
+
+```bash
+npm run smoke:gateway
+```
+
+For the built-in gateway, the smoke script checks `/healthz`, `/readyz`, and a
+real chat-completions request. Include `MONITOR_TOKEN` when you also want it to
+verify `/monitor/status` and fail if email monitoring is not configured:
+
+```bash
+MONITOR_TOKEN="$MONITOR_TOKEN" npm run smoke:gateway
+```
