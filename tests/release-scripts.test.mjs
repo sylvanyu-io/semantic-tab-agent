@@ -55,12 +55,20 @@ test("release artifact audit rejects obsolete product names and legacy extension
   assert.match(auditScript, /tab-tidy/);
 });
 
-test("secret scanners cover model provider and alert email provider key shapes", () => {
+test("secret scanners cover model, alert email, and common cloud key shapes", () => {
   const providerKey = ["sk", "provider-token-1234567890"].join("-");
   const resendKey = ["re", "alert-token-1234567890"].join("_");
+  const githubClassicToken = ["ghp", "A".repeat(36)].join("_");
+  const githubFineGrainedToken = ["github", "pat", "B".repeat(80)].join("_");
+  const googleApiKey = `AIza${"C".repeat(35)}`;
+  const awsAccessKeyId = `AKIA${"D".repeat(16)}`;
 
   assert.equal(matchesSecretRule("provider_api_key", providerKey), true);
   assert.equal(matchesSecretRule("resend_api_key", resendKey), true);
+  assert.equal(matchesSecretRule("github_classic_token", githubClassicToken), true);
+  assert.equal(matchesSecretRule("github_fine_grained_token", githubFineGrainedToken), true);
+  assert.equal(matchesSecretRule("google_api_key", googleApiKey), true);
+  assert.equal(matchesSecretRule("aws_access_key_id", awsAccessKeyId), true);
 });
 
 test("secret scanner success copy stays generic across secret provider types", async () => {

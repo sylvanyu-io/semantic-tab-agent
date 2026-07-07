@@ -123,10 +123,11 @@ Blocking gates:
 - Time recap fallback keeps raw AI errors in diagnostics rather than visible
   product copy.
 - Recap UI exposes only recap-relevant advanced settings.
-- No custom gateway key or alert email provider key appears in git history,
-  screenshots, test output, or fixtures. The current and history scanners share
-  the same secret-pattern list; history scanning only skips known old fake test
-  fixtures that were already removed from source.
+- No model provider key, alert email provider key, GitHub token, Google API key,
+  or AWS access key id appears in git history, screenshots, test output, or
+  fixtures. The current and history scanners share the same secret-pattern list;
+  history scanning only skips known old fake test fixtures that were already
+  removed from source.
 - Extension package contains no `node_modules`, test outputs, or local secrets.
 - Extension zip entries exactly match their unpacked build directories and only
   contain publishable extension assets: `manifest.json`, `src/`, and `icons/`.
