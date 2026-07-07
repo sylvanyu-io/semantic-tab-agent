@@ -86,8 +86,8 @@ export async function generateTimeRecap(chromeApi, rawSettings = {}, options = {
         ...localRecap,
         coverageNote: localizedText(
           settings.languageMode,
-          `${localRecap.coverageNote} AI 回顾暂时不可用，先展示本机线索。`,
-          `${localRecap.coverageNote} AI recap is unavailable, so this uses local signals.`
+          `${localRecap.coverageNote} AI 增强这次没有完成，已先使用本机线索生成回顾。`,
+          `${localRecap.coverageNote} AI enhancement did not finish, so this recap uses local signals for now.`
         )
       },
       input

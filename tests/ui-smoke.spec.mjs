@@ -1141,7 +1141,7 @@ test("time recap fallback keeps raw AI errors out of the visible product copy", 
   await expect(page.locator(".recap-summary-card")).not.toContainText("timed out");
   await expect(page.locator(".recap-summary-card")).not.toContainText("300 seconds");
   await expect(page.locator("#recapDetailsText")).toContainText("已整理 65 个本机页面线索");
-  await expect(page.locator("#recapDetailsText")).toContainText("AI 回顾这次没有完成，已先保留本机线索结果。");
+  await expect(page.locator("#recapDetailsText")).toContainText("本次先使用本机线索生成；AI 增强可稍后重试。");
   await expect(page.locator("#recapDetailsText")).not.toContainText("timed out");
   await expect(page.locator("#recapDetailsText")).not.toContainText("300 seconds");
   await expect(page.locator("#recapDetailsText")).not.toContainText("tabId");
@@ -1232,13 +1232,13 @@ test("time recap error state does not resurrect the previous recap", async ({ pa
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 
   await page.getByRole("button", { name: "生成回顾" }).click();
-  await expect(page.locator(".recap-card")).toContainText("AI 回顾暂时没有完成");
+  await expect(page.locator(".recap-card")).toContainText("已先生成本机回顾；AI 增强可稍后重试。");
   await expect(page.locator(".launch-panel")).toBeHidden();
   await expect(page.locator("#timeRecapPanel")).not.toContainText("第一次回顾结果");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator(".recap-card")).toContainText("AI recap did not finish");
+  await expect(page.locator(".recap-card")).toContainText("Local recap is ready. You can retry AI enhancement later.");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("第一次回顾结果");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 });
