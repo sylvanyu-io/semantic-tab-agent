@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 test("public release scripts include real extension stress and live gateway gates", async () => {
@@ -19,10 +23,52 @@ test("public release scripts include real extension stress and live gateway gate
 test("dist cleanup removes stale release and stress artifacts", async () => {
   const cleanScript = await readFile("scripts/clean-dist.mjs", "utf8");
 
+  assert.match(cleanScript, /EXTENSION_DIST_DIR/);
   assert.match(cleanScript, /join\(distDir, "extension"\)/);
   assert.match(cleanScript, /join\(distDir, "extension-store"\)/);
   assert.match(cleanScript, /join\(distDir, "stress"\)/);
   assert.match(cleanScript, /entry\.endsWith\("\.zip"\)/);
+});
+
+test("release scripts honor custom extension dist directories", async () => {
+  const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-release-dist-"));
+  try {
+    await mkdir(join(tempDist, "extension"), { recursive: true });
+    await mkdir(join(tempDist, "extension-store"), { recursive: true });
+    await mkdir(join(tempDist, "stress"), { recursive: true });
+    await writeFile(join(tempDist, "stale.zip"), "stale");
+
+    const clean = spawnSync(process.execPath, ["scripts/clean-dist.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_DIST_DIR: tempDist }
+    });
+    assert.equal(clean.status, 0, clean.stderr || clean.stdout);
+    assert.equal(existsSync(join(tempDist, "extension")), false);
+    assert.equal(existsSync(join(tempDist, "extension-store")), false);
+    assert.equal(existsSync(join(tempDist, "stress")), false);
+    assert.equal(existsSync(join(tempDist, "stale.zip")), false);
+
+    for (const channel of ["dev", "store"]) {
+      const build = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXTENSION_DIST_DIR: tempDist,
+          ...(channel === "store" ? { EXTENSION_CHANNEL: "store" } : {})
+        }
+      });
+      assert.equal(build.status, 0, build.stderr || build.stdout);
+    }
+
+    const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_DIST_DIR: tempDist }
+    });
+    assert.equal(audit.status, 0, audit.stderr || audit.stdout);
+    assert.match(audit.stdout, /Release artifact audit passed/);
+  } finally {
+    await rm(tempDist, { recursive: true, force: true });
+  }
 });
 
 test("real extension stress writes machine and human readable artifacts", async () => {
