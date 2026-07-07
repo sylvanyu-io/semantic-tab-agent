@@ -194,7 +194,7 @@ function measuredFetch(records) {
 
 async function writeOutputs({ partial }) {
   const payload = {
-    schema: "tab_tidy_gateway_planner_scale_benchmark_v1",
+    schema: "tab_recap_gateway_planner_scale_benchmark_v1",
     runId,
     generatedAt: new Date().toISOString(),
     partial,

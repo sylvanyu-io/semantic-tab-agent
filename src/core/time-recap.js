@@ -214,7 +214,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
   }));
 
   return {
-    schema: "tab_tidy_time_recap_input_v1",
+    schema: "tab_recap_time_recap_input_v1",
     languageMode: settings.languageMode,
     range,
     coverage: {
@@ -360,7 +360,7 @@ export function buildLocalTimeRecap(input, rawSettings = {}) {
     evidence: bucket.pages.slice(0, 3).map((page) => page.hostname || page.title).filter(Boolean)
   }));
   return {
-    schema: "tab_tidy_time_recap_v1",
+    schema: "tab_recap_time_recap_v1",
     language: settings.languageMode === "en-US" ? "en-US" : "zh-CN",
     headline: localHeadline(themes, input, settings),
     summary: localSummary(themes, pages, input, settings),
@@ -382,7 +382,7 @@ function buildTimeRecapSystemPrompt(settings) {
     "Use closed pages and still-open pages equally when their activity falls inside the range.",
     "Write user-facing product copy. Do not expose raw implementation terms such as activeCount, ageDays, idleDays, pageId, tabId, sampleable, sequenceIndex, cache, lifecycle, or hostname as labels.",
     "Do not recommend closing, deleting, cleaning, or reviewing tabs. This feature is recap-only; cleanup recommendations belong to the organizer flow.",
-    "Required JSON shape: {schema:\"tab_tidy_time_recap_v1\",language:\"zh-CN\"|\"en-US\",headline:string,summary:string,themes:[{title:string,description:string,confidence:\"high\"|\"medium\"|\"low\",ids:number[],evidence:string[]}],timeline:[{label:string,description:string,ids:number[]}],followUps:[{title:string,reason:string,ids:number[]}],coverageNote:string}.",
+    "Required JSON shape: {schema:\"tab_recap_time_recap_v1\",language:\"zh-CN\"|\"en-US\",headline:string,summary:string,themes:[{title:string,description:string,confidence:\"high\"|\"medium\"|\"low\",ids:number[],evidence:string[]}],timeline:[{label:string,description:string,ids:number[]}],followUps:[{title:string,reason:string,ids:number[]}],coverageNote:string}.",
     settings.languageMode === "en-US"
       ? "Write all user-visible text in English."
       : "Write all user-visible text in Simplified Chinese."
@@ -431,7 +431,7 @@ function normalizeTimeRecap(parsed, input, settings) {
 
   const local = buildLocalTimeRecap(input, settings);
   return {
-    schema: "tab_tidy_time_recap_v1",
+    schema: "tab_recap_time_recap_v1",
     language: settings.languageMode === "en-US" ? "en-US" : "zh-CN",
     headline: text(source.headline, 120) || text(local.headline, 120),
     summary: text(source.summary, 700) || text(local.summary, 700),

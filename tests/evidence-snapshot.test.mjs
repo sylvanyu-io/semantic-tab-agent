@@ -20,7 +20,7 @@ test("evidence snapshot defaults to redacted aggregate counts", async () => {
   );
   const serialized = JSON.stringify(snapshot);
 
-  assert.equal(snapshot.schema, "tab_tidy_evidence_snapshot_v1");
+  assert.equal(snapshot.schema, "tab_recap_evidence_snapshot_v1");
   assert.equal(snapshot.privacy, "redacted_counts");
   assert.equal(snapshot.counts.plannerTabs, 3);
   assert.equal(snapshot.counts.activationRuns, 1);

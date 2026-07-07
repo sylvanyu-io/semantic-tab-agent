@@ -332,7 +332,10 @@ function isProgressCopyRequest(body) {
 function isTimeRecapRequest(body) {
   const systemText = messageText(body?.messages?.[0]);
   const userText = messageText(body?.messages?.[1]);
-  return /time recap writer|time-recap|work recap/i.test(systemText) || /tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText);
+  return (
+    /time recap writer|time-recap|work recap/i.test(systemText) ||
+    /tab_recap_time_recap_input_v1|tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText)
+  );
 }
 
 function validateTimeRecapRequest(body, modelAllowlist, options = {}) {
@@ -352,7 +355,7 @@ function validateTimeRecapRequest(body, modelAllowlist, options = {}) {
   if (!/TabRecap|time recap writer|work recap/i.test(systemText)) {
     return { ok: false, code: "recap_shape_required", message: "Recap system prompt is not recognized as a TabRecap request." };
   }
-  if (!/tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText)) {
+  if (!/tab_recap_time_recap_input_v1|tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText)) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload is not recognized as a TabRecap request." };
   }
   if (!/"pageFields"\s*:/.test(userText) || !/"pages"\s*:/.test(userText) || !/"coverage"\s*:/.test(userText)) {

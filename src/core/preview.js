@@ -57,7 +57,7 @@ function summarizeCleanup(cleanup, settings) {
   if (!settings.analyzeCleanup || !cleanup) return null;
   const candidates = Array.isArray(cleanup.candidates) ? cleanup.candidates : [];
   return {
-    schema: cleanup.schema || "tab_tidy_cleanup_v1",
+    schema: cleanup.schema || "tab_recap_cleanup_v1",
     summary: String(cleanup.summary || "").slice(0, 220),
     candidateCount: candidates.length,
     candidates: candidates.slice(0, 20).map((candidate) => ({

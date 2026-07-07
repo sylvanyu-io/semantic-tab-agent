@@ -526,7 +526,7 @@ export function buildPlannerPayload(inventory, settings, options = {}) {
   const pageSamplesByTabId = new Map((inventory.pageSamples || []).map((result) => [result.tabId, result]));
   const pageSampleSignals = buildPageSampleSignals(inventory, pageSamplesByTabId);
   const payload = {
-    schema: "tab_tidy_compact_v1",
+    schema: "tab_recap_compact_v1",
     analysisFeatures: {
       grouping: Boolean(settings.analyzeGrouping),
       cleanup: Boolean(settings.analyzeCleanup)
@@ -863,7 +863,7 @@ function normalizeCleanupAnalysis(parsed, inventory, activityOverview = {}, sett
   appendCleanupReviewFallbacks(candidates, { inventory, activityById, seen, settings, limit });
 
   return {
-    schema: "tab_tidy_cleanup_v1",
+    schema: "tab_recap_cleanup_v1",
     summary: normalizeModelProductText(
       source?.summary ||
         localizedText(
@@ -1047,7 +1047,7 @@ function buildCleanupUserPrompt(inventory, settings, options = {}, groups = [], 
     "Software engineering task input: rank browser tabs for manual cleanup review.",
     "Return compact cleanup JSON only.",
     JSON.stringify({
-      schema: "tab_tidy_cleanup_ranking_v1",
+      schema: "tab_recap_cleanup_ranking_v1",
       settings: payload.settings,
       cleanupInstructions: payload.cleanupInstructions,
       scope: payload.scope,
@@ -1109,7 +1109,7 @@ async function refineBucket(bucket, inventory, settings, fetchImpl, options = {}
       reviewTabs: merged.reviewTabs,
       cleanup: settings.analyzeCleanup
         ? {
-            schema: "tab_tidy_cleanup_v1",
+            schema: "tab_recap_cleanup_v1",
             summary: "",
             candidates: merged.cleanupCandidates
           }
@@ -1552,7 +1552,7 @@ function buildMergedCleanup(candidates, inventory, settings) {
     })
     .slice(0, limit);
   return {
-    schema: "tab_tidy_cleanup_v1",
+    schema: "tab_recap_cleanup_v1",
     summary: sortedCandidates.length
       ? localizedText(
           settings.languageMode,
@@ -2002,7 +2002,7 @@ async function emitProgress(options, event) {
 
 function exampleCompactPlan(settings = {}) {
   const example = {
-    schema: "tab_tidy_plan_compact_v1",
+    schema: "tab_recap_plan_compact_v1",
     groups: [
       {
         key: "topic",

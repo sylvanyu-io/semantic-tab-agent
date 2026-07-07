@@ -537,7 +537,7 @@ function createLocalCleanupAnalysis(inventory, overview, settings) {
       ]
     }));
   return {
-    schema: "tab_tidy_cleanup_v1",
+    schema: "tab_recap_cleanup_v1",
     summary: localizedText(
       settings.languageMode,
       `找到 ${candidates.length} 个可以先检查的标签页。`,

@@ -48,6 +48,7 @@ test("release artifact audit rejects obsolete product names and legacy extension
   assert.match(auditScript, /Semantic Tab Agent/);
   assert.match(auditScript, /Tab Tidy/);
   assert.match(auditScript, /tabTidy\./);
+  assert.match(auditScript, /tab_tidy_/);
 });
 
 test("release artifact audit locks store host permissions to the default gateway", async () => {

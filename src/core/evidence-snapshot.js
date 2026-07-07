@@ -19,7 +19,7 @@ export async function buildEvidenceSnapshot(chromeApi, rawSettings = {}, options
   const includePrivateFields = Boolean(options.includePrivateFields);
 
   return {
-    schema: "tab_tidy_evidence_snapshot_v1",
+    schema: "tab_recap_evidence_snapshot_v1",
     version: SNAPSHOT_VERSION,
     generatedAt: new Date(now).toISOString(),
     privacy: includePrivateFields ? "private_details" : "redacted_counts",

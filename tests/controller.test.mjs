@@ -275,7 +275,7 @@ test("closing cleanup candidates is explicit and updates the stored plan preview
       ],
       reviewTabs: [],
       cleanup: {
-        schema: "tab_tidy_cleanup_v1",
+        schema: "tab_recap_cleanup_v1",
         summary: "Old docs can be checked.",
         candidates: [
           { tabId: 10, windowId: 1, title: "Old docs", hostname: "example.com", priority: "high", reason: "Old task.", evidence: [] }
@@ -370,7 +370,7 @@ test("cleanup close removes stale candidates from the stored plan", async () => 
       ],
       reviewTabs: [],
       cleanup: {
-        schema: "tab_tidy_cleanup_v1",
+        schema: "tab_recap_cleanup_v1",
         summary: "Old docs can be checked.",
         candidates: [
           { tabId: 10, windowId: 1, title: "Already closed", hostname: "example.com", priority: "high", reason: "Old task.", evidence: [] }

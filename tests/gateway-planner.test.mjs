@@ -172,7 +172,7 @@ test("AI gateway planner posts a chat-completions JSON request", async () => {
     assert.match(body.messages[1].content, /Structured output docs/);
     assert.match(body.messages[1].content, /Software engineering task input/);
     const payload = JSON.parse(body.messages[1].content.slice(body.messages[1].content.indexOf("{")));
-    assert.equal(payload.schema, "tab_tidy_compact_v1");
+    assert.equal(payload.schema, "tab_recap_compact_v1");
     assert.equal(payload.settings.languageMode, "en-US");
     assert.equal(payload.settings.promptPreset, "conservative");
     assert.equal(payload.settings.groupingGranularity, "balanced");
@@ -1331,7 +1331,7 @@ test("AI gateway planner adapts compact ids output", async () => {
           {
             message: {
               content: JSON.stringify({
-                schema: "tab_tidy_plan_compact_v1",
+                schema: "tab_recap_plan_compact_v1",
                 groups: [
                   {
                     key: "developer-docs",
@@ -1375,7 +1375,7 @@ test("AI gateway planner deduplicates compact review refs", async () => {
           {
             message: {
               content: JSON.stringify({
-                schema: "tab_tidy_plan_compact_v1",
+                schema: "tab_recap_plan_compact_v1",
                 groups: [],
                 review: [{ id: 10, reason: "Unclear." }, 10, 11]
               })
@@ -2004,7 +2004,7 @@ test("AI gateway planner routes 50-tab product sessions through hierarchical wor
 
     const payload = JSON.parse(body.messages[1].content.slice(body.messages[1].content.indexOf("{")));
     assert.match(body.messages[0].content, /cleanup ranking planner/);
-    assert.equal(payload.schema, "tab_tidy_cleanup_ranking_v1");
+    assert.equal(payload.schema, "tab_recap_cleanup_ranking_v1");
     assert.equal(payload.cleanupInstructions.actionLimit, 50);
     assert.deepEqual(
       payload.proposedGroups.map((row) => row[3].length),
@@ -2076,7 +2076,7 @@ test("AI gateway planner splits sub-50 cleanup ranking to the auxiliary model", 
 
     if (/cleanup ranking planner/.test(body.messages[0].content)) {
       assert.equal(body.model, "gpt-5.3-codex-spark");
-      assert.equal(payload.schema, "tab_tidy_cleanup_ranking_v1");
+      assert.equal(payload.schema, "tab_recap_cleanup_ranking_v1");
       assert.equal(payload.cleanupInstructions.actionLimit, 33);
       assert.equal(payload.proposedGroups.length, 2);
       return {

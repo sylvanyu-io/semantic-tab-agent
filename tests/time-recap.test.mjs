@@ -18,7 +18,7 @@ test("time recap input combines local activity, summaries, lifecycle, and curren
   );
   const serialized = JSON.stringify(input);
 
-  assert.equal(input.schema, "tab_tidy_time_recap_input_v1");
+  assert.equal(input.schema, "tab_recap_time_recap_input_v1");
   assert.equal(input.pages.some((page) => page.title === "Chrome extensions settings" && page.hostname === "chrome"), true);
   assert.equal(input.pages.some((page) => page.title === "Old unrelated page"), false);
   assert.equal(serialized.includes("token=secret"), false);
@@ -242,7 +242,7 @@ test("time recap gateway request parses fenced JSON and keeps page references va
         choices: [
           {
             message: {
-              content: "```json\n{\"schema\":\"tab_tidy_time_recap_v1\",\"language\":\"en-US\",\"headline\":\"Extension work dominated the week.\",\"summary\":\"Most useful signals point to TabRecap release and browser extension research.\",\"themes\":[{\"title\":\"Extension release work\",\"description\":\"Release and side panel pages form one thread.\",\"confidence\":\"high\",\"ids\":[1,999],\"evidence\":[\"release\"]}],\"timeline\":[{\"label\":\"This week\",\"description\":\"Mostly extension work.\",\"ids\":[1]}],\"followUps\":[{\"title\":\"Finish release QA\",\"reason\":\"The release checklist is still open.\",\"ids\":[1]}],\"reviewCandidates\":[{\"id\":2,\"priority\":\"medium\",\"reason\":\"This looks like an older research page.\",\"evidence\":[\"older\"]}],\"coverageNote\":\"Used local signals.\"}\n```"
+              content: "```json\n{\"schema\":\"tab_recap_time_recap_v1\",\"language\":\"en-US\",\"headline\":\"Extension work dominated the week.\",\"summary\":\"Most useful signals point to TabRecap release and browser extension research.\",\"themes\":[{\"title\":\"Extension release work\",\"description\":\"Release and side panel pages form one thread.\",\"confidence\":\"high\",\"ids\":[1,999],\"evidence\":[\"release\"]}],\"timeline\":[{\"label\":\"This week\",\"description\":\"Mostly extension work.\",\"ids\":[1]}],\"followUps\":[{\"title\":\"Finish release QA\",\"reason\":\"The release checklist is still open.\",\"ids\":[1]}],\"reviewCandidates\":[{\"id\":2,\"priority\":\"medium\",\"reason\":\"This looks like an older research page.\",\"evidence\":[\"older\"]}],\"coverageNote\":\"Used local signals.\"}\n```"
             }
           }
         ]
@@ -286,7 +286,7 @@ test("time recap model copy is normalized away from implementation field names",
           {
             message: {
               content: JSON.stringify({
-                schema: "tab_tidy_time_recap_v1",
+                schema: "tab_recap_time_recap_v1",
                 language: "zh-CN",
                 headline: "pageId 1",
                 summary: "activeCount 为0、pageId 1、sampleable false，但 ageDays 约 12。",
@@ -377,7 +377,7 @@ test("time recap drops cleanup-like follow-ups from AI output", async () => {
           {
             message: {
               content: JSON.stringify({
-                schema: "tab_tidy_time_recap_v1",
+                schema: "tab_recap_time_recap_v1",
                 language: "zh-CN",
                 headline: "这一周主要在做扩展发布",
                 summary: "主要围绕 TabRecap 发布检查和权限研究推进。",
@@ -460,7 +460,7 @@ test("time recap does not replace filtered cleanup follow-ups with local continu
                 {
                   message: {
                     content: JSON.stringify({
-                      schema: "tab_tidy_time_recap_v1",
+                      schema: "tab_recap_time_recap_v1",
                       language: "zh-CN",
                       headline: "主要在整理发布检查。",
                       summary: "这段时间主要围绕发布检查推进。",
@@ -500,7 +500,7 @@ test("time recap runtime message returns local fallback without mutating tabs", 
   });
 
   assert.equal(result.source, "local");
-  assert.equal(result.recap.schema, "tab_tidy_time_recap_v1");
+  assert.equal(result.recap.schema, "tab_recap_time_recap_v1");
   assert.equal((await chrome.tabs.query({})).length, 3);
 });
 
@@ -715,7 +715,7 @@ test("time recap newer same-window requests replace stale ones", async () => {
           {
             message: {
               content: JSON.stringify({
-                schema: "tab_tidy_time_recap_v1",
+                schema: "tab_recap_time_recap_v1",
                 language: "zh-CN",
                 headline: "第二次回顾生效",
                 summary: "新的同窗口回顾结果应该保留下来。",

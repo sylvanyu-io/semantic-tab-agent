@@ -466,7 +466,7 @@ test("time recap display filters cleanup-like follow-ups from runtime results", 
                   coverage: { includedPages: 2, sampledEntries: 0 }
                 },
                 recap: {
-                  schema: "tab_tidy_time_recap_v1",
+                  schema: "tab_recap_time_recap_v1",
                   headline: "这段时间主要在做扩展发布",
                   summary: "主要围绕 TabRecap 发布检查和权限研究推进。",
                   themes: [],
@@ -555,7 +555,7 @@ test("time recap summary does not invent a continuation row after filtering clea
                   coverage: { includedPages: 1, sampledEntries: 0 }
                 },
                 recap: {
-                  schema: "tab_tidy_time_recap_v1",
+                  schema: "tab_recap_time_recap_v1",
                   headline: "这段时间主要在做扩展发布",
                   summary: "主要围绕发布检查推进。",
                   themes: [],
@@ -678,7 +678,7 @@ test("time recap exposes page summary permission controls and sends enabled summ
                 source: "ai",
                 input: { pages: [], coverage: { includedPages: 2, sampledEntries: 1 } },
                 recap: {
-                  schema: "tab_tidy_time_recap_v1",
+                  schema: "tab_recap_time_recap_v1",
                   headline: "摘要权限已用于回顾。",
                   summary: "回顾生成会带上页面摘要设置。",
                   timeline: [],
@@ -801,7 +801,7 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
       source: "ai",
       input: { pages: [], coverage: { includedPages: 12 } },
       recap: {
-        schema: "tab_tidy_time_recap_v1",
+        schema: "tab_recap_time_recap_v1",
         headline: "这段时间主要在打磨回顾功能。",
         summary: "回顾流程正在接入统一进度条和底部按钮。",
         timeline: [{ label: "刚才", description: "验证回顾生成进度。", pageIds: [] }],
@@ -978,7 +978,7 @@ test("time recap and organize generation can run in parallel", async ({ page }) 
       source: "ai",
       input: { pages: [], coverage: { includedPages: 3, sampledEntries: 0 } },
       recap: {
-        schema: "tab_tidy_time_recap_v1",
+        schema: "tab_recap_time_recap_v1",
         headline: "回顾也完成了。",
         summary: "整理和回顾可以同时进行。",
         timeline: [],
@@ -1116,7 +1116,7 @@ test("time recap fallback keeps raw AI errors out of the visible product copy", 
                 error: "AI gateway time recap timed out after 300 seconds.",
                 input: { pages: [], coverage: { includedPages: 65 } },
                 recap: {
-                  schema: "tab_tidy_time_recap_v1",
+                  schema: "tab_recap_time_recap_v1",
                   headline: "这段时间主要在整理标签页。",
                   summary: "本机线索显示最近集中在扩展发布和工作流回顾。",
                   timeline: [],
@@ -1199,7 +1199,7 @@ test("time recap error state does not resurrect the previous recap", async ({ pa
                 source: "ai",
                 input: { pages: [], coverage: { includedPages: 8, sampledEntries: 2 } },
                 recap: {
-                  schema: "tab_tidy_time_recap_v1",
+                  schema: "tab_recap_time_recap_v1",
                   headline: "第一次回顾结果",
                   summary: "这是一段旧的成功回顾。",
                   timeline: [],

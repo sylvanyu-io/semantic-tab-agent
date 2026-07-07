@@ -541,7 +541,7 @@ async function installChromeMock(page, mockOptions = {}) {
     const recapResult = {
       source: "ai",
       input: {
-        schema: "tab_tidy_time_recap_input_v1",
+        schema: "tab_recap_time_recap_input_v1",
         range: {
           preset: "7d",
           from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -555,7 +555,7 @@ async function installChromeMock(page, mockOptions = {}) {
         ]
       },
       recap: {
-        schema: "tab_tidy_time_recap_v1",
+        schema: "tab_recap_time_recap_v1",
         language: "zh-CN",
         headline: "最近主要在打磨 AI 标签页整理，同时穿插技术美术和投资资料整理。",
         summary: "你把大部分注意力放在 TabRecap 的产品收口上：验证侧边栏交互、README 素材、AI 网关稳定性和发布流程；中间反复回到技术美术渲染学习，以及美股资料整理。",

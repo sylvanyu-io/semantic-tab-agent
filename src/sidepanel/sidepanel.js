@@ -3598,7 +3598,7 @@ function mockTimeRecap() {
   return {
     source: "ai",
     input: {
-      schema: "tab_tidy_time_recap_input_v1",
+      schema: "tab_recap_time_recap_input_v1",
       range: { preset: "7d", from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), to: now.toISOString() },
       coverage: { includedPages: 18, sampledEntries: 7, currentOpenTabs: 24 },
       pages: [
@@ -3608,7 +3608,7 @@ function mockTimeRecap() {
       ]
     },
     recap: {
-      schema: "tab_tidy_time_recap_v1",
+      schema: "tab_recap_time_recap_v1",
       language: uiLanguage,
       headline: uiLanguage === "en-US" ? "Recent work centered on extension polish and planner evaluation." : "最近主要在打磨扩展体验和验证 AI 整理策略。",
       summary:

@@ -175,7 +175,7 @@ export function buildBenchmarkInventory(tabCount, options = {}) {
   const tabs = [];
   const pageSamples = [];
   const truth = {
-    schema: "tab_tidy_benchmark_truth_v1",
+    schema: "tab_recap_benchmark_truth_v1",
     scenario,
     topicByTabId: {},
     familyByTabId: {},

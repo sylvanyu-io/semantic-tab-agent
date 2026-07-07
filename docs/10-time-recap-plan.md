@@ -136,7 +136,7 @@ Add a recap-specific input shape. Keep it compact and readable.
 
 ```ts
 type TimeRecapInput = {
-  schema: "tab_tidy_time_recap_input_v1";
+  schema: "tab_recap_time_recap_input_v1";
   languageMode: "auto" | "zh-CN" | "en-US";
   range: {
     preset: "1d" | "today" | "7d" | "30d" | "thisWeek" | "thisMonth" | "custom";
@@ -193,7 +193,7 @@ Add a strict output schema:
 
 ```ts
 type TimeRecapOutput = {
-  schema: "tab_tidy_time_recap_v1";
+  schema: "tab_recap_time_recap_v1";
   language: "zh-CN" | "en-US";
   headline: string;
   summary: string;

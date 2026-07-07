@@ -293,6 +293,9 @@ test("worker validates models and token caps before forwarding", async () => {
   const timeRecapModel = await handle(chatRequest(validTimeRecapBody({ model: "gpt-5.4" })), env);
   assert.equal(timeRecapModel.status, 200);
 
+  const legacyTimeRecapModel = await handle(chatRequest(legacyTimeRecapBody()), env);
+  assert.equal(legacyTimeRecapModel.status, 200);
+
   const olderClaudePlannerModel = await handle(chatRequest({ model: "claude-opus-4-7" }), env);
   assert.equal(olderClaudePlannerModel.status, 200);
 
@@ -577,7 +580,7 @@ function validBody(overrides = {}) {
           "Software engineering task input: classify this browser tab inventory for a Chrome extension runtime.",
           "Return the JSON action plan only.",
           JSON.stringify({
-            schema: "tab_tidy_compact_v1",
+            schema: "tab_recap_compact_v1",
             tabFields: ["id", "windowId", "index", "sequenceIndex", "title"],
             tabs: [[10, 1, 0, 0, "Chrome tabs API docs"]]
           })
@@ -624,7 +627,7 @@ function validTimeRecapBody(overrides = {}) {
         content: [
           "TabRecap local time-recap input follows. Page rows are already privacy-reduced.",
           JSON.stringify({
-            schema: "tab_tidy_time_recap_input_v1",
+            schema: "tab_recap_time_recap_input_v1",
             pageFields: ["id", "title", "hostname", "firstSeenAt", "lastSeenAt", "activeCount"],
             coverage: { includedPages: 1, sampledEntries: 0 },
             pages: [[1, "Chrome tabs API docs", "developer.chrome.com", "2026-06-27T00:00:00.000Z", "2026-06-27T01:00:00.000Z", 2]]
@@ -636,6 +639,17 @@ function validTimeRecapBody(overrides = {}) {
     max_tokens: 2048,
     reasoning_effort: "high",
     ...overrides
+  };
+}
+
+function legacyTimeRecapBody(overrides = {}) {
+  const body = validTimeRecapBody(overrides);
+  return {
+    ...body,
+    messages: body.messages.map((message) => ({
+      ...message,
+      content: String(message.content).replace("tab_recap_time_recap_input_v1", "tab_tidy_time_recap_input_v1")
+    }))
   };
 }
 
