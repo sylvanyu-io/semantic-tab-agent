@@ -99,11 +99,27 @@ test("service worker disables background summaries when the manifest has no cont
   globalThis.chrome = chrome;
   try {
     await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    const settingsSaveResponse = await new Promise((resolve) => {
+      listeners.runtimeMessage(
+        {
+          type: "settings:save",
+          settings: {
+            ...DEFAULT_SETTINGS,
+            continuousPageSummaries: true,
+            pageSamplingConsentMode: "acknowledged_persistently",
+            pageContextMode: "ambiguous_with_permission"
+          }
+        },
+        {},
+        resolve
+      );
+    });
     await listeners.installed();
     listeners.tabActivated({ tabId: 10, windowId: 1 });
     listeners.tabUpdated(10, { status: "complete" }, { id: 10, windowId: 1, url: "https://example.com/research" });
     await new Promise((resolve) => setTimeout(resolve, 1300));
 
+    assert.equal(settingsSaveResponse.ok, true);
     assert.equal(alarmCreates.some((entry) => entry.name === "tabRecap.summarySweep"), false);
     assert.equal(alarmClears.includes("tabRecap.summarySweep"), true);
     assert.equal(scriptExecutions, 0);
