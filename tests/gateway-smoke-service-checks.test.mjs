@@ -29,6 +29,7 @@ test("gateway smoke verifies health, readiness, and monitor status for the built
   const result = await checkBuiltInGatewayService({
     gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
     monitorToken: "monitor-secret",
+    nowMs: Date.parse("2026-07-02T00:45:00.000Z"),
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
       if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
@@ -38,6 +39,7 @@ test("gateway smoke verifies health, readiness, and monitor status for the built
           ok: true,
           monitor: {
             status: "ok",
+            lastStatusAt: "2026-07-02T00:00:00.000Z",
             lastSummary: {
               readyzCode: "ready",
               llmCode: "llm_ready"
@@ -60,6 +62,7 @@ test("gateway smoke verifies health, readiness, and monitor status for the built
   assert.equal(result.readyz.upstreamCode, "ready");
   assert.equal(result.monitor.email, "configured");
   assert.equal(result.monitor.llmCode, "llm_ready");
+  assert.equal(result.monitor.lastStatusAgeMinutes, 45);
 });
 
 test("gateway smoke skips monitor status when no monitor token is supplied", async () => {
@@ -123,6 +126,7 @@ test("gateway smoke accepts a fresh ok monitor status when required", async () =
 
   assert.equal(result.monitor.status, "ok");
   assert.equal(result.monitor.lastStatusAt, "2026-07-02T00:30:00.000Z");
+  assert.equal(result.monitor.lastStatusAgeMinutes, 30);
 });
 
 test("gateway smoke fails when required readyz details are not healthy", async () => {

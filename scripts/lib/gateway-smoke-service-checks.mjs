@@ -6,6 +6,7 @@ export async function checkBuiltInGatewayService(options = {}) {
   const gatewayBaseUrl = options.gatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL;
   const configuredServiceBaseUrl = options.gatewayServiceBaseUrl || serviceBaseUrlFromGatewayBaseUrl(gatewayBaseUrl);
   const builtinServiceBaseUrl = serviceBaseUrlFromGatewayBaseUrl(options.builtinGatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL);
+  const nowMs = Number.isFinite(options.nowMs) ? options.nowMs : Date.now();
   const shouldCheckService =
     Boolean(options.forceServiceCheck) ||
     (!options.gatewayBaseUrlExplicit && gatewayBaseUrl === (options.builtinGatewayBaseUrl || BUILTIN_GATEWAY_BASE_URL)) ||
@@ -51,7 +52,7 @@ export async function checkBuiltInGatewayService(options = {}) {
     }
     if (requireMonitor) {
       requireFreshMonitorStatus(monitor.json?.monitor?.lastStatusAt, {
-        nowMs: Number.isFinite(options.nowMs) ? options.nowMs : Date.now(),
+        nowMs,
         maxAgeMs: positiveMs(options.maxMonitorAgeMs, DEFAULT_REQUIRED_MONITOR_MAX_AGE_MS)
       });
       requireHealthyMonitorSummary(monitor.json?.monitor?.lastSummary);
@@ -71,6 +72,7 @@ export async function checkBuiltInGatewayService(options = {}) {
           ...pickServiceCheck(monitor),
           status: monitor.json?.monitor?.status || "unknown",
           lastStatusAt: monitor.json?.monitor?.lastStatusAt || "",
+          lastStatusAgeMinutes: monitorStatusAgeMinutes(monitor.json?.monitor?.lastStatusAt, nowMs),
           readyzCode: monitor.json?.monitor?.lastSummary?.readyzCode || "",
           llmCode: monitor.json?.monitor?.lastSummary?.llmCode || "",
           email: monitor.json?.config?.email || "unknown"
@@ -124,6 +126,12 @@ function requireFreshMonitorStatus(lastStatusAt, options) {
     const maxAgeMinutes = Math.round(options.maxAgeMs / 60000);
     throw new Error(`monitor/status is stale: last scheduled check was ${ageMinutes} minutes ago, max ${maxAgeMinutes} minutes.`);
   }
+}
+
+function monitorStatusAgeMinutes(lastStatusAt, nowMs) {
+  const checkedAt = Date.parse(lastStatusAt || "");
+  if (!Number.isFinite(checkedAt)) return null;
+  return Math.round(Math.max(0, nowMs - checkedAt) / 60000);
 }
 
 function requireHealthyMonitorSummary(summary) {

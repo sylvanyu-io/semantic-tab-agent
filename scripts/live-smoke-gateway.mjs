@@ -7,6 +7,7 @@ import { resolveMonitorToken } from "./lib/monitor-token.mjs";
 const key = process.env.GATEWAY_API_KEY || "";
 const requestedBaseUrl = process.env.GATEWAY_BASE_URL || BUILTIN_GATEWAY_BASE_URL;
 const monitorToken = resolveMonitorToken();
+const startedAt = performance.now();
 
 const settings = {
   ...DEFAULT_SETTINGS,
@@ -51,6 +52,7 @@ console.log(
       baseUrl: settings.gatewayBaseUrl,
       model: settings.gatewayModel,
       thinkingIntensity: settings.gatewayThinkingIntensity,
+      elapsedMs: Math.round(performance.now() - startedAt),
       serviceChecks,
       validation: job.validation,
       preview: {

@@ -1,6 +1,6 @@
 # Default AI Gateway Runbook
 
-Status: current production path as of 2026-07-02 01:44 CST.
+Status: current production path as of 2026-07-07 11:58 CST.
 
 This document records the public TabRecap AI gateway setup so it can be
 debugged, migrated, or rebuilt later without relying on memory. It intentionally
@@ -127,7 +127,7 @@ Use the helper script instead of ad hoc commands:
 health, and launchd state. `smoke` sends one real public chat request through
 the Worker and local origin.
 
-Current healthy status snapshot, 2026-07-02 01:44 CST:
+Earlier healthy status snapshot, 2026-07-02 01:44 CST:
 
 ```text
 main local 8317: 200
@@ -143,13 +143,54 @@ com.router-for-me.cliproxyapi-v1-proxy: loaded
 com.cloudflare.cloudflared.cliproxyapi: loaded
 ```
 
-Current public smoke snapshot, 2026-07-02 01:44 CST:
+Earlier public smoke snapshot, 2026-07-02 01:44 CST:
 
 ```text
 HTTP_STATUS: 200
 TOTAL_TIME: 21.37s
 model: gpt-5.5
 ```
+
+Latest validation snapshot, 2026-07-07 11:58 CST:
+
+```text
+manage-cliroxyapi-service.sh status:
+main local 8317: 200
+proxy local 18317: 200
+public origin health: 200
+public origin models: 200
+public main health: 200
+public main ready: 200
+
+launchd:
+com.router-for-me.cliproxyapi: not_loaded
+com.router-for-me.cliproxyapi-v1-proxy: not_loaded
+com.cloudflare.cloudflared.cliproxyapi: not_loaded
+
+screen fallback:
+cliroxy-main: running
+cliroxy-v1-proxy: running
+cliroxy-tunnel: running
+
+GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway:
+elapsedMs: 27539
+model: gpt-5.4
+thinkingIntensity: high
+healthz: 200
+readyz: 200, upstreamCode=ready
+monitor: ok
+monitor lastStatusAt: 2026-07-07T03:30:36.000Z
+monitor lastStatusAgeMinutes: 27
+monitor readyzCode: ready
+monitor llmCode: llm_ready
+monitor email: configured
+planner validation: ok
+```
+
+If the stack is running from `screen` fallback, current traffic can be healthy,
+but macOS reboot recovery depends on the helper script or re-enabling the
+LaunchAgents. Use `manage-cliroxyapi-service.sh restart` before deeper
+debugging if alerts say the public AI service is unavailable.
 
 The service is usable, but it is still a Mac-hosted free service, not a managed
 cloud SLA.
