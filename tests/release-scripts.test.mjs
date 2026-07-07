@@ -63,6 +63,16 @@ test("secret scanners cover model provider and alert email provider key shapes",
   assert.equal(matchesSecretRule("resend_api_key", resendKey), true);
 });
 
+test("secret scanner success copy stays generic across secret provider types", async () => {
+  const currentScanner = await readFile("scripts/scan-secrets.mjs", "utf8");
+  const historyScanner = await readFile("scripts/scan-secrets-history.mjs", "utf8");
+
+  assert.match(currentScanner, /No secret patterns found/);
+  assert.match(historyScanner, /No secret patterns found in git history/);
+  assert.doesNotMatch(currentScanner, /No provider-key patterns found/);
+  assert.doesNotMatch(historyScanner, /No provider-key patterns found/);
+});
+
 test("history secret scanner only allowlists known old fake provider fixtures", async () => {
   const historyScanner = await readFile("scripts/scan-secrets-history.mjs", "utf8");
 

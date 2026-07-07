@@ -35,7 +35,7 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("No provider-key patterns found in git history.");
+console.log("No secret patterns found in git history.");
 
 function isAllowedHistoricalFixture(value) {
   return allowedHistoricalFixtureFragments.some((fragment) => value.includes(fragment));

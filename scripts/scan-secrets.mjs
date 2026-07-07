@@ -28,7 +28,7 @@ if (findings.length) {
   process.exit(1);
 }
 
-console.log("No provider-key patterns found.");
+console.log("No secret patterns found.");
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {
