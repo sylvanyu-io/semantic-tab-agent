@@ -133,6 +133,43 @@ test("tab lifecycle activation count only increments on real re-entry", async ()
   assert.equal(sessions[1].active, false);
 });
 
+test("tab lifecycle counts focused-window returns without double-counting focus noise", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+
+  await rememberTabsLifecycle(
+    chrome,
+    [
+      { id: 1, windowId: 1, index: 0, title: "Window one anchor", url: "https://a.example/", active: true },
+      { id: 2, windowId: 2, index: 0, title: "Window two anchor", url: "https://b.example/", active: true }
+    ],
+    { now }
+  );
+  await rememberTabLifecycle(
+    chrome,
+    "window_focused",
+    { id: 2, windowId: 2, index: 0, title: "Window two anchor", url: "https://b.example/", active: true },
+    { now: now + 1000 }
+  );
+  await rememberTabLifecycle(
+    chrome,
+    "window_focused",
+    { id: 2, windowId: 2, index: 0, title: "Window two anchor", url: "https://b.example/", active: true },
+    { now: now + 5 * 60 * 1000 }
+  );
+  await rememberTabLifecycle(
+    chrome,
+    "window_focused",
+    { id: 2, windowId: 2, index: 0, title: "Window two anchor", url: "https://b.example/", active: true },
+    { now: now + 5 * 60 * 1000 + 500 }
+  );
+
+  const sessions = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).sort((left, right) => left.tabId - right.tabId);
+  assert.equal(sessions[0].activeCount, 1);
+  assert.equal(sessions[1].activeCount, 2);
+  assert.equal(sessions[1].lastActivatedAt, "2026-06-25T00:05:00.000Z");
+});
+
 test("tab lifecycle extracts activation flow context with dwell and return-to-anchor evidence", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");

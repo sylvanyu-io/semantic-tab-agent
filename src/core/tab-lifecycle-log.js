@@ -15,6 +15,8 @@ const FLOW_MAX_TRANSITIONS = 120;
 const FLOW_MAX_NEARBY_IDS = 6;
 const FLOW_EVIDENCE_WINDOW_SIZE = 5;
 const FLOW_EVIDENCE_WINDOW_STEP = 3;
+const ACTIVATION_ENTRY_TYPES = new Set(["tab_activated", "window_focused"]);
+const ACTIVATION_DEDUPE_MS = 2000;
 
 let lifecycleWriteQueue = Promise.resolve();
 
@@ -163,7 +165,7 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
     incognito: Boolean(tab.incognito)
   });
 
-  if (!previousActive && nextActive) {
+  if (shouldRecordActivationEntry(session, previousActive, nextActive, type, now)) {
     session.activeCount = Math.min(9999, Number(session.activeCount || 0) + 1);
     session.lastActivatedAt = new Date(now).toISOString();
   }
@@ -179,6 +181,14 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
     inferred: Boolean(options.inferred)
   });
   return session;
+}
+
+function shouldRecordActivationEntry(session, previousActive, nextActive, type, now) {
+  if (!nextActive) return false;
+  if (!ACTIVATION_ENTRY_TYPES.has(type)) return !previousActive;
+  if (!previousActive) return true;
+  const lastActivatedAt = Date.parse(session.lastActivatedAt || "");
+  return !Number.isFinite(lastActivatedAt) || now - lastActivatedAt > ACTIVATION_DEDUPE_MS;
 }
 
 function deactivateOtherWindowSessions(log, activeSessionId, windowId) {
@@ -359,7 +369,7 @@ function buildActivationFlowContext(log, tabs = [], options = {}) {
 
   const eventsByWindow = new Map();
   for (const event of (log.events || [])
-    .filter((event) => event.type === "tab_activated" && Number.isInteger(event.tabId) && Number.isInteger(event.windowId))
+    .filter((event) => ACTIVATION_ENTRY_TYPES.has(event.type) && Number.isInteger(event.tabId) && Number.isInteger(event.windowId))
     .sort((left, right) => {
       const byTime = Date.parse(left.at || "") - Date.parse(right.at || "");
       return byTime || Number(left.seq || 0) - Number(right.seq || 0);

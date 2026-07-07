@@ -184,6 +184,12 @@ matching misses. They must remain supporting evidence: semantic content,
 original tab order, page summaries, URL privacy mode, and the user's prompt stay
 authoritative.
 
+Window focus returns count as tab re-entry signals with short deduplication.
+This matters for multi-window users: returning to a window's already-active tab
+may not fire a native tab activation event, but it still means the user came
+back to that page. The lifecycle log records this as recency/open-count evidence
+without turning it into a hard grouping rule.
+
 When a large session is refined in bucket-sized subrequests, activation runs are
 scoped as contiguous in-bucket segments. The runtime keeps real adjacent
 handoffs such as `A -> B` when both tabs are in the refinement bucket, but it
