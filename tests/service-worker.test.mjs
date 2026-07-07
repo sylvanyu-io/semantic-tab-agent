@@ -56,6 +56,62 @@ test("service worker lifecycle listeners honor the include-incognito setting", a
   }
 });
 
+test("service worker disables background summaries when the manifest has no content access feature", async () => {
+  const listeners = {};
+  const alarmCreates = [];
+  const alarmClears = [];
+  let scriptExecutions = 0;
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          {
+            id: 10,
+            title: "Research page",
+            url: "https://example.com/research",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.settings] = {
+    ...DEFAULT_SETTINGS,
+    continuousPageSummaries: true,
+    pageSamplingConsentMode: "acknowledged_persistently",
+    pageContextMode: "ambiguous_with_permission"
+  };
+  installServiceWorkerEventMocks(chrome, listeners);
+  chrome.runtime.getManifest = () => ({ optional_permissions: [], optional_host_permissions: [] });
+  chrome.alarms.create = async (name, options) => {
+    alarmCreates.push({ name, options });
+  };
+  chrome.alarms.clear = async (name) => {
+    alarmClears.push(name);
+  };
+  chrome.scripting.executeScript = async () => {
+    scriptExecutions += 1;
+    return [{ result: { title: "Should not run" } }];
+  };
+
+  globalThis.chrome = chrome;
+  try {
+    await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    await listeners.installed();
+    listeners.tabActivated({ tabId: 10, windowId: 1 });
+    listeners.tabUpdated(10, { status: "complete" }, { id: 10, windowId: 1, url: "https://example.com/research" });
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+
+    assert.equal(alarmCreates.some((entry) => entry.name === "tabRecap.summarySweep"), false);
+    assert.equal(alarmClears.includes("tabRecap.summarySweep"), true);
+    assert.equal(scriptExecutions, 0);
+  } finally {
+    delete globalThis.chrome;
+  }
+});
+
 function installServiceWorkerEventMocks(chrome, listeners) {
   chrome.runtime = chrome.runtime || {};
   chrome.runtime.onMessage = { addListener: (callback) => { listeners.runtimeMessage = callback; } };

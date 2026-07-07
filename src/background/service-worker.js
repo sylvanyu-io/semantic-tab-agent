@@ -19,7 +19,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .then(async (result) => {
       if (message?.type === "settings:save") {
         await syncSummarySweepAlarm().catch((error) => console.debug(error));
-        if (result?.continuousPageSummaries) {
+        if (result?.continuousPageSummaries && contentAccessFeatureAvailable()) {
           scheduleOpenTabSummarySweep();
         }
       }
@@ -100,6 +100,7 @@ function configureSidePanel() {
 }
 
 function scheduleSummaryCapture(tabId) {
+  if (!contentAccessFeatureAvailable()) return;
   if (!Number.isInteger(tabId)) return;
   clearTimeout(summaryCaptureTimers.get(tabId));
   summaryCaptureTimers.set(
@@ -114,7 +115,7 @@ function scheduleSummaryCapture(tabId) {
 async function syncSummarySweepAlarm() {
   if (!chrome.alarms?.create) return;
   const settings = await getSettings(chrome);
-  if (!settings.continuousPageSummaries) {
+  if (!settings.continuousPageSummaries || !contentAccessFeatureAvailable()) {
     await chrome.alarms.clear?.(SUMMARY_SWEEP_ALARM);
     return;
   }
@@ -139,12 +140,14 @@ function scheduleLifecycleReconcile() {
 }
 
 function scheduleOpenTabSummarySweep() {
+  if (!contentAccessFeatureAvailable()) return;
   setTimeout(() => {
     sweepOpenTabsForSummaries().catch((error) => console.debug(error));
   }, SUMMARY_CAPTURE_DELAY_MS);
 }
 
 async function sweepOpenTabsForSummaries() {
+  if (!contentAccessFeatureAvailable()) return;
   const settings = await getSettings(chrome);
   if (!settings.continuousPageSummaries) return;
   const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }).catch(() => []);
@@ -159,6 +162,7 @@ async function sweepOpenTabsForSummaries() {
 }
 
 async function captureSummaryForTab(tabId) {
+  if (!contentAccessFeatureAvailable()) return;
   const settings = await getSettings(chrome);
   if (!settings.continuousPageSummaries) return;
   const tab = await chrome.tabs.get(tabId).catch(() => null);
@@ -177,4 +181,13 @@ async function rememberTabLifecycleWithSettings(type, tab) {
 async function reconcileTabLifecycleWithSettings() {
   const settings = await getSettings(chrome);
   return reconcileTabLifecycle(chrome, { includeIncognitoTabs: settings.includeIncognitoTabs });
+}
+
+function contentAccessFeatureAvailable() {
+  const manifest = chrome.runtime?.getManifest?.();
+  if (!manifest) return true;
+  return Boolean(
+    (manifest.optional_permissions || []).includes("scripting") &&
+      (manifest.optional_host_permissions || []).some((origin) => origin === "https://*/*" || origin === "http://*/*")
+  );
 }
