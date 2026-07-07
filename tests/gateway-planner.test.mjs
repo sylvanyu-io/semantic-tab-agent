@@ -1699,7 +1699,17 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
           repeatedIds: []
         }
       ],
-      transitions: [],
+      transitions: [
+        {
+          fromId: 11,
+          toId: 12,
+          count: 1,
+          avgDwellSeconds: 180,
+          maxDwellSeconds: 180,
+          lastAt: "2026-06-25T00:06:00.000Z",
+          clues: ["long source dwell"]
+        }
+      ],
       evidence: []
     }
   };
@@ -1802,9 +1812,25 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
   assert.match(requests[0].messages[0].content, /fast first-pass/);
   assert.match(requests[0].messages[0].content, /Write every user-facing string in English/);
   assert.match(requests[1].messages[0].content, /JSON-only planner/);
+  const coarsePayload = JSON.parse(requests[0].messages[1].content.slice(requests[0].messages[1].content.indexOf("{")));
+  assert.deepEqual(coarsePayload.activationFlowTransitionFields, [
+    "fromId",
+    "toId",
+    "count",
+    "avgDwellSeconds",
+    "maxDwellSeconds",
+    "lastAt",
+    "clues"
+  ]);
+  assert.deepEqual(coarsePayload.activationFlowTransitions, [
+    [11, 12, 1, 180, 180, "2026-06-25T00:06:00.000Z", ["long source dwell"]]
+  ]);
   const refinePayload = JSON.parse(requests[1].messages[1].content.slice(requests[1].messages[1].content.indexOf("{")));
   assert.deepEqual(refinePayload.activationFlowRuns, [
     [1, "2026-06-25T00:03:00.000Z", "2026-06-25T00:06:00.000Z", [11, 12], [180], null, []]
+  ]);
+  assert.deepEqual(refinePayload.activationFlowTransitions, [
+    [11, 12, 1, 180, 180, "2026-06-25T00:06:00.000Z", ["long source dwell"]]
   ]);
   assert.equal(validation.ok, true, validation.errors.join(" "));
   assert.deepEqual(

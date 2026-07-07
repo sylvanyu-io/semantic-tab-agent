@@ -1209,6 +1209,8 @@ function buildCoarseUserPrompt(inventory, settings) {
       activationFlowTabActivity: payload.activationFlowTabActivity,
       activationFlowRunFields: payload.activationFlowRunFields,
       activationFlowRuns: payload.activationFlowRuns,
+      activationFlowTransitionFields: payload.activationFlowTransitionFields,
+      activationFlowTransitions: payload.activationFlowTransitions,
       activationFlowEvidenceFields: payload.activationFlowEvidenceFields,
       activationFlowEvidence: payload.activationFlowEvidence,
       lockedGroupFields: payload.lockedGroupFields,

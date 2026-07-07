@@ -49,6 +49,9 @@ Prompt guardrail:
 - Repeated activation of the same tab is deduplicated inside a run.
 - Payload size is capped: 24 recent runs, 80 evidence rows, 6 nearby ids per tab.
 - Directed transition payload size is capped at 120 rows.
+- Full-detail, coarse, refinement, and cleanup planner requests all receive the
+  same scoped transition rows. Coarse planning must not mention direct
+  transitions in the system prompt without including them in its payload.
 - Existing benchmark truth labels are not sent to planner payloads.
 
 ## Verification Added
@@ -64,6 +67,8 @@ Code-level coverage:
 - `tests/gateway-planner.test.mjs`
   - confirms planner payload includes activity, run, transition, and evidence
     rows;
+  - confirms hierarchical coarse and refinement requests both carry scoped
+    transition rows;
   - confirms prompt guardrails are present.
 - `tests/planner-benchmark-fixtures.test.mjs`
   - adds a `behavior_flow` synthetic fixture;
@@ -85,6 +90,14 @@ Observed result on 2026-07-06:
 - full test suite: 179 pass;
 - extension build succeeded: `dist/tab-recap-0.2.5.zip`;
 - whitespace check passed.
+
+Additional verification on 2026-07-07:
+
+- fixed the hierarchical coarse planner payload so it includes
+  `activationFlowTransitions`, matching the existing system prompt;
+- targeted behavior/planner tests: 69 pass;
+- full release gate passed locally: 250 Node tests, 36 Playwright UI tests,
+  secret scans, dev/store extension builds, and release artifact audit.
 
 ## Transition Payload Check
 
