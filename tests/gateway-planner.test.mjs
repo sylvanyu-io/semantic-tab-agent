@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPlannerPayload, buildPlannerSystemPrompt, createGatewayPlan, testGatewayConnection } from "../src/core/gateway-planner.js";
+import {
+  buildPlannerPayload,
+  buildPlannerSystemPrompt,
+  createGatewayPlan,
+  shouldRequestJsonResponseFormat,
+  testGatewayConnection
+} from "../src/core/gateway-planner.js";
 import { validatePlan } from "../src/core/plan-validator.js";
 import {
   DEFAULT_SETTINGS,
@@ -128,6 +134,17 @@ test("balanced grouping prompt avoids over-merging distinct topics", () => {
   assert.match(prompt, /Grouping granularity: balanced/);
   assert.match(prompt, /do not merge clearly different tasks/);
   assert.match(prompt, /without collapsing distinct subjects/);
+});
+
+test("custom gateway base URLs use compatible JSON prompting without OpenAI-only response format", () => {
+  assert.equal(shouldRequestJsonResponseFormat({ ...DEFAULT_SETTINGS }), true);
+  assert.equal(
+    shouldRequestJsonResponseFormat({
+      ...DEFAULT_SETTINGS,
+      gatewayBaseUrl: "https://proxy.example.test/v1"
+    }),
+    false
+  );
 });
 
 test("AI gateway planner posts a custom chat-completions JSON request", async () => {

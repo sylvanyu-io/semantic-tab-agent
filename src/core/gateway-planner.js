@@ -1,7 +1,5 @@
 import {
   BUILTIN_GATEWAY_BASE_URL,
-  GATEWAY_CUSTOM_MODEL_VALUE,
-  GATEWAY_PROVIDER_MODES,
   GROUPING_GRANULARITIES,
   ORGANIZE_MODES,
   PROMPT_PRESET_TEXT,
@@ -1983,7 +1981,7 @@ function supportsReasoningEffort(settings) {
 }
 
 function usesCustomCompatibleGateway(settings) {
-  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE;
+  return isCustomGatewayProvider(settings);
 }
 
 function thinkingIntensityText(value) {
