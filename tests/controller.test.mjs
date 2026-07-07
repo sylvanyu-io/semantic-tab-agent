@@ -409,20 +409,44 @@ test("cleanup close removes stale candidates from the stored plan", async () => 
   assert.equal(stored.validation.ok, true);
 });
 
-test("cleanup candidate focus errors follow the requested UI language", async () => {
+test("cleanup candidate focus follows a tab that moved to another window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: false,
+        tabs: []
+      },
+      {
+        id: 2,
+        focused: true,
+        tabs: [{ id: 10, title: "Moved tab", url: "https://example.com/moved", active: false }]
+      }
+    ]
+  });
+
+  const result = await handleRuntimeMessage(chrome, { type: "activity:focusTab", tabId: 10, windowId: 1, languageMode: "en-US" });
+
+  assert.equal(result.focused, true);
+  assert.equal(result.windowId, 2);
+  assert.equal((await chrome.windows.get(2)).focused, true);
+  assert.equal((await chrome.tabs.get(10)).active, true);
+});
+
+test("cleanup candidate focus errors follow the requested UI language when the tab is gone", async () => {
   const chrome = createFakeChrome({
     windows: [
       {
         id: 1,
         focused: true,
-        tabs: [{ id: 10, title: "Moved tab", url: "https://example.com/moved", active: true }]
+        tabs: [{ id: 10, title: "Current tab", url: "https://example.com/current", active: true }]
       }
     ]
   });
 
   await assert.rejects(
-    () => handleRuntimeMessage(chrome, { type: "activity:focusTab", tabId: 10, windowId: 2, languageMode: "en-US" }),
-    /This tab moved to another window/
+    () => handleRuntimeMessage(chrome, { type: "activity:focusTab", tabId: 99, windowId: 1, languageMode: "en-US" }),
+    /This tab has already been closed/
   );
 });
 
