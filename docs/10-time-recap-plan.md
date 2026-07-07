@@ -10,7 +10,6 @@ TabRecap should help a user answer:
 
 - "What have I mainly been working on recently?"
 - "Which research or project threads are still open?"
-- "Which old tabs look like leftovers from a previous phase?"
 - "Where can I quickly jump back in?"
 
 This is not a browser history replacement. It is a local, best-effort work recap built from open-tab metadata, tab activity, and optional page summaries.
@@ -22,6 +21,13 @@ This is not a browser history replacement. It is a local, best-effort work recap
 - Do not promise complete tracking while Chrome suspends the MV3 service worker.
 - Do not expose raw implementation terms such as `activeCount`, `ageDays`, `idleDays`, or internal cache keys in UI copy.
 - Do not make this a separate generic note-taking product.
+- Do not turn recap into cleanup review. It may mention activity patterns, but it must not recommend closing, keeping, or reviewing individual tabs.
+
+## Product Boundary
+
+Time recap is a read-only retrospective. It explains what the user appeared to do during the selected range by combining local activity, titles, URLs, current group context, open/closed state, activation/lifecycle signals, and optional page summaries.
+
+Cleanup belongs to the organizer flow. Recap results must not show cleanup checklists, manual close controls, "worth reviewing" tab recommendations, or project-manager style follow-up lists. If a model still returns cleanup-like copy, runtime normalization strips it from visible summary/theme/timeline text and ignores any returned follow-up fields.
 
 ## Current Implementation
 
@@ -122,11 +128,7 @@ The recap result should be a review surface, not a wall of text.
    - 3 to 6 topic cards.
    - Each card explains what the user appeared to be working on and shows representative page chips.
 
-4. `下次继续`
-   - Optional next-step hints.
-   - These should be light, not a project manager voice.
-
-5. `证据详情`
+4. `证据详情`
    - Collapsed by default.
    - Shows exact coverage counts, top hosts, sampled entries, excluded pages, and stale-tab stats.
 
@@ -209,11 +211,6 @@ type TimeRecapOutput = {
     description: string;
     ids: number[];
   }>;
-  followUps: Array<{
-    title: string;
-    reason: string;
-    ids: number[];
-  }>;
   coverageNote: string;
 };
 ```
@@ -224,7 +221,7 @@ Validation rules:
 - Compatibility parser also accepts `pageIds`, `pages`, and `tabIds`, but normalized UI state uses page IDs.
 - Empty or duplicate themes are merged or removed locally.
 - Time recap only explains the activity pattern for the selected range; cleanup recommendations belong to the organizer flow and are not shown in recap results.
-- Recap output must not include manual close controls, cleanup checklists, or "worth reviewing" tab recommendations. Runtime normalization filters cleanup-like follow-ups even if a model returns them.
+- Recap output must not include manual close controls, cleanup checklists, "worth reviewing" tab recommendations, or next-step follow-up lists. Runtime normalization ignores follow-up fields even if a model returns them.
 - Output language must follow the selected UI language.
 - Do not allow the model to request permissions or browser mutations.
 
@@ -338,7 +335,7 @@ Implemented:
   - `回顾`
 - Time-range selector.
 - CTA: `生成回顾`.
-- Summary card, timeline rows, theme cards, and follow-up hints.
+- Summary card, timeline rows, and theme cards.
 - Collapsed evidence details.
 - Representative page chips.
 - Shared bottom progress and stop button while generating.
@@ -467,7 +464,7 @@ Recommended before a broad public listing:
 ## Open Decisions
 
 - Should recap history be stored, or should each recap stay disposable?
-- Should recap themes offer "organize these pages" as a scoped follow-up action?
+- Should recap themes offer "organize these pages" as a separate organizer entry point without adding cleanup actions to recap?
 - Should recap use the primary model by default, or benchmark a cheaper recap-only route before changing defaults?
 
 ## Completed First Slice
