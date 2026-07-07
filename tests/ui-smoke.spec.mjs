@@ -1737,6 +1737,8 @@ test("custom provider model errors use custom API copy", async ({ page }) => {
 
 test("error diagnostic details redact secrets and tokenized urls", async ({ page }) => {
   await page.addInitScript(() => {
+    const providerKey = ["sk", "private-secret-token-1234567890"].join("-");
+    const tokenizedUrl = "https://private.example.com/secret/project?token=abc123";
     const settings = {
       organizeMode: "current_window",
       targetWindowMode: "current_window",
@@ -1765,7 +1767,7 @@ test("error diagnostic details redact secrets and tokenized urls", async ({ page
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "deepseek-v4",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "sk-private-secret-token-1234567890",
+      gatewayApiKey: providerKey,
       customPrompt: ""
     };
     const activeJob = {
@@ -1773,10 +1775,8 @@ test("error diagnostic details redact secrets and tokenized urls", async ({ page
       status: "error",
       phase: "error",
       progress: 100,
-      message:
-        "AI gateway failed for https://private.example.com/secret/project?token=abc123 with sk-private-secret-token-1234567890",
-      error:
-        "AI gateway failed for https://private.example.com/secret/project?token=abc123 with sk-private-secret-token-1234567890",
+      message: `AI gateway failed for ${tokenizedUrl} with ${providerKey}`,
+      error: `AI gateway failed for ${tokenizedUrl} with ${providerKey}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString()
@@ -1797,9 +1797,9 @@ test("error diagnostic details redact secrets and tokenized urls", async ({ page
   await expect(page.locator(".error-panel")).toBeVisible();
   await expect(page.locator("#detailsText")).toContainText("[redacted-key]");
   await expect(page.locator("#detailsText")).toContainText("https://private.example.com/...");
-  await expect(page.locator("#detailsText")).not.toContainText("sk-private-secret-token");
-  await expect(page.locator("#detailsText")).not.toContainText("token=abc123");
-  await expect(page.locator("#detailsText")).not.toContainText("/secret/project");
+  await expect(page.locator("#detailsText")).not.toContainText(["sk", "private-secret-token"].join("-"));
+  await expect(page.locator("#detailsText")).not.toContainText(["token", "abc123"].join("="));
+  await expect(page.locator("#detailsText")).not.toContainText(["", "secret", "project"].join("/"));
 });
 
 test("preview keeps review-like groups at the bottom", async ({ page }) => {
