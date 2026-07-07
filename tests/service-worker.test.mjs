@@ -56,6 +56,57 @@ test("service worker lifecycle listeners honor the include-incognito setting", a
   }
 });
 
+test("service worker records focused-window returns for lifecycle evidence", async () => {
+  const listeners = {};
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          {
+            id: 10,
+            title: "Window one reference",
+            url: "https://example.com/one",
+            active: true
+          }
+        ]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [
+          {
+            id: 20,
+            title: "Window two reference",
+            url: "https://example.com/two",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  installServiceWorkerEventMocks(chrome, listeners);
+
+  globalThis.chrome = chrome;
+  try {
+    await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    assert.equal(typeof listeners.windowFocusChanged, "function");
+
+    listeners.windowFocusChanged(2);
+    await waitForCondition(
+      () => lifecycleEvents(chrome).some((event) => event.type === "window_focused" && event.tabId === 20),
+      "Timed out waiting for focused-window lifecycle log."
+    );
+
+    const session = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).find((item) => item.tabId === 20);
+    assert.equal(session.activeCount, 1);
+    assert.equal(session.lastActivatedAt.length > 0, true);
+  } finally {
+    delete globalThis.chrome;
+  }
+});
+
 test("service worker disables background summaries when the manifest has no content access feature", async () => {
   const listeners = {};
   const alarmCreates = [];
