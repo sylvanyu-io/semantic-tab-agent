@@ -611,7 +611,7 @@ const AI_WAIT_RAMP_MS = 45000;
 const AI_WAIT_COPY_INTERVAL_SECONDS = 4;
 const ACTIVE_JOB_POLL_MS = 600;
 const GENERATED_COPY_CACHE_LIMIT = 4;
-const CANCELED_RECAP_OPERATION_TTL_MS = 5 * 60 * 1000;
+const CANCELED_OPERATION_TTL_MS = 5 * 60 * 1000;
 
 const nodes = {
   appShell: document.querySelector(".app-shell"),
@@ -675,6 +675,8 @@ let lastTimeRecap = null;
 let lastTimeRecapError = null;
 let lastCanApply = false;
 let canUndo = false;
+let activeAnalyzeRunId = null;
+const canceledAnalyzeRuns = new Set();
 let activeRecapOperationId = null;
 const canceledRecapOperations = new Set();
 let pageSamplingOriginCache = { origins: [], refreshedAt: 0 };
@@ -1390,6 +1392,8 @@ async function handleAnalyzeClick() {
 }
 
 async function analyze() {
+  const runId = createClientOperationId("organize");
+  activeAnalyzeRunId = runId;
   resetToSetup();
   setBusy(true, t("status.preparing"), { mode: PANEL_MODE_ORGANIZE, cancelable: true, progress: 4 });
   try {
@@ -1410,7 +1414,7 @@ async function analyze() {
     syncActionState();
     setStatusKey(job.validation?.ok ? "status.planReady" : "status.planNeedsReview", {}, !job.validation?.ok, { mode: PANEL_MODE_ORGANIZE });
   } catch (error) {
-    if (isCancellationError(error)) {
+    if (canceledAnalyzeRuns.has(runId) || isCancellationError(error)) {
       setStatusKey("status.canceled", {}, false, { mode: PANEL_MODE_ORGANIZE });
     } else {
       const message = friendlyErrorMessage(error);
@@ -1420,6 +1424,8 @@ async function analyze() {
   } finally {
     stopProgressPolling();
     setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
+    if (activeAnalyzeRunId === runId) activeAnalyzeRunId = null;
+    canceledAnalyzeRuns.delete(runId);
   }
 }
 
@@ -1473,7 +1479,7 @@ async function cancelTimeRecap() {
   const operationId = activeRecapOperationId;
   if (!operationId) return;
   canceledRecapOperations.add(operationId);
-  setTimeout(() => canceledRecapOperations.delete(operationId), CANCELED_RECAP_OPERATION_TTL_MS);
+  setTimeout(() => canceledRecapOperations.delete(operationId), CANCELED_OPERATION_TTL_MS);
   stopRecapProgress();
   setBusy(true, t("status.recapCanceling"), { mode: PANEL_MODE_RECAP, cancelable: true, progress: currentProgressValue(PANEL_MODE_RECAP) || 92 });
   setCancelDisabled(PANEL_MODE_RECAP, true);
@@ -1993,12 +1999,21 @@ function friendlyErrorMessage(error) {
 }
 
 async function cancelAnalyze() {
+  const runId = activeAnalyzeRunId;
+  if (runId) {
+    canceledAnalyzeRuns.add(runId);
+    setTimeout(() => canceledAnalyzeRuns.delete(runId), CANCELED_OPERATION_TTL_MS);
+  }
   setCancelDisabled(PANEL_MODE_ORGANIZE, true);
   setStatusKey("status.canceling", {}, false, { mode: PANEL_MODE_ORGANIZE });
   try {
     const result = await sendMessage(scopedWindowMessage({ type: "tabs:cancelActiveJob" }));
     if (result?.job) updateProgressFromJob(result.job, PANEL_MODE_ORGANIZE);
-    if (result?.job?.status === "canceled") {
+    if (result?.job?.status === "complete") {
+      await restoreCompletedJob(result.job);
+    } else if (result?.job?.status === "error") {
+      restoreTerminalJob(result.job);
+    } else if (!result?.job || result?.job?.status === "canceled") {
       stopProgressPolling();
       setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
       setStatusKey("status.canceled", {}, false, { mode: PANEL_MODE_ORGANIZE });

@@ -122,6 +122,8 @@ Blocking gates:
 - Time recap can be canceled while the AI request is still live.
 - Time recap fallback keeps raw AI errors in diagnostics rather than visible
   product copy.
+- Organize cancellation remains a user-stopped state even if the background job
+  has already disappeared before the cancel request reaches it.
 - Recap UI exposes only recap-relevant advanced settings.
 - No model provider key, alert email provider key, GitHub token, Google API key,
   or AWS access key id appears in git history, screenshots, test output, or

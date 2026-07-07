@@ -3148,6 +3148,77 @@ test("canceling generation returns to setup without error preview", async ({ pag
   await expect(page.locator("#previewSection")).toBeHidden();
 });
 
+test("canceling generation stays canceled when the background job is already gone", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: false,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    const runningJob = {
+      operationId: "job_cancel_missing",
+      status: "running",
+      phase: "planning",
+      progress: 56,
+      message: "正在生成 AI 方案",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    window.__started = false;
+    window.__canceled = false;
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:startAnalyze") {
+            window.__started = true;
+            return { ok: true, result: { operationId: runningJob.operationId } };
+          }
+          if (message.type === "tabs:getActiveJob") {
+            if (!window.__started || window.__canceled) return { ok: true, result: null };
+            return { ok: true, result: runningJob };
+          }
+          if (message.type === "tabs:cancelActiveJob") {
+            window.__canceled = true;
+            return { ok: true, result: { canceled: false, job: null } };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByRole("button", { name: "生成方案" }).click();
+  await expect(page.locator("#progressLabel")).toContainText("正在生成 AI 方案");
+  await page.getByRole("button", { name: "停止生成" }).click();
+  await expect(page.locator("#statusText")).toHaveText("已停止生成。");
+  await expect(page.locator("#cancelBtn")).toBeHidden();
+  await page.waitForTimeout(800);
+  await expect(page.locator("#statusText")).toHaveText("已停止生成。");
+  await expect(page.locator("#previewSection")).toBeHidden();
+});
+
 test("generation does not request page sampling permissions from a stale enabled state", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
