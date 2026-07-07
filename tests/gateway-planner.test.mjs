@@ -1655,6 +1655,43 @@ test("AI gateway planner accepts common non-infrastructure string error payloads
   );
 });
 
+test("AI gateway planner redacts custom provider error details before surfacing them", async () => {
+  const providerKey = ["sk", "private-provider-token-1234567890"].join("-");
+  const tokenizedUrl = "https://private.example.com/secret/project?token=abc123";
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 400,
+    async json() {
+      return { error: { message: `bad prompt at ${tokenizedUrl} with Bearer ${providerKey}` } };
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayBaseUrl: "http://localhost:8317/v1",
+          gatewayApiKey: "test-key"
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /自定义 AI 网关这次没有完成请求（400）。/);
+      assert.match(message, /https:\/\/private\.example\.com\/\.\.\./);
+      assert.match(message, /Bearer \[redacted\]/);
+      assert.equal(message.includes(providerKey), false);
+      assert.equal(message.includes(tokenizedUrl), false);
+      assert.equal(message.includes(["token", "abc123"].join("=")), false);
+      assert.equal(message.includes(["", "secret", "project"].join("/")), false);
+      return true;
+    }
+  );
+});
+
 test("AI gateway planner honors an explicit timeout", async () => {
   const fetchImpl = async () => new Promise(() => {});
 

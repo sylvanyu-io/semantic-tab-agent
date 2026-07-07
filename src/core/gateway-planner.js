@@ -342,7 +342,8 @@ export async function testGatewayConnection(rawSettings = {}, fetchImpl = global
 }
 
 export function gatewayErrorMessage(response, data, settings) {
-  const providerMessage = extractProviderErrorMessage(data);
+  const rawProviderMessage = extractProviderErrorMessage(data);
+  const providerMessage = sanitizeGatewayErrorDetail(rawProviderMessage);
   const requestId = extractGatewayRequestId(response, data);
   const suffix = requestId ? `（请求号 ${requestId}）` : "";
   const isCustomProvider = isCustomGatewayProvider(settings);
@@ -351,12 +352,12 @@ export function gatewayErrorMessage(response, data, settings) {
       ? "AI 服务拒绝访问。请检查自定义网关地址和密钥。"
       : `默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。${suffix}`;
   }
-  if (isLocalOriginOffline(response, providerMessage, data)) {
+  if (isLocalOriginOffline(response, rawProviderMessage, data)) {
     return isCustomProvider
       ? `自定义 AI 网关的本地源站暂时离线。请检查本机服务、Cloudflare Tunnel 和上游模型。${suffix}`
       : `默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。${suffix}`;
   }
-  if (isGatewayInfrastructureError(response, providerMessage)) {
+  if (isGatewayInfrastructureError(response, rawProviderMessage)) {
     return isCustomProvider
       ? `自定义 AI 网关暂时连不上。请检查网关地址、隧道或上游服务是否在线。${suffix}`
       : `默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。${suffix}`;
@@ -377,6 +378,25 @@ function extractProviderErrorMessage(data) {
   if (typeof data.error?.message === "string") return data.error.message.trim();
   if (typeof data.message === "string") return data.message.trim();
   return "";
+}
+
+function sanitizeGatewayErrorDetail(message) {
+  const text = String(message || "").trim();
+  if (!text) return "";
+  return text
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
+    .replace(/https?:\/\/[^\s"')]+/gi, redactGatewayErrorUrl);
+}
+
+function redactGatewayErrorUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
+  } catch {
+    return rawUrl;
+  }
 }
 
 function extractGatewayRequestId(response, data) {
