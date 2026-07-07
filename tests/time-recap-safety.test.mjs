@@ -17,10 +17,11 @@ test("recap safety strips cleanup recommendations without removing evidence word
 
 test("recap safety keeps stale and duplicate when they describe actual work", () => {
   const cleaned = stripCleanupRecommendationsFromRecapText(
-    "上午排查重复请求导致的账单 bug。Afternoon work focused on stale cache behavior and duplicate webhook events. 这些都是主要工作线索。"
+    "上午排查重复请求导致的账单 bug。下午修了重复标签页创建问题。Afternoon work focused on stale cache behavior and duplicate webhook events. 这些都是主要工作线索。"
   );
 
   assert.equal(cleaned.includes("重复请求"), true);
+  assert.equal(cleaned.includes("重复标签页创建问题"), true);
   assert.equal(cleaned.includes("stale cache behavior"), true);
   assert.equal(cleaned.includes("duplicate webhook events"), true);
   assert.equal(cleaned.includes("主要工作线索"), true);
