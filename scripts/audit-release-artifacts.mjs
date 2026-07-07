@@ -26,6 +26,8 @@ const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".sv
 const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
 const forbiddenProductCopy = [
   { label: "Internal test", pattern: /Internal test/ },
+  { label: "开发版功能", pattern: /开发版功能/ },
+  { label: "商店版", pattern: /商店版/ },
   { label: "Semantic Tab Agent", pattern: /Semantic\s+Tab\s+Agent/i },
   { label: "Tab Tidy", pattern: /Tab\s+Tidy/i },
   { label: "TabTidy", pattern: /TabTidy/i },

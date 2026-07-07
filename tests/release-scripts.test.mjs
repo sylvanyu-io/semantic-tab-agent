@@ -46,6 +46,8 @@ test("release artifact audit rejects obsolete product names and legacy extension
   const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
 
   assert.match(auditScript, /Semantic Tab Agent/);
+  assert.match(auditScript, /开发版功能/);
+  assert.match(auditScript, /商店版/);
   assert.match(auditScript, /Tab Tidy/);
   assert.match(auditScript, /TabTidy/);
   assert.match(auditScript, /tab_tidy_/);
@@ -70,7 +72,10 @@ test("release artifact audit fails built artifacts that contain legacy product n
 
     const extensionDir = join(tempDist, "extension");
     const pollutedScript = join(extensionDir, "src/sidepanel/sidepanel.js");
-    await writeFile(pollutedScript, `${await readFile(pollutedScript, "utf8")}\n// TabTidy must not ship.\n`);
+    await writeFile(
+      pollutedScript,
+      `${await readFile(pollutedScript, "utf8")}\n// TabTidy must not ship.\n// 开发版功能 must not ship.\n`
+    );
     const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${manifest.version}.zip`), "."], {
       cwd: extensionDir,
       encoding: "utf8"
@@ -83,6 +88,7 @@ test("release artifact audit fails built artifacts that contain legacy product n
     });
     assert.notEqual(audit.status, 0, audit.stderr || audit.stdout);
     assert.match(`${audit.stdout}\n${audit.stderr}`, /obsolete\/internal product copy "TabTidy"/);
+    assert.match(`${audit.stdout}\n${audit.stderr}`, /obsolete\/internal product copy "开发版功能"/);
   } finally {
     await rm(tempDist, { recursive: true, force: true });
   }
