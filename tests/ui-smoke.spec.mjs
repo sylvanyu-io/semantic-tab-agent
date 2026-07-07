@@ -200,6 +200,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#gatewayAuxiliaryModel")).toBeHidden();
   await expect(page.locator("#gatewayCustomModelField")).toBeVisible();
   await expect(page.locator("#gatewayCustomAuxiliaryModel")).toBeVisible();
+  await expect(page.locator("#gatewayCustomModel")).toHaveAttribute("placeholder", "留空则使用默认模型 gpt-5.4");
   await expect(page.locator("#gatewayCustomAuxiliaryModel")).toHaveAttribute("placeholder", "留空则跟随主模型");
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
   await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("placeholder", "例如：https://api.deepseek.com/v1");
@@ -2089,6 +2090,77 @@ test("custom provider can use a manual model name", async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([{ origins: ["https://api.deepseek.com/*"] }]);
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomModel)).toBe("deepseek-v4");
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomAuxiliaryModel)).toBe("gpt-5.4-mini");
+});
+
+test("custom provider can use the default model when the model field is blank", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayProviderMode: "custom",
+      gatewayBaseUrl: "https://proxy.example.test/v1",
+      gatewayModel: "gpt-5.4",
+      gatewayCustomModel: "",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomAuxiliaryModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.__permissionRequests = [];
+    window.__startAnalyzeSettings = null;
+    window.chrome = {
+      permissions: {
+        contains: async () => false,
+        request: async (request) => {
+          window.__permissionRequests.push(request);
+          return true;
+        }
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:startAnalyze") {
+            window.__startAnalyzeSettings = message.settings;
+            return { ok: true, result: { operationId: "custom_default_model_job" } };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByText("更多选项").click();
+  await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
+  await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
+  await expect(page.locator("#gatewayBaseUrl")).toHaveValue("https://proxy.example.test/v1");
+  await expect(page.locator("#gatewayCustomModel")).toHaveValue("");
+  await page.getByRole("button", { name: "生成方案" }).click();
+  await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([{ origins: ["https://proxy.example.test/*"] }]);
+  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayModel)).toBe("gpt-5.4");
+  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomModel)).toBe("");
+  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayAuxiliaryModel)).toBe("same_as_primary");
 });
 
 test("current-window generation without sourceWindowId uses the focused normal window", async ({ page }) => {

@@ -191,18 +191,20 @@ export function normalizeSettings(input = {}) {
   merged.gatewayCustomModel = normalizeGatewayCustomModel(merged.gatewayCustomModel);
   merged.gatewayCustomAuxiliaryModel = normalizeGatewayCustomModel(merged.gatewayCustomAuxiliaryModel);
   merged.gatewayModel = normalizeGatewayModel(merged.gatewayModel);
-  if (shouldPreferManualGatewayModel(merged)) {
+  if (shouldUseCustomGatewayProvider(merged)) {
     merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.CUSTOM;
-    merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
     merged.gatewayAuxiliaryModel = "same_as_primary";
+    if (shouldPreferManualGatewayModel(merged)) {
+      merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
+    } else {
+      merged.gatewayCustomAuxiliaryModel = "";
+    }
   } else {
     if (merged.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE) {
       merged.gatewayModel = DEFAULT_SETTINGS.gatewayModel;
     }
-    if (!merged.gatewayBaseUrl) {
-      merged.gatewayCustomModel = "";
-      merged.gatewayCustomAuxiliaryModel = "";
-    }
+    merged.gatewayCustomModel = "";
+    merged.gatewayCustomAuxiliaryModel = "";
   }
   merged.gatewayApiKey = String(merged.gatewayApiKey || "").trim();
   if (!merged.gatewayBaseUrl) {
@@ -292,11 +294,15 @@ export function resolveGatewayModel(settings = DEFAULT_SETTINGS) {
 }
 
 function shouldPreferManualGatewayModel(settings = {}) {
-  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl && settings.gatewayCustomModel);
+  return settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE || Boolean(settings.gatewayCustomModel);
+}
+
+function shouldUseCustomGatewayProvider(settings = {}) {
+  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl);
 }
 
 function usesManualGatewayModel(settings = {}) {
-  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl && settings.gatewayCustomModel);
+  return isCustomGatewayProvider(settings) && settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE;
 }
 
 export function isCustomGatewayProvider(settings = DEFAULT_SETTINGS) {

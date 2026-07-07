@@ -130,7 +130,7 @@ test("balanced grouping prompt avoids over-merging distinct topics", () => {
   assert.match(prompt, /without collapsing distinct subjects/);
 });
 
-test("AI gateway planner posts a chat-completions JSON request", async () => {
+test("AI gateway planner posts a custom chat-completions JSON request", async () => {
   const expectedPlan = {
     schemaVersion: 1,
     mode: "current_window",
@@ -163,8 +163,8 @@ test("AI gateway planner posts a chat-completions JSON request", async () => {
     assert.equal(options.headers.authorization, "Bearer gateway-test-key");
     const body = JSON.parse(options.body);
     assert.equal(body.model, "gpt-5.4");
-    assert.equal(body.response_format.type, "json_object");
-    assert.equal(body.reasoning_effort, "high");
+    assert.equal(body.response_format, undefined);
+    assert.equal(body.reasoning_effort, undefined);
     assert.match(body.messages[0].content, /JSON-only planner/);
     assert.match(body.messages[0].content, /compact output/);
     assert.match(body.messages[0].content, /sequenceIndex and index/);
@@ -1400,10 +1400,12 @@ test("AI gateway planner deduplicates compact review refs", async () => {
   ]);
 });
 
-test("AI gateway planner can call a custom free gateway without an API key", async () => {
-  const fetchImpl = async (_url, options) => {
+test("AI gateway planner can call a custom free gateway with the default model and no API key", async () => {
+  const fetchImpl = async (url, options) => {
+    assert.equal(url, "http://localhost:8317/v1/chat/completions");
     assert.equal(options.headers.authorization, undefined);
     assert.equal(options.headers["content-type"], "application/json");
+    assert.equal(JSON.parse(options.body).model, DEFAULT_SETTINGS.gatewayModel);
     return {
       ok: true,
       async json() {

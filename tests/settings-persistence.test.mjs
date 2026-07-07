@@ -159,6 +159,15 @@ test("AI gateway settings normalize safely", () => {
   assert.equal(manualCustomGateway.gatewayProviderMode, GATEWAY_PROVIDER_MODES.CUSTOM);
   assert.equal(manualCustomGateway.gatewayModel, GATEWAY_CUSTOM_MODEL_VALUE);
   assert.equal(resolveGatewayModel(manualCustomGateway), "deepseek-v4");
+  const baseOnlyCustomGateway = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    gatewayBaseUrl: "https://proxy.example.test/v1",
+    gatewayModel: "gpt-5.4"
+  });
+  assert.equal(baseOnlyCustomGateway.gatewayProviderMode, GATEWAY_PROVIDER_MODES.CUSTOM);
+  assert.equal(baseOnlyCustomGateway.gatewayModel, "gpt-5.4");
+  assert.equal(resolveGatewayModel(baseOnlyCustomGateway), "gpt-5.4");
+  assert.equal(resolveGatewayAuxiliaryModel(baseOnlyCustomGateway), "gpt-5.4");
   const explicitCustomGateway = normalizeSettings({
     ...DEFAULT_SETTINGS,
     gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,

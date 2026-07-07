@@ -203,7 +203,7 @@ const UI_COPY = Object.freeze({
     "field.gatewayModel": "AI 模型",
     "field.gatewayAuxiliaryModel": "辅助模型",
     "field.thinking": "思考强度",
-    "field.customModel": "自定义模型名",
+    "field.customModel": "自定义模型名（可选）",
     "field.customAuxiliaryModel": "自定义辅助模型（可选）",
     "field.gatewayUrl": "自定义 API 地址",
     "field.gatewayKey": "API Key（可选）",
@@ -217,7 +217,7 @@ const UI_COPY = Object.freeze({
     "field.diagnosticsHint": "导出本机状态摘要，不包含密钥、页面网址或页面正文",
     "field.minConfidence": "最低置信度",
     "field.maxTabs": "单组最大数量",
-    "placeholder.customModel": "例如：glm-5.2、deepseek-v4-pro",
+    "placeholder.customModel": "留空则使用默认模型 gpt-5.4",
     "placeholder.customAuxiliaryModel": "留空则跟随主模型",
     "placeholder.gatewayUrl": "例如：https://api.deepseek.com/v1",
     "placeholder.gatewayKey": "没有密钥可留空",
@@ -474,7 +474,7 @@ const UI_COPY = Object.freeze({
     "field.gatewayModel": "AI model",
     "field.gatewayAuxiliaryModel": "Auxiliary model",
     "field.thinking": "Reasoning effort",
-    "field.customModel": "Custom model name",
+    "field.customModel": "Custom model name (optional)",
     "field.customAuxiliaryModel": "Custom auxiliary model (optional)",
     "field.gatewayUrl": "Custom API URL",
     "field.gatewayKey": "API key (optional)",
@@ -488,7 +488,7 @@ const UI_COPY = Object.freeze({
     "field.diagnosticsHint": "Exports a local status summary without keys, page URLs, or page text",
     "field.minConfidence": "Minimum confidence",
     "field.maxTabs": "Max tabs per group",
-    "placeholder.customModel": "Example: glm-5.2, deepseek-v4-pro",
+    "placeholder.customModel": "Leave blank to use the default model gpt-5.4",
     "placeholder.customAuxiliaryModel": "Leave blank to use the primary model",
     "placeholder.gatewayUrl": "Example: https://api.deepseek.com/v1",
     "placeholder.gatewayKey": "Leave blank if your API does not need a key",
@@ -1140,10 +1140,15 @@ function readSettings(options = {}) {
   const usesCustomGateway = gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM;
   const gatewayBaseUrl = usesCustomGateway ? fields.gatewayBaseUrl.value : "";
   const gatewayCustomModel = usesCustomGateway ? fields.gatewayCustomModel.value : "";
-  const gatewayCustomAuxiliaryModel = usesCustomGateway ? fields.gatewayCustomAuxiliaryModel.value : "";
+  const usesCustomGatewayModel = usesCustomGateway && Boolean(gatewayCustomModel.trim());
+  const gatewayCustomAuxiliaryModel = usesCustomGatewayModel ? fields.gatewayCustomAuxiliaryModel.value : "";
   const gatewayModel =
     usesCustomGateway
-      ? GATEWAY_CUSTOM_MODEL_VALUE
+      ? usesCustomGatewayModel
+        ? GATEWAY_CUSTOM_MODEL_VALUE
+        : fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE
+        ? DEFAULT_SETTINGS.gatewayModel
+        : fields.gatewayModel.value
       : fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE
       ? DEFAULT_SETTINGS.gatewayModel
       : fields.gatewayModel.value;
