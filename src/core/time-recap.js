@@ -2,7 +2,7 @@ import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shar
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
 import { normalizeModelProductText } from "../shared/model-copy.js";
-import { isCleanupLikeRecapFollowUp } from "../shared/time-recap-safety.js";
+import { isCleanupLikeRecapFollowUp, stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
   applyThinkingIntensity,
@@ -399,7 +399,7 @@ function buildTimeRecapUserPrompt(input) {
 function normalizeTimeRecap(parsed, input, settings) {
   const source = parsed?.recap || parsed?.result || parsed?.data || parsed || {};
   const pagesById = new Map((input.pages || []).map((page) => [page.id, page]));
-  const text = (value, maxLength) => normalizeModelProductText(value, settings, maxLength);
+  const text = (value, maxLength) => stripCleanupRecommendationsFromRecapText(normalizeModelProductText(value, settings, maxLength));
   const normalizeIds = (value) => uniqueNumbers(value?.ids || value?.pageIds || value?.pages || value?.tabIds)
     .map((id) => (pagesById.has(id) ? id : pageIdForTabId(input, id)))
     .filter((id) => pagesById.has(id));

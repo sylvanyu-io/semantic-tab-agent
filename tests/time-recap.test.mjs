@@ -436,6 +436,69 @@ test("time recap drops cleanup-like follow-ups from AI output", async () => {
   assert.equal(visibleFollowUps.includes("值得复查"), false);
 });
 
+test("time recap strips cleanup recommendations from recap body fields", async () => {
+  const chrome = seededRecapChrome();
+  const fetchImpl = async () =>
+    new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                schema: "tab_recap_time_recap_v1",
+                language: "zh-CN",
+                headline: "这一周主要在做扩展发布",
+                summary: "主要围绕 TabRecap 发布检查推进。这个旧标签页可以关闭。已结合打开/关闭状态和活动记录。",
+                themes: [
+                  {
+                    title: "发布检查",
+                    description: "权限、发布和回顾体验是主线。YachtWorld 页面是否保留可以回头判断。",
+                    confidence: "high",
+                    ids: [1],
+                    evidence: ["发布检查", "建议关闭旧页面"]
+                  }
+                ],
+                timeline: [
+                  {
+                    label: "周末",
+                    description: "集中做发布验证。Review whether to keep stale tabs.",
+                    ids: [1]
+                  }
+                ],
+                followUps: [],
+                coverageNote: "使用本地线索。"
+              })
+            }
+          }
+        ]
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      fetchImpl
+    }
+  );
+  const visibleText = JSON.stringify(result.recap);
+
+  assert.equal(result.source, "ai");
+  assert.match(result.recap.summary, /打开\/关闭状态/);
+  assert.match(result.recap.themes[0].description, /权限、发布和回顾体验/);
+  assert.match(result.recap.timeline[0].description, /集中做发布验证/);
+  assert.doesNotMatch(visibleText, /可以关闭|是否保留|建议关闭|Review whether|stale tabs/);
+});
+
 test("time recap does not replace filtered cleanup follow-ups with local continuation items", async () => {
   const chrome = seededRecapChrome();
   const fetchCalls = [];
