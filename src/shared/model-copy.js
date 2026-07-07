@@ -1,7 +1,26 @@
 import { localizedText } from "./language.js";
 
-const IDENTITY_FIELD_PATTERN = /\b(?:tabId|pageId|windowId|sequenceIndex)\s*(?:为|=|is|:)?\s*["'#]?[A-Za-z0-9_.-]+["']?/gi;
-const IDENTITY_FIELD_NAME_PATTERN = /\b(?:tabId|pageId|windowId|sequenceIndex)\b/gi;
+const IDENTITY_FIELD_PATTERN =
+  /\b(?:tab(?:Id|[_\s-]?id)|page(?:Id|[_\s-]?id)|window(?:Id|[_\s-]?id)|sequence(?:Index|[_\s-]?index))\s*(?:为|=|is|:)?\s*["'#]?[A-Za-z0-9_.-]+["']?/gi;
+const IDENTITY_FIELD_NAME_PATTERN =
+  /\b(?:tab(?:Id|[_\s-]?id)|page(?:Id|[_\s-]?id)|window(?:Id|[_\s-]?id)|sequence(?:Index|[_\s-]?index))\b/gi;
+
+const FIELD_NAME_PATTERNS = {
+  activeCount: /\bactive(?:Count|[_\s-]?count)\b/gi,
+  seenCount: /\bseen(?:Count|[_\s-]?count)\b/gi,
+  ageDays: /\bage(?:Days|[_\s-]?days?)\b/gi,
+  idleDays: /\bidle(?:Days|[_\s-]?days?)\b/gi,
+  firstSeenAt: /\bfirst(?:SeenAt|[_\s-]?seen(?:[_\s-]?at)?)\b/gi,
+  lastSeenAt: /\blast(?:SeenAt|[_\s-]?seen(?:[_\s-]?at)?)\b/gi,
+  lastActivatedAt: /\blast(?:ActivatedAt|[_\s-]?activated(?:[_\s-]?at)?)\b/gi,
+  closedAt: /\bclosed(?:At|[_\s-]?at)\b/gi,
+  currentGroupTitle: /\bcurrent(?:GroupTitle|[_\s-]?group(?:[_\s-]?title)?)\b/gi,
+  hostname: /\b(?:hostname|host(?:Name|[_\s-]?name))\b/gi,
+  sampleable: /\bsample(?:able|[_\s-]?able)\b/gi,
+  discarded: /\bdiscarded\b/gi,
+  pinned: /\bpinned\b/gi,
+  audible: /\baudible\b/gi
+};
 
 export function normalizeModelProductText(value, settings = {}, maxLength = 120) {
   let text = String(value || "").trim().replace(/\s+/g, " ");
@@ -11,13 +30,13 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
   const copy = (zhCN, enUS) => localizedText(languageMode, zhCN, enUS);
 
   text = text
-    .replace(/\bactiveCount\s*(?:为|=|is|:)?\s*(?:0|zero)\b/gi, copy("基本没再打开", "rarely reopened"))
-    .replace(/\bactiveCount\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("打开过 $1 次", "opened $1 times"))
-    .replace(/\bseenCount\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("记录过 $1 次", "seen $1 times"))
-    .replace(/\bageDays\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("已放约 $1 天", "kept about $1 days"))
-    .replace(/\bidleDays\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("闲置约 $1 天", "idle about $1 days"))
-    .replace(/\bsampleable\s*(?:为|=|is|:)?\s*(?:false|no|否)\b/gi, copy("页面摘要不可用", "page summary unavailable"))
-    .replace(/\bsampleable\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("可读取页面摘要", "page summary available"))
+    .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(?:0|zero)\b/gi, copy("基本没再打开", "rarely reopened"))
+    .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("打开过 $1 次", "opened $1 times"))
+    .replace(/\bseen(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("记录过 $1 次", "seen $1 times"))
+    .replace(/\bage(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("已放约 $1 天", "kept about $1 days"))
+    .replace(/\bidle(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("闲置约 $1 天", "idle about $1 days"))
+    .replace(/\bsample(?:able|[_\s-]?able)\s*(?:为|=|is|:)?\s*(?:false|no|否)\b/gi, copy("页面摘要不可用", "page summary unavailable"))
+    .replace(/\bsample(?:able|[_\s-]?able)\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("可读取页面摘要", "page summary available"))
     .replace(/\bdiscarded\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("休眠标签页", "sleeping tab"))
     .replace(/\bpinned\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("固定标签页", "pinned tab"))
     .replace(/\baudible\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("正在播放声音", "playing audio"))
@@ -60,7 +79,7 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
         };
 
   for (const [raw, label] of Object.entries(labels)) {
-    text = text.replace(new RegExp(`\\b${raw}\\b`, "gi"), label);
+    text = text.replace(FIELD_NAME_PATTERNS[raw] ?? new RegExp(`\\b${raw}\\b`, "gi"), label);
   }
 
   return text

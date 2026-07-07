@@ -2477,21 +2477,28 @@ function cleanupEvidenceForPreview(candidate) {
   return labels.slice(0, 4);
 }
 
+const CLEANUP_ACTIVE_COUNT_FIELD_PATTERN = /\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+)/i;
+const CLEANUP_AGE_DAYS_FIELD_PATTERN = /\bage(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
+const CLEANUP_IDLE_DAYS_FIELD_PATTERN = /\bidle(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
+const CLEANUP_SAMPLEABLE_FIELD_PATTERN = /不可采样|cannot sample|not sampleable|sample(?:able|[_\s-]?able)/i;
+const CLEANUP_INTERNAL_FIELD_PATTERN =
+  /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Id|[_\s-]?id)|page(?:Id|[_\s-]?id)|window(?:Id|[_\s-]?id)|sequence(?:Index|[_\s-]?index)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))/i;
+
 function cleanupEvidenceLabel(value) {
   const text = String(value || "").trim();
   if (!text) return "";
 
-  const activeMatch = text.match(/active\s*count\s*(?:为|=|is|:)?\s*(\d+)/i) || text.match(/activeCount\s*(?:为|=|is|:)?\s*(\d+)/i);
+  const activeMatch = text.match(CLEANUP_ACTIVE_COUNT_FIELD_PATTERN);
   if (activeMatch) return cleanupOpenCountLabel(Number(activeMatch[1]));
 
-  const ageMatch = text.match(/age\s*days\s*(?:约|为|=|is|:)?\s*([\d.]+)/i) || text.match(/ageDays\s*(?:约|为|=|is|:)?\s*([\d.]+)/i);
+  const ageMatch = text.match(CLEANUP_AGE_DAYS_FIELD_PATTERN);
   if (ageMatch) return t("cleanup.clue.openForDays", { days: formatNumberLabel(ageMatch[1]) });
 
-  const idleMatch = text.match(/idle\s*days\s*(?:约|为|=|is|:)?\s*([\d.]+)/i) || text.match(/idleDays\s*(?:约|为|=|is|:)?\s*([\d.]+)/i);
+  const idleMatch = text.match(CLEANUP_IDLE_DAYS_FIELD_PATTERN);
   if (idleMatch) return t("cleanup.clue.idleForDays", { days: formatNumberLabel(idleMatch[1]) });
 
   if (/标签已被丢弃|discarded|休眠|sleeping/i.test(text)) return t("cleanup.clue.sleeping");
-  if (/不可采样|cannot sample|not sampleable|sampleable/i.test(text)) return "";
+  if (CLEANUP_SAMPLEABLE_FIELD_PATTERN.test(text)) return "";
   if (/chrome:\/\/extensions|浏览器.*(?:内部|设置)|扩展程序|internal page|settings page/i.test(text)) return t("cleanup.clue.browserPage");
   if (/搜索结果|搜索页|Google 搜索|search result|search page/i.test(text)) return t("cleanup.clue.searchPage");
   if (/标题为|title\s*(?:is|=|:)|titled/i.test(text)) return "";
@@ -2499,7 +2506,7 @@ function cleanupEvidenceLabel(value) {
   if (/无直接|关系弱|不相关|weak fit|unrelated|low relevance/i.test(text)) return t("cleanup.clue.weakRelation");
   if (/重新|找回|恢复|recover|find again|refind|rerun/i.test(text)) return t("cleanup.clue.refindable");
   if (/主页|入口|总览|列表|overview|home page|entry page|index page|repository list/i.test(text)) return t("cleanup.clue.entryPage");
-  if (/activeCount|ageDays|idleDays|sampleable|tabId|sequenceIndex|currentGroup|hostname/i.test(text)) return "";
+  if (CLEANUP_INTERNAL_FIELD_PATTERN.test(text)) return "";
 
   return text.slice(0, 48);
 }
@@ -3761,7 +3768,7 @@ function mockCleanupPreview(grouping = true) {
         activeCount: 0,
         priority: "medium",
         reason: "标题显示是旧研究资料，且没有归属到当前分组。",
-        evidence: ["activeCount 为0", "ageDays 约22", "标题为“上轮调研资料”"]
+        evidence: ["active_count 为0", "age-days 约22", "page_id 32", "sample_able false", "标题为“上轮调研资料”"]
       }
     ]
   };

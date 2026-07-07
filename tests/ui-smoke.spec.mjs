@@ -1283,7 +1283,11 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview").getByText("基本没再打开", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("已放约 22 天", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview")).not.toContainText("activeCount");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("active_count");
   await expect(page.locator(".cleanup-preview")).not.toContainText("ageDays");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("age-days");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("page_id");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("sample_able");
   await expect(page.locator(".cleanup-preview")).not.toContainText("标题为");
 
   await expect(page.locator(".cleanup-preview-actions")).toHaveCount(0);
