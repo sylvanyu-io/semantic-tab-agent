@@ -144,6 +144,8 @@ const UI_COPY = Object.freeze({
     "cleanup.closeOneAria": "关闭这个标签页",
     "cleanup.focusAria": "定位这个标签页",
     "cleanup.closed": "已关闭 {count} 个标签页，方案已同步更新",
+    "cleanup.closedWithChanged": "已关闭 {closed} 个标签页，{changed} 个已变化标签页已从方案移除",
+    "cleanup.changedSynced": "{count} 个已变化标签页已从方案移除",
     "cleanup.noneSelected": "这个标签页现在无法关闭，请重新生成后再试。",
     "recap.step": "近期回顾",
     "recap.heading": "看看最近主要在忙什么",
@@ -413,6 +415,8 @@ const UI_COPY = Object.freeze({
     "cleanup.closeOneAria": "Close this tab",
     "cleanup.focusAria": "Find this tab",
     "cleanup.closed": "Closed {count} tabs and updated the plan",
+    "cleanup.closedWithChanged": "Closed {closed} tabs and removed {changed} changed tabs from the plan",
+    "cleanup.changedSynced": "Removed {count} changed tabs from the plan",
     "cleanup.noneSelected": "This tab cannot be closed right now. Regenerate the plan and try again.",
     "recap.step": "Recent recap",
     "recap.heading": "See what you have been working on",
@@ -2504,12 +2508,26 @@ async function closeCleanupTabs(tabIds) {
     lastPreview = result.preview;
     lastCanApply = Boolean(result.validation?.ok);
     renderPreview({ preview: lastPreview, validation: result.validation, settings: { languageMode: currentResultLanguageMode() } });
-    setStatusKey("cleanup.closed", { count: result.closedTabIds?.length || 0 }, false, { mode: PANEL_MODE_ORGANIZE });
+    setCleanupCloseStatus(result);
   } catch (error) {
     setErrorStatus(error, t("status.previousFailed"), { mode: PANEL_MODE_ORGANIZE });
   } finally {
     setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
   }
+}
+
+function setCleanupCloseStatus(result = {}) {
+  const closed = result.closedTabIds?.length || 0;
+  const changed = result.skippedTabIds?.length || 0;
+  if (closed > 0 && changed > 0) {
+    setStatusKey("cleanup.closedWithChanged", { closed, changed }, false, { mode: PANEL_MODE_ORGANIZE });
+    return;
+  }
+  if (changed > 0) {
+    setStatusKey("cleanup.changedSynced", { count: changed }, false, { mode: PANEL_MODE_ORGANIZE });
+    return;
+  }
+  setStatusKey("cleanup.closed", { count: closed }, false, { mode: PANEL_MODE_ORGANIZE });
 }
 
 function swatchForIndex(index) {

@@ -314,6 +314,101 @@ test("closing cleanup candidates is explicit and updates the stored plan preview
   assert.equal(stored.validation.ok, true);
 });
 
+test("cleanup close removes stale candidates from the stored plan", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 11, title: "Current docs", url: "https://example.com/current", active: true }]
+      }
+    ]
+  });
+  const settings = { ...FAKE_PLANNER_SETTINGS, analyzeCleanup: true };
+  const job = {
+    operationId: "job_cleanup_stale_close",
+    createdAt: new Date().toISOString(),
+    settings,
+    invocation: { windowId: 1 },
+    inventory: {
+      scope: { kind: "current_window", currentWindowId: 1, invocationWindowId: 1, windowIds: [1] },
+      windows: [{ windowId: 1, type: "normal", focused: true, incognito: false, tabCount: 2 }],
+      tabs: [
+        { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Already closed", hostname: "example.com" },
+        { tabId: 11, windowId: 1, index: 1, sequenceIndex: 1, title: "Current docs", hostname: "example.com" }
+      ],
+      plannerTabs: [
+        { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Already closed", hostname: "example.com" },
+        { tabId: 11, windowId: 1, index: 1, sequenceIndex: 1, title: "Current docs", hostname: "example.com" }
+      ],
+      excludedTabs: [],
+      lockedGroups: [],
+      pageSamples: []
+    },
+    plan: {
+      schemaVersion: 1,
+      mode: settings.organizeMode,
+      scope: { kind: "current_window", windowIds: [1] },
+      targetWindow: { kind: "current_window", windowId: 1 },
+      eligibleTabs: [
+        { tabId: 10, windowId: 1 },
+        { tabId: 11, windowId: 1 }
+      ],
+      excludedTabs: [],
+      groups: [
+        {
+          groupKey: "docs",
+          title: "Docs",
+          color: "blue",
+          confidence: 0.9,
+          reason: "Docs work.",
+          tabRefs: [
+            { tabId: 10, windowId: 1 },
+            { tabId: 11, windowId: 1 }
+          ]
+        }
+      ],
+      reviewTabs: [],
+      cleanup: {
+        schema: "tab_tidy_cleanup_v1",
+        summary: "Old docs can be checked.",
+        candidates: [
+          { tabId: 10, windowId: 1, title: "Already closed", hostname: "example.com", priority: "high", reason: "Old task.", evidence: [] }
+        ]
+      }
+    },
+    validation: { ok: true, errors: [], warnings: [] },
+    preview: {
+      analysisFeatures: { grouping: true, cleanup: true },
+      groups: [{ title: "Docs", reason: "Docs work.", tabCount: 2 }],
+      groupedTabsCount: 2,
+      reviewTabsCount: 0,
+      cleanup: {
+        summary: "Old docs can be checked.",
+        candidateCount: 1,
+        candidates: [{ tabId: 10, windowId: 1, title: "Already closed", hostname: "example.com", priority: "high", reason: "Old task." }]
+      }
+    }
+  };
+  await chrome.storage.local.set({ [`${STORAGE_KEYS.lastJob}:1`]: job });
+
+  const result = await handleRuntimeMessage(chrome, {
+    type: "tabs:closeCleanupCandidates",
+    windowId: 1,
+    tabIds: [10],
+    languageMode: "zh-CN"
+  });
+
+  assert.deepEqual(result.closedTabIds, []);
+  assert.deepEqual(result.skippedTabIds, [10]);
+  assert.equal((await chrome.tabs.get(11)).title, "Current docs");
+  assert.equal(result.preview.groupedTabsCount, 1);
+  assert.equal(result.preview.cleanup.candidateCount, 0);
+  const stored = await getLastJob(chrome, 1);
+  assert.deepEqual(stored.plan.groups[0].tabRefs.map((ref) => ref.tabId), [11]);
+  assert.equal(stored.validation.ok, true);
+});
+
 test("cleanup candidate focus errors follow the requested UI language", async () => {
   const chrome = createFakeChrome({
     windows: [
