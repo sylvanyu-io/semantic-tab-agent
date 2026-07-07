@@ -50,6 +50,14 @@ test("release artifact audit rejects obsolete product names and legacy extension
   assert.match(auditScript, /tabTidy\./);
 });
 
+test("release artifact audit locks store host permissions to the default gateway", async () => {
+  const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
+
+  assert.match(auditScript, /storeHostPermissions/);
+  assert.match(auditScript, /https:\/\/cliproxy\.sylvanyu\.io\/\*/);
+  assert.match(auditScript, /store build must only request the default AI gateway host permission/);
+});
+
 test("release scripts honor custom extension dist directories", async () => {
   const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-release-dist-"));
   try {

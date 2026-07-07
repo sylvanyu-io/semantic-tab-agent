@@ -10,6 +10,7 @@ const channel = process.env.EXTENSION_CHANNEL === "store" ? "store" : "dev";
 const extensionDir = join(distDir, channel === "store" ? "extension-store" : "extension");
 const zipName = `tab-recap-${manifest.version}${channel === "store" ? "-store" : ""}.zip`;
 const zipPath = join(distDir, zipName);
+const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 
 await rm(extensionDir, { recursive: true, force: true });
 await mkdir(extensionDir, { recursive: true });
@@ -44,6 +45,9 @@ console.log(`Channel: ${channel}`);
 async function writeStoreManifest(manifestPath) {
   const storeManifest = JSON.parse(await readFile(manifestPath, "utf8"));
   storeManifest.permissions = (storeManifest.permissions || []).filter((permission) => permission !== "activeTab");
+  storeManifest.host_permissions = (storeManifest.host_permissions || []).filter((permission) =>
+    storeHostPermissions.includes(permission)
+  );
   storeManifest.optional_permissions = (storeManifest.optional_permissions || []).filter((permission) => permission !== "scripting");
   if (!storeManifest.optional_permissions.length) delete storeManifest.optional_permissions;
   delete storeManifest.optional_host_permissions;

@@ -25,6 +25,7 @@ const allowedTopLevel = new Set(["manifest.json", "src", "icons"]);
 const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".svg"]);
 const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
 const forbiddenProductCopy = ["Internal test", "Semantic Tab Agent", "Tab Tidy", "tabTidy."];
+const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 const forbiddenEntryPatterns = [
   /^docs\//,
   /^tests?\//,
@@ -89,6 +90,11 @@ function auditManifest(channel, manifest, files) {
 
   if (channel === "store") {
     assertNotIncludes(manifest.permissions, "activeTab", `${channel}: store build must not request activeTab.`);
+    assertExactList(
+      manifest.host_permissions,
+      storeHostPermissions,
+      `${channel}: store build must only request the default AI gateway host permission.`
+    );
     assertNotIncludes(manifest.optional_permissions, "scripting", `${channel}: store build must not request optional scripting.`);
     if (manifest.optional_host_permissions) fail(`${channel}: store build must not include optional_host_permissions.`);
   } else {
@@ -201,6 +207,13 @@ function assertIncludes(values, expected, message) {
 
 function assertNotIncludes(values, forbidden, message) {
   if (Array.isArray(values) && values.includes(forbidden)) fail(message);
+}
+
+function assertExactList(values, expected, message) {
+  const actual = Array.isArray(values) ? values : [];
+  if (actual.length !== expected.length || actual.some((value, index) => value !== expected[index])) {
+    fail(`${message} Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}.`);
+  }
 }
 
 function fail(message) {
