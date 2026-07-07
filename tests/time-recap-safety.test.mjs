@@ -37,3 +37,43 @@ test("recap safety still strips stale or duplicate tab cleanup copy", () => {
   assert.equal(cleaned.includes("Duplicate pages"), false);
   assert.equal(cleaned.includes("重复标签页"), false);
 });
+
+test("recap safety strips conversational tab cleanup copy", () => {
+  const cleaned = stripCleanupRecommendationsFromRecapText(
+    [
+      "主要在研究回顾布局。",
+      "这些页面后面可以删掉。",
+      "这几个标签页不用留着。",
+      "回头看下要不要留着这些旧页。",
+      "These pages are safe to drop later.",
+      "You can get rid of these tabs.",
+      "No need to keep these old pages.",
+      "Work focused on timeline layout."
+    ].join(" ")
+  );
+
+  assert.equal(cleaned.includes("主要在研究回顾布局"), true);
+  assert.equal(cleaned.includes("Work focused on timeline layout"), true);
+  assert.equal(cleaned.includes("可以删掉"), false);
+  assert.equal(cleaned.includes("不用留着"), false);
+  assert.equal(cleaned.includes("要不要留着"), false);
+  assert.equal(cleaned.includes("safe to drop"), false);
+  assert.equal(cleaned.includes("get rid of"), false);
+  assert.equal(cleaned.includes("No need to keep"), false);
+});
+
+test("recap safety keeps cleanup words when they are work topics", () => {
+  const cleaned = stripCleanupRecommendationsFromRecapText(
+    [
+      "上午删掉缓存策略 bug 的错误分支。",
+      "下午讨论保留字段设计和归档策略。",
+      "Evening work covered drop-down interaction polish.",
+      "We fixed discard-state recovery in the local queue."
+    ].join(" ")
+  );
+
+  assert.equal(cleaned.includes("删掉缓存策略 bug"), true);
+  assert.equal(cleaned.includes("保留字段设计"), true);
+  assert.equal(cleaned.includes("drop-down interaction"), true);
+  assert.equal(cleaned.includes("discard-state recovery"), true);
+});
