@@ -65,6 +65,57 @@ test("gateway smoke verifies health, readiness, and monitor status for the built
   assert.equal(result.monitor.lastStatusAgeMinutes, 45);
 });
 
+test("gateway smoke reports stale monitor outages without blocking live smoke by default", async () => {
+  const result = await checkBuiltInGatewayService({
+    gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+    monitorToken: "monitor-secret",
+    nowMs: Date.parse("2026-07-02T00:45:00.000Z"),
+    fetchImpl: async (url) => {
+      if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+      if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+      if (url.endsWith("/monitor/status")) {
+        return monitorStatusResponse({
+          status: "down",
+          readyzCode: "upstream_unavailable",
+          llmCode: "upstream_unavailable",
+          lastStatusAt: "2026-07-02T00:30:00.000Z"
+        });
+      }
+      return jsonResponse({ ok: false }, 404);
+    }
+  });
+
+  assert.equal(result.monitor.status, "down");
+  assert.equal(result.monitor.readyzCode, "upstream_unavailable");
+  assert.equal(result.monitor.llmCode, "upstream_unavailable");
+});
+
+test("gateway smoke fails on monitor outages when monitor is required", async () => {
+  await assert.rejects(
+    () =>
+      checkBuiltInGatewayService({
+        gatewayBaseUrl: BUILTIN_GATEWAY_BASE_URL,
+        monitorToken: "monitor-secret",
+        requireMonitor: true,
+        nowMs: Date.parse("2026-07-02T00:45:00.000Z"),
+        fetchImpl: async (url) => {
+          if (url.endsWith("/healthz")) return jsonResponse({ ok: true });
+          if (url.endsWith("/readyz")) return jsonResponse({ ok: true, upstream: { code: "ready" } });
+          if (url.endsWith("/monitor/status")) {
+            return monitorStatusResponse({
+              status: "down",
+              readyzCode: "upstream_unavailable",
+              llmCode: "upstream_unavailable",
+              lastStatusAt: "2026-07-02T00:30:00.000Z"
+            });
+          }
+          return jsonResponse({ ok: false }, 404);
+        }
+      }),
+    /monitor\/status reports down: readyz=upstream_unavailable llm=upstream_unavailable/
+  );
+});
+
 test("gateway smoke skips monitor status when no monitor token is supplied", async () => {
   const calls = [];
   const result = await checkBuiltInGatewayService({

@@ -40,15 +40,15 @@ export async function checkBuiltInGatewayService(options = {}) {
     if (monitor.json?.config?.email !== "configured") throw new Error(`monitor/status email is ${monitor.json?.config?.email || "unknown"}`);
     if (monitor.json?.config?.upstream !== "configured") throw new Error(`monitor/status upstream is ${monitor.json?.config?.upstream || "unknown"}`);
     const monitorStatus = monitor.json?.monitor?.status || "unknown";
-    if (requireMonitor && monitorStatus !== "ok") {
-      throw new Error(`monitor/status is ${monitorStatus}; the last scheduled monitor has not reported ok.`);
-    }
-    if (monitorStatus === "down") {
+    if (monitorStatus === "down" && requireMonitor) {
       throw new Error(
         `monitor/status reports down: readyz=${monitor.json?.monitor?.lastSummary?.readyzCode || "unknown"} llm=${
           monitor.json?.monitor?.lastSummary?.llmCode || "unknown"
         }`
       );
+    }
+    if (requireMonitor && monitorStatus !== "ok") {
+      throw new Error(`monitor/status is ${monitorStatus}; the last scheduled monitor has not reported ok.`);
     }
     if (requireMonitor) {
       requireFreshMonitorStatus(monitor.json?.monitor?.lastStatusAt, {
