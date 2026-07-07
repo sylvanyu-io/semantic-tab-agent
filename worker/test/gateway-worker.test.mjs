@@ -490,6 +490,51 @@ test("worker converts persistent local tunnel failures into product JSON errors"
   assert.equal(body.error.upstreamCode, "1033");
 });
 
+test("worker converts non-json upstream auth failures into redacted product JSON errors", async () => {
+  const localHandle = createWorkerHandler({
+    fetchImpl: async () =>
+      new Response("unauthorized upstream key upstream-secret", {
+        status: 401,
+        headers: { "content-type": "text/plain" }
+      })
+  });
+
+  const response = await localHandle(chatRequest(undefined, { "x-tab-recap-request-id": "op_auth_down" }), envWithKv());
+  const body = await response.json();
+  const serialized = JSON.stringify(body);
+
+  assert.equal(response.status, 503);
+  assert.match(response.headers.get("content-type"), /application\/json/);
+  assert.equal(response.headers.get("x-tab-recap-request-id"), "op_auth_down");
+  assert.equal(body.error.code, "upstream_auth_failed");
+  assert.equal(body.error.requestId, "op_auth_down");
+  assert.equal(body.error.upstreamStatus, 401);
+  assert.equal(body.error.attempts, 1);
+  assert.equal(serialized.includes("upstream-secret"), false);
+  assert.equal(serialized.includes("unauthorized upstream key"), false);
+});
+
+test("worker converts non-json upstream bad requests into product JSON errors", async () => {
+  const localHandle = createWorkerHandler({
+    fetchImpl: async () =>
+      new Response("<html>prompt details should not leak</html>", {
+        status: 400,
+        headers: { "content-type": "text/html" }
+      })
+  });
+
+  const response = await localHandle(chatRequest(undefined, { "x-tab-recap-request-id": "op_bad_request" }), envWithKv());
+  const body = await response.json();
+  const serialized = JSON.stringify(body);
+
+  assert.equal(response.status, 503);
+  assert.match(response.headers.get("content-type"), /application\/json/);
+  assert.equal(body.error.code, "upstream_rejected_request");
+  assert.equal(body.error.requestId, "op_bad_request");
+  assert.equal(body.error.upstreamStatus, 400);
+  assert.equal(serialized.includes("prompt details should not leak"), false);
+});
+
 test("worker applies install id, ip, global, and page-summary quotas", async () => {
   const installLimited = envWithKv({ INSTALL_DAILY_REQUESTS: "1" });
   assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), installLimited)).status, 200);

@@ -180,8 +180,11 @@ extension sends the side-panel operation id as this header for default gateway
 traffic, so a user-visible error can be matched with Worker logs and local
 origin logs.
 
-When the local Tunnel is down, the Worker converts raw Cloudflare failures into
-JSON such as:
+When the upstream path fails, the Worker converts raw upstream failures into
+redacted TabRecap JSON errors instead of relaying text or HTML bodies to the
+extension. This covers Cloudflare Tunnel failures, origin auth failures, model
+gateway bad requests, and upstream rate limits. For example, when the local
+Tunnel is down the extension receives JSON such as:
 
 ```json
 {
@@ -194,7 +197,10 @@ JSON such as:
 ```
 
 That is intentionally different from relaying an HTML/`error code: 1033` body
-to the extension.
+to the extension. Upstream raw text is not copied into these product errors
+because it can contain provider internals, prompt fragments, or local service
+details. Use `x-tab-recap-request-id`, `upstreamStatus`, and `upstreamCode` to
+correlate the visible error with Worker tail logs and local origin logs.
 
 ## Local-Machine Origin Checklist
 

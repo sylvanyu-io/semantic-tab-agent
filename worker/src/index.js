@@ -1117,7 +1117,10 @@ function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
   return fetchImpl(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-function relayUpstreamResponse(response, request, requestId = "", attempts = 1) {
+async function relayUpstreamResponse(response, request, requestId = "", attempts = 1) {
+  if (!response.ok) {
+    return relayUpstreamErrorResponse(response, request, requestId, attempts);
+  }
   const headers = {
     ...corsHeaders(request),
     "cache-control": "no-store",
@@ -1126,6 +1129,46 @@ function relayUpstreamResponse(response, request, requestId = "", attempts = 1) 
     "x-tab-recap-upstream-attempts": String(attempts || 1)
   };
   return new Response(response.body, { status: response.status, headers });
+}
+
+async function relayUpstreamErrorResponse(response, request, requestId = "", attempts = 1) {
+  const text = await response.text().catch(() => "");
+  const status = Number(response.status) || 502;
+  const upstreamCode = cloudflareErrorCode(text);
+  const retryAfter = response.headers.get("retry-after") || "20";
+  const code =
+    upstreamCode === "1033"
+      ? "origin_tunnel_unavailable"
+      : upstreamCode
+        ? "origin_cloudflare_error"
+        : status === 429
+          ? "upstream_rate_limited"
+          : status === 401 || status === 403
+            ? "upstream_auth_failed"
+            : status === 400
+              ? "upstream_rejected_request"
+              : "upstream_error";
+  const message =
+    code === "origin_tunnel_unavailable"
+      ? "The local TabRecap AI origin is offline or its Cloudflare Tunnel has no healthy connection."
+      : code === "origin_cloudflare_error"
+        ? "Cloudflare could not reach the local TabRecap AI origin."
+        : status === 429
+          ? "The TabRecap AI upstream is temporarily rate limited."
+          : "The TabRecap AI upstream did not complete the request.";
+  return jsonError(
+    message,
+    503,
+    code,
+    { "retry-after": retryAfter },
+    request,
+    requestId,
+    {
+      upstreamStatus: status,
+      upstreamCode,
+      attempts: Number(attempts) || 1
+    }
+  );
 }
 
 function allowedModels(env) {
