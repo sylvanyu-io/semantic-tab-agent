@@ -140,3 +140,32 @@ test("model product copy warning covers behavior payload field variants", () => 
     assert.match(MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, new RegExp(`\\b${field}\\b`));
   }
 });
+
+test("model product copy removes behavior field id values", () => {
+  const en = normalizeModelProductText(
+    "nearbyIds [10, 11] and repeatedIds [10] show returnToId 10. fromId 10 toId 11, lastAt 2026-06-25T00:03:00.000Z.",
+    { languageMode: "en-US" },
+    320
+  );
+  const zh = normalizeModelProductText(
+    "nearby_ids: 10,11；repeated_ids: [10]；return_to_id: 10；from_id 10；to_id 11。",
+    { languageMode: "zh-CN" },
+    320
+  );
+
+  assert.doesNotMatch(en, /\b(?:10|11|2026-06-25T00:03:00\.000Z)\b/);
+  assert.doesNotMatch(en, /\[[^\]]+\]/);
+  assert.match(en, /nearby tabs/);
+  assert.match(en, /repeatedly revisited tabs/);
+  assert.match(en, /returned to an earlier tab/);
+  assert.match(en, /source tab/);
+  assert.match(en, /next tab/);
+  assert.match(en, /last observed/);
+  assert.doesNotMatch(zh, /\b(?:10|11)\b/);
+  assert.doesNotMatch(zh, /\[[^\]]+\]/);
+  assert.match(zh, /相邻标签页/);
+  assert.match(zh, /反复切回的标签页/);
+  assert.match(zh, /回到前面的标签页/);
+  assert.match(zh, /来源标签页/);
+  assert.match(zh, /下一个标签页/);
+});

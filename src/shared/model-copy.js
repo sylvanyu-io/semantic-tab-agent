@@ -8,6 +8,20 @@ const IDENTITY_FIELD_PATTERN =
 const IDENTITY_FIELD_NAME_PATTERN =
   /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\b/gi;
 
+const INTERNAL_ID_VALUE = "(?:\\[[^\\]]*\\]|[\"'#]?\\d+(?:\\s*,\\s*[\"'#]?\\d+)*)";
+const INTERNAL_TIMESTAMP_VALUE = "(?:[\"']?\\d{4}-\\d{2}-\\d{2}(?:[T ][0-9:.+-]+Z?)?[\"']?)";
+const FIELD_VALUE_SEPARATOR = "\\s*(?:为|=|is|:)?\\s*";
+const INTERNAL_ID_FIELD_VALUE_PATTERNS = {
+  nearbyIds: new RegExp(`\\bnearby(?:Ids|[_\\s-]?ids?)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
+  returnToId: new RegExp(`\\breturn(?:ToId|[_\\s-]?to(?:[_\\s-]?id)?)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
+  repeatedIds: new RegExp(`\\brepeated(?:Ids|[_\\s-]?ids?)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
+  fromId: new RegExp(`\\bfrom(?:Id|[_\\s-]?id)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
+  toId: new RegExp(`\\bto(?:Id|[_\\s-]?id)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
+  startedAt: new RegExp(`\\bstarted(?:At|[_\\s-]?at)${FIELD_VALUE_SEPARATOR}${INTERNAL_TIMESTAMP_VALUE}`, "gi"),
+  endedAt: new RegExp(`\\bended(?:At|[_\\s-]?at)${FIELD_VALUE_SEPARATOR}${INTERNAL_TIMESTAMP_VALUE}`, "gi"),
+  lastAt: new RegExp(`\\blast(?:At|[_\\s-]?at)${FIELD_VALUE_SEPARATOR}${INTERNAL_TIMESTAMP_VALUE}`, "gi")
+};
+
 const FIELD_NAME_PATTERNS = {
   activeCount: /\bactive(?:Count|[_\s-]?count)\b/gi,
   seenCount: /\bseen(?:Count|[_\s-]?count)\b/gi,
@@ -28,7 +42,7 @@ const FIELD_NAME_PATTERNS = {
   dwellSeconds: /\bdwell(?:Seconds|[_\s-]?seconds?)\b/gi,
   activeSeconds: /\b(?:(?:active|totalActive|maxActive|avgDwell)(?:Seconds|[_\s-]?seconds?)|total[_\s-]?active[_\s-]?seconds?|max[_\s-]?active[_\s-]?seconds?|avg[_\s-]?dwell[_\s-]?seconds?)\b/gi,
   appearedInRuns: /\bappeared(?:InRuns|[_\s-]?in(?:[_\s-]?runs?)?)\b/gi,
-  returnedToCount: /\breturned(?:ToCount|[_\s-]?to(?:[_\s-]?count)?)\b/gi,
+  returnedToCount: /\breturned(?:ToCount|[_\s-]?to[_\s-]?count)\b/gi,
   transitionCount: /\btransition(?:Count|[_\s-]?count)\b/gi,
   fromId: /\bfrom(?:Id|[_\s-]?id)\b/gi,
   toId: /\bto(?:Id|[_\s-]?id)\b/gi,
@@ -52,7 +66,7 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
     .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(?:0|zero)\b/gi, copy("基本没再打开", "rarely reopened"))
     .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("打开过 $1 次", "opened $1 times"))
     .replace(/\bseen(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("记录过 $1 次", "seen $1 times"))
-    .replace(/\breturned(?:ToCount|[_\s-]?to(?:[_\s-]?count)?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("切回过 $1 次", "returned $1 times"))
+    .replace(/\breturned(?:ToCount|[_\s-]?to[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("切回过 $1 次", "returned $1 times"))
     .replace(/\bage(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("已放约 $1 天", "kept about $1 days"))
     .replace(/\bidle(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("闲置约 $1 天", "idle about $1 days"))
     .replace(/\bsample(?:able|[_\s-]?able)\s*(?:为|=|is|:)?\s*(?:false|no|否)\b/gi, copy("页面摘要不可用", "page summary unavailable"))
@@ -129,6 +143,10 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           pinned: "固定状态",
           audible: "播放声音"
         };
+
+  for (const [raw, pattern] of Object.entries(INTERNAL_ID_FIELD_VALUE_PATTERNS)) {
+    text = text.replace(pattern, labels[raw]);
+  }
 
   for (const [raw, label] of Object.entries(labels)) {
     text = text.replace(FIELD_NAME_PATTERNS[raw] ?? new RegExp(`\\b${raw}\\b`, "gi"), label);
