@@ -1389,6 +1389,7 @@ async function handleAnalyzeClick() {
 }
 
 async function analyze() {
+  resetToSetup();
   setBusy(true, t("status.preparing"), { mode: PANEL_MODE_ORGANIZE, cancelable: true, progress: 4 });
   try {
     const persistedSettings = readSettings();

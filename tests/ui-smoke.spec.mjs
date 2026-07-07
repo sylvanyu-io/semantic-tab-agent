@@ -1582,7 +1582,7 @@ test("side panel restores a background planning error after reopening", async ({
       gatewayApiKey: "",
       customPrompt: ""
     };
-    const activeJob = {
+    let activeJob = {
       operationId: "job_gateway_model_error",
       status: "error",
       phase: "error",
@@ -1593,12 +1593,26 @@ test("side panel restores a background planning error after reopening", async ({
       updatedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString()
     };
+    window.__retryStarted = false;
     window.chrome = {
       runtime: {
         sendMessage: async (message) => {
           if (message.type === "settings:get") return { ok: true, result: settings };
           if (message.type === "settings:save") return { ok: true, result: message.settings };
           if (message.type === "tabs:getActiveJob") return { ok: true, result: activeJob };
+          if (message.type === "tabs:startAnalyze") {
+            window.__retryStarted = true;
+            activeJob = {
+              operationId: "job_retry_running",
+              status: "running",
+              phase: "planning",
+              progress: 18,
+              message: "正在请求 AI 规划",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            return { ok: true, result: { operationId: activeJob.operationId } };
+          }
           return { ok: true, result: null };
         }
       }
@@ -1620,6 +1634,11 @@ test("side panel restores a background planning error after reopening", async ({
   await expect(page.locator("#statusText")).toHaveText("The default AI service does not support this model right now. Try again later, or switch models in More options.");
   await expect(page.locator(".error-panel")).toContainText("The default AI service does not support this model right now.");
   await expect(page.locator(".error-panel")).not.toContainText("free gateway");
+  await page.getByRole("button", { name: "Generate plan" }).click();
+  await expect.poll(() => page.evaluate(() => window.__retryStarted)).toBe(true);
+  await expect(page.locator("#previewSection")).toBeHidden();
+  await expect(page.locator(".launch-panel")).toBeVisible();
+  await expect(page.locator(".error-panel")).toHaveCount(0);
 });
 
 test("custom provider model errors use custom API copy", async ({ page }) => {
