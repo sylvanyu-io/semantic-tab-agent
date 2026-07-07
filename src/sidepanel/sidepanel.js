@@ -2482,7 +2482,7 @@ const CLEANUP_AGE_DAYS_FIELD_PATTERN = /\bage(?:Days|[_\s-]?days?)\s*(?:约|为|
 const CLEANUP_IDLE_DAYS_FIELD_PATTERN = /\bidle(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
 const CLEANUP_SAMPLEABLE_FIELD_PATTERN = /不可采样|cannot sample|not sampleable|sample(?:able|[_\s-]?able)/i;
 const CLEANUP_INTERNAL_FIELD_PATTERN =
-  /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Id|[_\s-]?id)|page(?:Id|[_\s-]?id)|window(?:Id|[_\s-]?id)|sequence(?:Index|[_\s-]?index)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))/i;
+  /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))/i;
 
 function cleanupEvidenceLabel(value) {
   const text = String(value || "").trim();
@@ -3768,7 +3768,7 @@ function mockCleanupPreview(grouping = true) {
         activeCount: 0,
         priority: "medium",
         reason: "标题显示是旧研究资料，且没有归属到当前分组。",
-        evidence: ["active_count 为0", "age-days 约22", "page_id 32", "sample_able false", "标题为“上轮调研资料”"]
+        evidence: ["active_count 为0", "age-days 约22", "page_id 32", "tab_ids [31,32]", "sample_able false", "标题为“上轮调研资料”"]
       }
     ]
   };

@@ -59,3 +59,15 @@ test("model product copy removes spaced implementation fields in English", () =>
   assert.match(en, /page summary available/);
   assert.match(en, /site/);
 });
+
+test("model product copy removes plural identity fields with list values", () => {
+  const zh = normalizeModelProductText(
+    "tabIds [1, 2]、page_ids: 3,4、window ids = [7]、sequenceIndex 9，active_count=0。",
+    { languageMode: "zh-CN" },
+    240
+  );
+
+  assert.doesNotMatch(zh, /\b(?:tabIds|page_ids|window ids|sequenceIndex)\b/i);
+  assert.doesNotMatch(zh, /\[[^\]]+\]|(?:^|[^\d])(?:1|2|3|4|7|9)(?:[^\d]|$)/);
+  assert.match(zh, /基本没再打开/);
+});

@@ -1,9 +1,9 @@
 import { localizedText } from "./language.js";
 
 const IDENTITY_FIELD_PATTERN =
-  /\b(?:tab(?:Id|[_\s-]?id)|page(?:Id|[_\s-]?id)|window(?:Id|[_\s-]?id)|sequence(?:Index|[_\s-]?index))\s*(?:为|=|is|:)?\s*["'#]?[A-Za-z0-9_.-]+["']?/gi;
+  /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\s*(?:为|=|is|:)?\s*(?:\[[^\]]*\]|["'#]?[A-Za-z0-9_.-]+(?:\s*,\s*["'#]?[A-Za-z0-9_.-]+)*)?/gi;
 const IDENTITY_FIELD_NAME_PATTERN =
-  /\b(?:tab(?:Id|[_\s-]?id)|page(?:Id|[_\s-]?id)|window(?:Id|[_\s-]?id)|sequence(?:Index|[_\s-]?index))\b/gi;
+  /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\b/gi;
 
 const FIELD_NAME_PATTERNS = {
   activeCount: /\bactive(?:Count|[_\s-]?count)\b/gi,

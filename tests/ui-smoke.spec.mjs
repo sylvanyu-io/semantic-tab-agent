@@ -1287,6 +1287,7 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview")).not.toContainText("ageDays");
   await expect(page.locator(".cleanup-preview")).not.toContainText("age-days");
   await expect(page.locator(".cleanup-preview")).not.toContainText("page_id");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("tab_ids");
   await expect(page.locator(".cleanup-preview")).not.toContainText("sample_able");
   await expect(page.locator(".cleanup-preview")).not.toContainText("标题为");
 
