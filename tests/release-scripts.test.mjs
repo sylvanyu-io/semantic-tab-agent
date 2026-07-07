@@ -55,6 +55,7 @@ test("release artifact audit rejects obsolete product names and legacy extension
 test("release artifact audit fails built artifacts that contain legacy product name variants", async () => {
   const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-audit-dist-"));
   try {
+    const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
     for (const channel of ["dev", "store"]) {
       const build = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
         encoding: "utf8",
@@ -67,8 +68,14 @@ test("release artifact audit fails built artifacts that contain legacy product n
       assert.equal(build.status, 0, build.stderr || build.stdout);
     }
 
-    const pollutedScript = join(tempDist, "extension", "src/sidepanel/sidepanel.js");
+    const extensionDir = join(tempDist, "extension");
+    const pollutedScript = join(extensionDir, "src/sidepanel/sidepanel.js");
     await writeFile(pollutedScript, `${await readFile(pollutedScript, "utf8")}\n// TabTidy must not ship.\n`);
+    const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${manifest.version}.zip`), "."], {
+      cwd: extensionDir,
+      encoding: "utf8"
+    });
+    assert.equal(zip.status, 0, zip.stderr || zip.stdout);
 
     const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
       encoding: "utf8",
@@ -78,6 +85,44 @@ test("release artifact audit fails built artifacts that contain legacy product n
     assert.match(`${audit.stdout}\n${audit.stderr}`, /obsolete\/internal product copy "TabTidy"/);
   } finally {
     await rm(tempDist, { recursive: true, force: true });
+  }
+});
+
+test("release artifact audit fails when zip contents drift from the unpacked extension", async () => {
+  const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-audit-zip-dist-"));
+  const zipWork = await mkdtemp(join(tmpdir(), "tab-recap-audit-zip-work-"));
+  try {
+    const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
+    for (const channel of ["dev", "store"]) {
+      const build = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXTENSION_DIST_DIR: tempDist,
+          ...(channel === "store" ? { EXTENSION_CHANNEL: "store" } : {})
+        }
+      });
+      assert.equal(build.status, 0, build.stderr || build.stdout);
+    }
+
+    const zipPath = join(tempDist, `tab-recap-${manifest.version}.zip`);
+    const unzip = spawnSync("unzip", ["-q", zipPath, "-d", zipWork], { encoding: "utf8" });
+    assert.equal(unzip.status, 0, unzip.stderr || unzip.stdout);
+    const pollutedScript = join(zipWork, "src/sidepanel/sidepanel.js");
+    await writeFile(pollutedScript, `${await readFile(pollutedScript, "utf8")}\n// zip-only drift\n`);
+    await rm(zipPath, { force: true });
+    const zip = spawnSync("zip", ["-qr", zipPath, "."], { cwd: zipWork, encoding: "utf8" });
+    assert.equal(zip.status, 0, zip.stderr || zip.stdout);
+
+    const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_DIST_DIR: tempDist }
+    });
+    assert.notEqual(audit.status, 0, audit.stderr || audit.stdout);
+    assert.match(`${audit.stdout}\n${audit.stderr}`, /zip content differs from unpacked file src\/sidepanel\/sidepanel\.js/);
+  } finally {
+    await rm(tempDist, { recursive: true, force: true });
+    await rm(zipWork, { recursive: true, force: true });
   }
 });
 

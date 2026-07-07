@@ -63,7 +63,7 @@ for (const artifact of artifacts) {
   const zipFiles = listZipFiles(artifact.zipPath).filter((entry) => !entry.endsWith("/"));
 
   auditManifest(artifact.channel, manifest, unpackedFiles);
-  auditEntries(artifact.channel, unpackedFiles, zipFiles);
+  await auditEntries(artifact.channel, artifact.extensionDir, artifact.zipPath, unpackedFiles, zipFiles);
   await auditSidePanelHtml(artifact.channel, artifact.extensionDir, manifest);
   await auditSidePanelRuntimeGuards(artifact.channel, artifact.extensionDir, unpackedFiles);
   await auditProductCopy(artifact.channel, artifact.extensionDir, unpackedFiles);
@@ -112,7 +112,7 @@ function auditManifest(channel, manifest, files) {
   }
 }
 
-function auditEntries(channel, unpackedFiles, zipFiles) {
+async function auditEntries(channel, extensionDir, zipPath, unpackedFiles, zipFiles) {
   const unpackedSet = new Set(unpackedFiles);
   const zipSet = new Set(zipFiles);
   for (const file of unpackedSet) {
@@ -124,6 +124,12 @@ function auditEntries(channel, unpackedFiles, zipFiles) {
     if (!allowedTopLevel.has(topLevel)) fail(`${channel}: zip contains disallowed top-level entry ${file}.`);
     if (!allowedExtensions.has(extensionOf(file))) fail(`${channel}: zip contains disallowed extension ${file}.`);
     if (forbiddenEntryPatterns.some((pattern) => pattern.test(file))) fail(`${channel}: zip contains forbidden entry ${file}.`);
+  }
+  for (const file of unpackedSet) {
+    if (!zipSet.has(file)) continue;
+    const unpackedContent = await readFile(join(extensionDir, file));
+    const zippedContent = readZipEntry(zipPath, file);
+    if (!zippedContent.equals(unpackedContent)) fail(`${channel}: zip content differs from unpacked file ${file}.`);
   }
 }
 
@@ -200,6 +206,15 @@ function listZipFiles(zipPath) {
     return [];
   }
   return result.stdout.split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean).sort();
+}
+
+function readZipEntry(zipPath, file) {
+  const result = spawnSync("unzip", ["-p", zipPath, file]);
+  if (result.status !== 0) {
+    fail(`Could not read zip entry ${file} from ${zipPath}: ${String(result.stderr || result.stdout)}`);
+    return Buffer.alloc(0);
+  }
+  return result.stdout;
 }
 
 function extensionOf(file) {
