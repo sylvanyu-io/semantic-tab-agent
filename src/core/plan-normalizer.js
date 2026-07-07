@@ -4,8 +4,11 @@ import { REVIEW_GROUP_MODES, normalizeSettings } from "../shared/settings.js";
 export function normalizePlanForSettings(plan, inventory, rawSettings = {}) {
   const settings = normalizeSettings(rawSettings);
   const orderedPlan = normalizePlanOrder(plan, inventory);
-  if (settings.reviewGroupMode !== REVIEW_GROUP_MODES.LEAVE_UNGROUPED) return orderedPlan;
-  return normalizePlanOrder(assignReviewTabsToClosestGroups(orderedPlan, inventory, settings), inventory);
+  const reviewNormalizedPlan = hoistReviewLikeGroupsToReviewTabs(orderedPlan);
+  if (settings.reviewGroupMode !== REVIEW_GROUP_MODES.LEAVE_UNGROUPED) {
+    return normalizePlanOrder(reviewNormalizedPlan, inventory);
+  }
+  return normalizePlanOrder(assignReviewTabsToClosestGroups(reviewNormalizedPlan, inventory, settings), inventory);
 }
 
 export function normalizePlanOrder(plan, inventory) {
@@ -73,6 +76,37 @@ function assignReviewTabsToClosestGroups(plan, inventory, settings) {
     ...plan,
     groups: topicGroups,
     reviewTabs: []
+  };
+}
+
+function hoistReviewLikeGroupsToReviewTabs(plan) {
+  if (!plan || typeof plan !== "object" || !Array.isArray(plan.groups)) return plan;
+
+  const groups = [];
+  const reviewTabs = Array.isArray(plan.reviewTabs) ? [...plan.reviewTabs] : [];
+  const reviewIds = new Set(reviewTabs.filter(isValidRef).map((ref) => ref.tabId));
+
+  for (const group of plan.groups) {
+    if (!isReviewLikeGroup(group)) {
+      groups.push(group);
+      continue;
+    }
+
+    for (const ref of asArray(group.tabRefs)) {
+      if (!isValidRef(ref) || reviewIds.has(ref.tabId)) continue;
+      reviewIds.add(ref.tabId);
+      reviewTabs.push({
+        tabId: ref.tabId,
+        windowId: ref.windowId,
+        reason: ref.reason || group.reason || ""
+      });
+    }
+  }
+
+  return {
+    ...plan,
+    groups,
+    reviewTabs
   };
 }
 

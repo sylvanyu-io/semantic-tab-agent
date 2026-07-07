@@ -178,7 +178,7 @@ test("current target window in consolidate mode must be the invocation window", 
   assert.match(result.errors.join("\n"), /targetWindow\.windowId must be 2/);
 });
 
-test("review-like groups are ordered after topic groups", () => {
+test("review-like groups are hoisted into review tabs before preview and apply", () => {
   const inventory = {
     scope: { kind: "current_window", currentWindowId: 1, windowIds: [1] },
     plannerTabs: [
@@ -200,12 +200,17 @@ test("review-like groups are ordered after topic groups", () => {
     excludedTabs: []
   };
 
-  const normalized = normalizePlanOrder(plan, inventory);
+  const normalized = normalizePlanForSettings(plan, inventory, DEFAULT_SETTINGS);
 
   assert.deepEqual(
     normalized.groups.map((group) => group.title),
-    ["当前项目", "待确认"]
+    ["当前项目"]
   );
+  assert.deepEqual(
+    normalized.reviewTabs.map((ref) => ref.tabId),
+    [10]
+  );
+  assert.equal(validatePlan(normalized, inventory, DEFAULT_SETTINGS).ok, true);
 });
 
 test("review tabs are assigned to closest groups when separate review is disabled", () => {

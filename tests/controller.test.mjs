@@ -845,7 +845,7 @@ test("applying a plan keeps review-like groups after topic groups", async () => 
 
   assert.deepEqual(
     groups.map((group) => group.title),
-    ["当前项目", "待确认"]
+    ["当前项目", "待分类"]
   );
   assert.deepEqual(
     tabs.map((tab) => tab.id),
