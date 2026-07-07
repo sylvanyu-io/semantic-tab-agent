@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabRecap",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "AI tab organizer for Chrome that groups messy tabs and turns local tab activity into private work recaps.",
   "minimum_chrome_version": "116",
   "permissions": ["tabs", "tabGroups", "storage", "activeTab", "alarms", "sidePanel"],
