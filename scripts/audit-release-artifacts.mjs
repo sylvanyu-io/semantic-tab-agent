@@ -24,7 +24,7 @@ const artifacts = [
 const allowedTopLevel = new Set(["manifest.json", "src", "icons"]);
 const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".svg"]);
 const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
-const forbiddenProductCopy = ["Internal test", "Semantic Tab Agent", "Tab Tidy", "tabTidy.", "tab_tidy_"];
+const forbiddenProductCopy = ["Internal test", "Semantic Tab Agent", "Tab Tidy", "tabTidy.", "tab_tidy_", "tab-tidy"];
 const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 const forbiddenEntryPatterns = [
   /^docs\//,
