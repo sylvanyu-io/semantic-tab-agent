@@ -2318,6 +2318,71 @@ test("AI gateway planner routes 50-tab product sessions through hierarchical wor
   assert.equal(plan.cleanup.candidates[2].priority, "low");
 });
 
+test("AI gateway planner does not turn hierarchical cleanup cancellation into fallback", async () => {
+  const plannerTabs = Array.from({ length: 50 }, (_, index) => ({
+    tabId: 40_000 + index,
+    windowId: 1,
+    index,
+    sequenceIndex: index,
+    title: `Cancelable hierarchy tab ${index}`,
+    hostname: "example.com"
+  }));
+  const thresholdInventory = { ...inventory, plannerTabs, tabs: plannerTabs, pageSamples: [] };
+  const abortController = new AbortController();
+  let cleanupStarted = false;
+
+  const fetchImpl = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    if (/cleanup ranking planner/.test(body.messages[0].content)) {
+      cleanupStarted = true;
+      const pending = new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(new Error("cleanup fetch aborted")), { once: true });
+      });
+      abortController.abort();
+      return pending;
+    }
+
+    return {
+      ok: true,
+      async json() {
+        return {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  buckets: [
+                    {
+                      bucketKey: "all-tabs",
+                      title: "All Tabs",
+                      color: "blue",
+                      confidence: 0.95,
+                      tabIds: plannerTabs.map((tab) => tab.tabId),
+                      reason: "One stable coarse bucket."
+                    }
+                  ],
+                  reviewTabIds: []
+                })
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        thresholdInventory,
+        { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
+        fetchImpl,
+        { signal: abortController.signal }
+      ),
+    /canceled|aborted/i
+  );
+  assert.equal(cleanupStarted, true);
+});
+
 test("AI gateway planner splits sub-50 cleanup ranking to the auxiliary model", async () => {
   const plannerTabs = Array.from({ length: 33 }, (_, index) => ({
     tabId: 30_000 + index,
@@ -2417,6 +2482,71 @@ test("AI gateway planner splits sub-50 cleanup ranking to the auxiliary model", 
   assert.equal(plan.cleanup.candidates.length, 33);
   assert.equal(plan.cleanup.candidates[0].tabId, 30_032);
   assert.equal(plan.cleanup.candidates[1].priority, "low");
+});
+
+test("AI gateway planner does not turn split cleanup cancellation into fallback", async () => {
+  const plannerTabs = Array.from({ length: 33 }, (_, index) => ({
+    tabId: 41_000 + index,
+    windowId: 1,
+    index,
+    sequenceIndex: index,
+    title: `Cancelable split tab ${index}`,
+    hostname: "example.com"
+  }));
+  const smallInventory = { ...inventory, plannerTabs, tabs: plannerTabs, pageSamples: [] };
+  const abortController = new AbortController();
+  let cleanupStarted = false;
+
+  const fetchImpl = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    if (/cleanup ranking planner/.test(body.messages[0].content)) {
+      cleanupStarted = true;
+      const pending = new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(new Error("cleanup fetch aborted")), { once: true });
+      });
+      abortController.abort();
+      return pending;
+    }
+
+    return {
+      ok: true,
+      async json() {
+        return {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  groups: [
+                    {
+                      key: "split-main",
+                      title: "Split Main",
+                      color: "blue",
+                      confidence: 0.95,
+                      ids: plannerTabs.map((tab) => tab.tabId),
+                      reason: "Grouping completed before cleanup."
+                    }
+                  ],
+                  review: []
+                })
+              }
+            }
+          ]
+        };
+      }
+    };
+  };
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        smallInventory,
+        { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
+        fetchImpl,
+        { signal: abortController.signal }
+      ),
+    /canceled|aborted/i
+  );
+  assert.equal(cleanupStarted, true);
 });
 
 test("AI gateway planner keeps sub-50-tab sessions on the single full-detail path", async () => {

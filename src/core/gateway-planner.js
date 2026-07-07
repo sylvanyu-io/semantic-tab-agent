@@ -134,9 +134,7 @@ async function createSingleGatewayPlanWithAuxiliaryCleanup(inventory, settings, 
   const groupingSettings = { ...settings, analyzeCleanup: false };
   const plan = await createSingleGatewayPlan(inventory, groupingSettings, fetchImpl, options);
   await emitProgress(options, { phase: "cleanup_planning", progress: 84, message: "正在排序清理清单" });
-  const cleanup = await createCleanupGatewayAnalysis(inventory, settings, fetchImpl, options, plan.groups, plan.reviewTabs).catch(() =>
-    buildMergedCleanup([], inventory, settings)
-  );
+  const cleanup = await createCleanupGatewayAnalysisWithFallback(inventory, settings, fetchImpl, options, plan.groups, plan.reviewTabs, []);
   return { ...plan, cleanup };
 }
 
@@ -223,8 +221,14 @@ async function createHierarchicalGatewayPlan(inventory, settings, fetchImpl, opt
   let cleanup = null;
   if (settings.analyzeCleanup) {
     await emitProgress(options, { phase: "cleanup_planning", progress: 88, message: "正在排序清理清单" });
-    cleanup = await createCleanupGatewayAnalysis(inventory, settings, fetchImpl, options, finalGroups, finalReviewTabs).catch(() =>
-      buildMergedCleanup(cleanupCandidates, inventory, settings)
+    cleanup = await createCleanupGatewayAnalysisWithFallback(
+      inventory,
+      settings,
+      fetchImpl,
+      options,
+      finalGroups,
+      finalReviewTabs,
+      cleanupCandidates
     );
   }
   return buildActionPlan(finalGroups, finalReviewTabs, inventory, settings, cleanup);
@@ -1062,6 +1066,15 @@ async function createCleanupGatewayAnalysis(inventory, settings, fetchImpl, opti
     throw new Error(gatewayErrorMessage(response, data, settings));
   }
   return normalizeCleanupAnalysis(parseGatewayJson(data), inventory, options.activityOverview || {}, settings);
+}
+
+async function createCleanupGatewayAnalysisWithFallback(inventory, settings, fetchImpl, options = {}, groups = [], reviewTabs = [], fallbackCandidates = []) {
+  try {
+    return await createCleanupGatewayAnalysis(inventory, settings, fetchImpl, options, groups, reviewTabs);
+  } catch (error) {
+    if (isAbortLikeError(error, options.signal)) throw error;
+    return buildMergedCleanup(fallbackCandidates, inventory, settings);
+  }
 }
 
 function buildCleanupSystemPrompt(settings) {
@@ -2014,6 +2027,12 @@ function throwIfAborted(signal) {
   if (signal?.aborted) {
     throw new DOMException("The operation was aborted.", "AbortError");
   }
+}
+
+function isAbortLikeError(error, signal = null) {
+  if (signal?.aborted) return true;
+  if (error?.name === "AbortError") return true;
+  return /abort|cancel|已停止生成/i.test(String(error?.message || error || ""));
 }
 
 function usesGlmThinking(settings) {

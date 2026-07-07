@@ -40,6 +40,9 @@ This is primarily a UX and reliability decision: the user starts one analysis an
 - The extension closes tabs only after a direct click on a single candidate or the selected-candidates bulk action.
 - After closing, the stored plan is filtered and revalidated so apply cannot act on closed tabs.
 - Apply/undo/cleanup-close operations all use the browser mutation queue.
+- Cleanup planner failures may fall back to a local checklist, but user cancel
+  or abort signals must propagate immediately. Cancellation is not a cleanup
+  failure mode and must not produce a completed preview.
 
 ## Planner strategy
 
@@ -68,6 +71,8 @@ New regression coverage:
 - Coarse requests do not carry cleanup instructions; refinement workers receive cleanup instructions and only the activity rows for their bucket.
 - Closing cleanup candidates is explicit and updates the stored plan preview.
 - UI smoke verifies generated preview includes cleanup suggestions and supports selected-candidate closing.
+- Regression tests verify that split-cleanup and hierarchical-cleanup requests
+  do not turn cancellation into a fallback cleanup result.
 
 ## Follow-up benchmark
 
