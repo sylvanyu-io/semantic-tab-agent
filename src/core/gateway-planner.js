@@ -13,7 +13,7 @@ import {
   resolveGatewayModel
 } from "../shared/settings.js";
 import { languageInstruction, localizedText, targetWindowTitle } from "../shared/language.js";
-import { normalizeModelProductText } from "../shared/model-copy.js";
+import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import { ACTION_PLAN_JSON_SCHEMA } from "./plan-schema.js";
 import { CHROME_GROUP_COLORS } from "./plan-validator.js";
@@ -477,7 +477,7 @@ function analysisFeatureInstruction(settings) {
       "Cleanup candidates are review suggestions only. Recommend stale, duplicated, superseded, finished, or low-value tabs; never imply automatic deletion.",
       "Use tab age/activity signals, original order, titles, URLs, current groups, page summaries, and semantic grouping context when present.",
       "Return a ranked cleanup checklist up to cleanupInstructions.actionLimit. Include high, medium, and low priority items when useful; order by review value.",
-      "Cleanup reason and evidence are user-facing product copy. Do not expose raw feature names such as activeCount, ageDays, idleDays, sampleable, sequenceIndex, or tabId."
+      `Cleanup reason and evidence are user-facing product copy. ${MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING}`
     );
   }
   return lines.join(" ");
@@ -1086,7 +1086,7 @@ function buildCleanupSystemPrompt(settings) {
     "Use high for likely stale/duplicate/superseded/finished tabs, medium for plausible cleanup items, and low for low-urgency items that still help the user review the tab set.",
     "Rank as many eligible tabs as useful up to cleanupInstructions.actionLimit. For sessions at or below that limit, include nearly all tabs unless they are clearly current, pinned, or unsafe to suggest.",
     "Keep each candidate compact: reason should be one short clause, evidence should contain one or two short user-facing clues.",
-    "Write evidence like \"search result\", \"old task\", \"easy to find again\", or \"rarely reopened\". Do not write raw feature names like activeCount, ageDays, idleDays, sampleable, sequenceIndex, or tabId.",
+    `Write evidence like "search result", "old task", "easy to find again", or "rarely reopened". ${MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING}`,
     "Use original tab order, tab age/activity, current groups, page summaries, behavioral activation evidence, and the proposed grouping context.",
     "Treat activationFlow as behavioral evidence only. A tab repeatedly used as an anchor may be valuable to keep; direct transitions and quick handoffs may indicate search or comparison behavior. Do not expose raw activation field names to users.",
     "Do not recommend closing pinned tabs as high priority unless evidence is very strong.",

@@ -1,5 +1,8 @@
 import { localizedText } from "./language.js";
 
+export const MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING =
+  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, or lifecycle in user-facing copy.";
+
 const IDENTITY_FIELD_PATTERN =
   /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\s*(?:为|=|is|:)?\s*(?:\[[^\]]*\]|["'#]?[A-Za-z0-9_.-]+(?:\s*,\s*["'#]?[A-Za-z0-9_.-]+)*)?/gi;
 const IDENTITY_FIELD_NAME_PATTERN =

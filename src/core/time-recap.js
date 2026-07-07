@@ -1,7 +1,7 @@
 import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shared/settings.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
-import { normalizeModelProductText } from "../shared/model-copy.js";
+import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
 import { stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
@@ -376,7 +376,7 @@ function buildTimeRecapSystemPrompt(settings) {
     "Use time as the primary structure: explain what happened across the selected range before naming topical clusters.",
     "currentGroupTitle is only a weak context clue from existing browser groups. Do not turn existing group names into the main recap unless page titles, summaries, and activity also support it.",
     "Use closed pages and still-open pages equally when their activity falls inside the range.",
-    "Write user-facing product copy. Do not expose raw implementation terms such as activeCount, ageDays, idleDays, pageId, tabId, sampleable, sequenceIndex, cache, lifecycle, or hostname as labels.",
+    `Write user-facing product copy. ${MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING}`,
     "Do not recommend closing, deleting, cleaning, or reviewing tabs. This feature is recap-only; cleanup recommendations belong to the organizer flow.",
     "Required JSON shape: {schema:\"tab_recap_time_recap_v1\",language:\"zh-CN\"|\"en-US\",headline:string,summary:string,themes:[{title:string,description:string,confidence:\"high\"|\"medium\"|\"low\",ids:number[],evidence:string[]}],timeline:[{label:string,description:string,ids:number[]}],coverageNote:string}.",
     settings.languageMode === "en-US"

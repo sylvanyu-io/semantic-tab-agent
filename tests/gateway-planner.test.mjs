@@ -104,6 +104,9 @@ test("planner prompt includes the selected organization preset", () => {
   assert.match(prompt, /intentional group, not a catch-all/);
   assert.match(prompt, /code\/issues\/PRs/);
   assert.match(prompt, /shopping\/finance/);
+  assert.match(prompt, /active_count/);
+  assert.match(prompt, /tab_ids/);
+  assert.match(prompt, /sequence_index/);
 });
 
 test("planner prompt exposes grouping granularity without losing ordering constraints", () => {

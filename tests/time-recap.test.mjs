@@ -271,6 +271,9 @@ test("time recap gateway request parses fenced JSON and keeps page references va
   assert.equal(capturedRequest.url, "http://127.0.0.1:8317/v1/chat/completions");
   assert.equal(capturedRequest.init.headers.authorization, "Bearer test-key");
   assert.equal(capturedRequest.body.model, "gpt-5.4");
+  assert.match(capturedRequest.body.messages[0].content, /active_count/);
+  assert.match(capturedRequest.body.messages[0].content, /tab_ids/);
+  assert.match(capturedRequest.body.messages[0].content, /sequence_index/);
   assert.equal(result.source, "ai");
   assert.equal(result.recap.headline, "Extension work dominated the week.");
   assert.deepEqual(result.recap.themes[0].pageIds, [1]);
