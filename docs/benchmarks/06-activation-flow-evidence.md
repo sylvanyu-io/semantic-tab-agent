@@ -52,6 +52,9 @@ Prompt guardrail:
 - Full-detail, coarse, refinement, and cleanup planner requests all receive the
   same scoped transition rows. Coarse planning must not mention direct
   transitions in the system prompt without including them in its payload.
+- Preserved existing groups, excluded tabs, and out-of-bucket tabs are behavior
+  barriers. A scoped planner request must not create a new relationship by
+  deleting those middle tabs from a larger activation run or evidence row.
 - Existing benchmark truth labels are not sent to planner payloads.
 
 ## Verification Added
@@ -67,6 +70,8 @@ Code-level coverage:
 - `tests/gateway-planner.test.mjs`
   - confirms planner payload includes activity, run, transition, and evidence
     rows;
+  - confirms scoped planner payloads do not bridge behavior evidence across
+    non-planner tabs;
   - confirms hierarchical coarse and refinement requests both carry scoped
     transition rows;
   - confirms prompt guardrails are present.
@@ -98,6 +103,18 @@ Additional verification on 2026-07-07:
 - targeted behavior/planner tests: 69 pass;
 - full release gate passed locally: 250 Node tests, 36 Playwright UI tests,
   secret scans, dev/store extension builds, and release artifact audit.
+
+Additional verification on 2026-07-08:
+
+- fixed activation-flow scoping so preserved existing groups remain behavior
+  barriers instead of being removed before flow extraction;
+- fixed refinement sub-inventories so `activationFlowEvidence` rows are kept
+  only when the whole evidence row belongs to the subrequest; the runtime no
+  longer turns a larger `[A, locked, B]` evidence row into a fake `[A, B]`
+  relationship;
+- targeted behavior/planner tests: 53 pass;
+- full Node/Worker test suite: 266 pass;
+- current secret scan passed.
 
 ## Transition Payload Check
 

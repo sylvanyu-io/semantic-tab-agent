@@ -190,6 +190,11 @@ handoffs such as `A -> B` when both tabs are in the refinement bucket, but it
 does not simply filter IDs out of a mixed run because that would misalign dwell
 durations and imply transitions the user did not actually make.
 
+The same rule applies to `activationFlowEvidence`: an evidence row is kept only
+when the entire row belongs to the scoped request. The runtime must not turn
+`[A, locked group tab, B]` into `[A, B]`, because preserved groups, excluded
+tabs, and out-of-bucket tabs are behavior barriers.
+
 ## Next Implementation Steps
 
 1. Continue refactoring `gateway-planner.js` into explicit planner stages:

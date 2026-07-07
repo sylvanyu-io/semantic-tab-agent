@@ -1513,8 +1513,7 @@ function subsetActivationFlow(activationFlow = {}, ids) {
     runs: activationRunSegmentsForTabIds(activationFlow.runs || [], ids),
     transitions: (activationFlow.transitions || []).filter((transition) => ids.has(transition.fromId) && ids.has(transition.toId)),
     evidence: (activationFlow.evidence || [])
-      .map((evidence) => ({ ...evidence, ids: (evidence.ids || []).filter((id) => ids.has(id)) }))
-      .filter((evidence) => evidence.ids.length >= 2)
+      .filter((evidence) => Array.isArray(evidence.ids) && evidence.ids.length >= 2 && evidence.ids.every((id) => ids.has(id)))
   };
 }
 

@@ -1908,7 +1908,22 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
           clues: ["long source dwell"]
         }
       ],
-      evidence: []
+      evidence: [
+        {
+          ids: [10, 14, 11, 12],
+          strength: 0.71,
+          count: 1,
+          lastAt: "2026-06-25T00:06:00.000Z",
+          clues: ["same activation run", "quick handoff"]
+        },
+        {
+          ids: [11, 12],
+          strength: 0.52,
+          count: 1,
+          lastAt: "2026-06-25T00:06:00.000Z",
+          clues: ["same activation run"]
+        }
+      ]
     }
   };
   const requests = [];
@@ -2030,6 +2045,7 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
   assert.deepEqual(refinePayload.activationFlowTransitions, [
     [11, 12, 1, 180, 180, "2026-06-25T00:06:00.000Z", ["long source dwell"]]
   ]);
+  assert.deepEqual(refinePayload.activationFlowEvidence, [[[11, 12], 0.52, 1, "2026-06-25T00:06:00.000Z", ["same activation run"]]]);
   assert.equal(validation.ok, true, validation.errors.join(" "));
   assert.deepEqual(
     [...plan.groups.flatMap((group) => group.tabRefs.map((ref) => ref.tabId)), ...plan.reviewTabs.map((ref) => ref.tabId)].sort(
