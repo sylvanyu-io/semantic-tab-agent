@@ -29,6 +29,11 @@ Time recap is a read-only retrospective. It explains what the user appeared to d
 
 Cleanup belongs to the organizer flow. Recap results must not show cleanup checklists, manual close controls, "worth reviewing" tab recommendations, or project-manager style follow-up lists. If a model still returns cleanup-like copy, runtime normalization strips it from visible summary/theme/timeline text and ignores any returned follow-up fields.
 
+The cleanup filter is context-aware rather than keyword-only: terms such as
+`duplicate`, `stale`, or `重复` can be legitimate work topics, so they are kept
+unless the sentence is actually recommending tab/page cleanup, review, closing,
+deletion, or retention decisions.
+
 ## Current Implementation
 
 Implemented pieces:
