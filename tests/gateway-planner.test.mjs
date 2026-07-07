@@ -2407,6 +2407,84 @@ test("AI gateway planner splits high-confidence fallback buckets by original ord
       [14]
     ]
   );
+  assert.equal(plan.groups.every((group) => !/refinement service unavailable/i.test(group.reason)), true);
+  assert.equal(plan.groups.every((group) => /初步主题/.test(group.reason)), true);
+});
+
+test("AI gateway planner keeps refinement errors out of uncertain review reasons", async () => {
+  const plannerTabs = [10, 11, 12].map((tabId, sequenceIndex) => ({
+    tabId,
+    windowId: 1,
+    index: sequenceIndex,
+    sequenceIndex,
+    title: `Uncertain bucket tab ${tabId}`,
+    hostname: "example.com"
+  }));
+  const largeInventory = { ...inventory, plannerTabs, tabs: plannerTabs, pageSamples: [] };
+  const requests = [];
+
+  const fetchImpl = async (_url, options) => {
+    requests.push(JSON.parse(options.body));
+    if (requests.length === 1) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    buckets: [
+                      {
+                        bucketKey: "uncertain",
+                        title: "Uncertain Bucket",
+                        color: "grey",
+                        confidence: 0.2,
+                        tabIds: [10, 11, 12],
+                        reason: "Low-confidence mixed bucket."
+                      }
+                    ],
+                    reviewTabIds: []
+                  })
+                }
+              }
+            ]
+          };
+        }
+      };
+    }
+    return {
+      ok: false,
+      status: 503,
+      async json() {
+        return { error: { message: "refinement service unavailable" } };
+      }
+    };
+  };
+
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+    gatewayApiKey: "gateway-test-key",
+    languageMode: "en-US",
+    analyzeCleanup: false
+  };
+  const plan = await createGatewayPlan(largeInventory, settings, fetchImpl, {
+    hierarchical: true,
+    refineBucketMinTabs: 2,
+    refineMaxTabsPerRequest: 10
+  });
+  const validation = validatePlan(plan, largeInventory, settings);
+
+  assert.equal(requests.length, 2);
+  assert.equal(validation.ok, true, validation.errors.join(" "));
+  assert.deepEqual(plan.groups, []);
+  assert.deepEqual(
+    plan.reviewTabs.map((tab) => tab.tabId),
+    [10, 11, 12]
+  );
+  assert.equal(plan.reviewTabs.every((tab) => !/refinement service unavailable/i.test(tab.reason)), true);
+  assert.equal(plan.reviewTabs.every((tab) => /left for review/i.test(tab.reason)), true);
 });
 
 test("AI gateway planner caps large-job refinement thinking at medium by default", async () => {

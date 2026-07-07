@@ -1151,10 +1151,10 @@ async function refineBucket(bucket, inventory, settings, fetchImpl, options = {}
       reviewTabs: plan.reviewTabs || [],
       cleanup: plan.cleanup || null
     };
-  } catch (error) {
+  } catch {
     if (bucket.confidence >= settings.minConfidenceToApply) {
       return {
-        groups: fallbackGroupsForBucket(bucket, settings, error),
+        groups: fallbackGroupsForBucket(bucket, settings),
         reviewTabs: [],
         cleanup: null
       };
@@ -1162,7 +1162,7 @@ async function refineBucket(bucket, inventory, settings, fetchImpl, options = {}
 
     return {
       groups: [],
-      reviewTabs: bucket.tabRefs.map((ref) => ({ ...ref, reason: `Refinement unavailable for uncertain bucket: ${error.message}` })),
+      reviewTabs: bucket.tabRefs.map((ref) => ({ ...ref, reason: refinementUnavailableReviewReason(settings) })),
       cleanup: null
     };
   }
@@ -1486,15 +1486,23 @@ function bucketToGroup(bucket) {
   };
 }
 
-function fallbackGroupsForBucket(bucket, settings, error) {
+function refinementUnavailableReviewReason(settings) {
+  return localizedText(
+    settings.languageMode,
+    "这个主题暂时没有稳定细分，已留给你确认。",
+    "This topic could not be refined confidently, so it is left for review."
+  );
+}
+
+function fallbackGroupsForBucket(bucket, settings) {
   const chunkSize = Math.max(1, Number(settings.maxTabsPerGroup) || 1);
   const chunks = chunkRefs(bucket.tabRefs || [], chunkSize);
   return chunks.map((tabRefs, index) => {
     const suffix = chunks.length > 1 ? ` ${index + 1}` : "";
     const fallbackReason = localizedText(
       settings.languageMode,
-      `${bucket.reason} 精分不可用：${error.message}`,
-      `${bucket.reason} Refinement unavailable: ${error.message}`
+      `${bucket.reason} 已按初步主题保留，稍后重新生成可能得到更细的分组。`,
+      `${bucket.reason} Kept from the initial topic pass. Regenerating later may produce a more detailed split.`
     );
     return {
       ...bucketToGroup({ ...bucket, tabRefs }),
