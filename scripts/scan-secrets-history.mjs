@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { SECRET_PATTERNS } from "./lib/secret-patterns.mjs";
 
-const allowedHistoricalFixtureFragments = [
-  ["sk", "private-provider-token"].join("-"),
+const allowedHistoricalFixtureValues = new Set([
+  ["sk", "private-secret-token-1234567890"].join("-"),
   ["sk", "private-secret-token"].join("-")
-];
+]);
 
 const gitLog = spawnSync("git", ["log", "-p", "--all", "--", "."], {
   encoding: "utf8",
@@ -38,5 +38,5 @@ if (findings.length) {
 console.log("No secret patterns found in git history.");
 
 function isAllowedHistoricalFixture(value) {
-  return allowedHistoricalFixtureFragments.some((fragment) => value.includes(fragment));
+  return allowedHistoricalFixtureValues.has(value);
 }

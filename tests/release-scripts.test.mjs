@@ -73,12 +73,12 @@ test("secret scanner success copy stays generic across secret provider types", a
   assert.doesNotMatch(historyScanner, /No provider-key patterns found/);
 });
 
-test("history secret scanner only allowlists known old fake provider fixtures", async () => {
+test("history secret scanner only allowlists exact known old fake secret fixtures", async () => {
   const historyScanner = await readFile("scripts/scan-secrets-history.mjs", "utf8");
 
-  assert.match(historyScanner, /allowedHistoricalFixtureFragments/);
-  assert.match(historyScanner, /private-provider-token/);
+  assert.match(historyScanner, /allowedHistoricalFixtureValues = new Set/);
   assert.match(historyScanner, /private-secret-token/);
+  assert.match(historyScanner, /allowedHistoricalFixtureValues\.has\(value\)/);
   assert.doesNotMatch(historyScanner, /\b(?:sk-proj|sk-ant|sk-or|sk)-[A-Za-z0-9_-]{20,}\b/);
   assert.doesNotMatch(historyScanner, /resend_api_key[^]*allowedHistoricalFixtureFragments/);
 });
