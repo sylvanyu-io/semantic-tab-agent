@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeModelProductText } from "../src/shared/model-copy.js";
+import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../src/shared/model-copy.js";
 
 test("model product copy removes internal identity fields and localizes common signals", () => {
   const zh = normalizeModelProductText(
@@ -94,26 +94,49 @@ test("model product copy replaces cache and lifecycle implementation wording", (
 
 test("model product copy replaces activation flow implementation wording", () => {
   const zh = normalizeModelProductText(
-    "activationFlow 里 nearbyIds 很近，returnToId 说明回到旧页，dwellSeconds 较长，transition_count 高。",
+    "activationFlow 里 nearbyIds 很近，returnToId 说明回到旧页，returnedToCount=2，dwellSeconds 较长，transition_count 高。",
     { languageMode: "zh-CN" },
-    260
+    320
   );
   const en = normalizeModelProductText(
-    "activation_flow shows nearby ids, repeatedIds, total active seconds, and appeared in runs.",
+    "activation_flow shows nearby ids, repeatedIds, total active seconds, appeared in runs, fromId, to_id, startedAt, ended_at, and lastAt.",
     { languageMode: "en-US" },
-    260
+    320
   );
 
-  assert.doesNotMatch(zh, /\b(?:activationFlow|nearbyIds|returnToId|dwellSeconds|transition_count)\b/i);
+  assert.doesNotMatch(zh, /\b(?:activationFlow|nearbyIds|returnToId|returnedToCount|dwellSeconds|transition_count)\b/i);
   assert.match(zh, /浏览轨迹/);
   assert.match(zh, /相邻标签页/);
   assert.match(zh, /回到前面的标签页/);
+  assert.match(zh, /切回过 2 次/);
   assert.match(zh, /停留时长/);
   assert.match(zh, /标签页切换次数/);
-  assert.doesNotMatch(en, /\b(?:activation_flow|nearby ids|repeatedIds|total active seconds|appeared in runs)\b/i);
+  assert.doesNotMatch(en, /\b(?:activation_flow|nearby ids|repeatedIds|total active seconds|appeared in runs|fromId|to_id|startedAt|ended_at|lastAt)\b/i);
   assert.match(en, /browsing flow/);
   assert.match(en, /nearby tabs/);
   assert.match(en, /repeatedly revisited tabs/);
   assert.match(en, /active time/);
   assert.match(en, /same browsing run/);
+  assert.match(en, /source tab/);
+  assert.match(en, /next tab/);
+  assert.match(en, /started/);
+  assert.match(en, /ended/);
+  assert.match(en, /last observed/);
+});
+
+test("model product copy warning covers behavior payload field variants", () => {
+  for (const field of [
+    "totalActiveSeconds",
+    "maxActiveSeconds",
+    "appearedInRuns",
+    "returnedToCount",
+    "avgDwellSeconds",
+    "fromId",
+    "toId",
+    "startedAt",
+    "endedAt",
+    "lastAt"
+  ]) {
+    assert.match(MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, new RegExp(`\\b${field}\\b`));
+  }
 });

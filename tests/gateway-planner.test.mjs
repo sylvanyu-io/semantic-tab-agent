@@ -107,6 +107,11 @@ test("planner prompt includes the selected organization preset", () => {
   assert.match(prompt, /active_count/);
   assert.match(prompt, /tab_ids/);
   assert.match(prompt, /sequence_index/);
+  assert.match(prompt, /totalActiveSeconds/);
+  assert.match(prompt, /appearedInRuns/);
+  assert.match(prompt, /returnedToCount/);
+  assert.match(prompt, /avgDwellSeconds/);
+  assert.match(prompt, /fromId/);
 });
 
 test("planner prompt exposes grouping granularity without losing ordering constraints", () => {

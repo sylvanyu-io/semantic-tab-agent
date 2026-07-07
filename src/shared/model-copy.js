@@ -1,7 +1,7 @@
 import { localizedText } from "./language.js";
 
 export const MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING =
-  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, lifecycle, activationFlow, nearbyIds, returnToId, repeatedIds, dwellSeconds, or activeSeconds in user-facing copy.";
+  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, lifecycle, activationFlow, totalActiveSeconds, maxActiveSeconds, appearedInRuns, returnedToCount, nearbyIds, returnToId, repeatedIds, dwellSeconds, activeSeconds, avgDwellSeconds, transitionCount, fromId, toId, startedAt, endedAt, or lastAt in user-facing copy.";
 
 const IDENTITY_FIELD_PATTERN =
   /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\s*(?:为|=|is|:)?\s*(?:\[[^\]]*\]|["'#]?[A-Za-z0-9_.-]+(?:\s*,\s*["'#]?[A-Za-z0-9_.-]+)*)?/gi;
@@ -28,7 +28,13 @@ const FIELD_NAME_PATTERNS = {
   dwellSeconds: /\bdwell(?:Seconds|[_\s-]?seconds?)\b/gi,
   activeSeconds: /\b(?:(?:active|totalActive|maxActive|avgDwell)(?:Seconds|[_\s-]?seconds?)|total[_\s-]?active[_\s-]?seconds?|max[_\s-]?active[_\s-]?seconds?|avg[_\s-]?dwell[_\s-]?seconds?)\b/gi,
   appearedInRuns: /\bappeared(?:InRuns|[_\s-]?in(?:[_\s-]?runs?)?)\b/gi,
+  returnedToCount: /\breturned(?:ToCount|[_\s-]?to(?:[_\s-]?count)?)\b/gi,
   transitionCount: /\btransition(?:Count|[_\s-]?count)\b/gi,
+  fromId: /\bfrom(?:Id|[_\s-]?id)\b/gi,
+  toId: /\bto(?:Id|[_\s-]?id)\b/gi,
+  startedAt: /\bstarted(?:At|[_\s-]?at)\b/gi,
+  endedAt: /\bended(?:At|[_\s-]?at)\b/gi,
+  lastAt: /\blast(?:At|[_\s-]?at)\b/gi,
   sampleable: /\bsample(?:able|[_\s-]?able)\b/gi,
   discarded: /\bdiscarded\b/gi,
   pinned: /\bpinned\b/gi,
@@ -46,6 +52,7 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
     .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(?:0|zero)\b/gi, copy("基本没再打开", "rarely reopened"))
     .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("打开过 $1 次", "opened $1 times"))
     .replace(/\bseen(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("记录过 $1 次", "seen $1 times"))
+    .replace(/\breturned(?:ToCount|[_\s-]?to(?:[_\s-]?count)?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("切回过 $1 次", "returned $1 times"))
     .replace(/\bage(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("已放约 $1 天", "kept about $1 days"))
     .replace(/\bidle(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("闲置约 $1 天", "idle about $1 days"))
     .replace(/\bsample(?:able|[_\s-]?able)\s*(?:为|=|is|:)?\s*(?:false|no|否)\b/gi, copy("页面摘要不可用", "page summary unavailable"))
@@ -78,7 +85,13 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           dwellSeconds: "time spent",
           activeSeconds: "active time",
           appearedInRuns: "same browsing run",
+          returnedToCount: "times returned",
           transitionCount: "tab switches",
+          fromId: "source tab",
+          toId: "next tab",
+          startedAt: "started",
+          endedAt: "ended",
+          lastAt: "last observed",
           sampleable: "page summary access",
           discarded: "sleeping",
           pinned: "pinned",
@@ -104,7 +117,13 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           dwellSeconds: "停留时长",
           activeSeconds: "活跃时长",
           appearedInRuns: "同一段浏览过程",
+          returnedToCount: "切回次数",
           transitionCount: "标签页切换次数",
+          fromId: "来源标签页",
+          toId: "下一个标签页",
+          startedAt: "开始时间",
+          endedAt: "结束时间",
+          lastAt: "最近记录时间",
           sampleable: "页面摘要权限",
           discarded: "休眠状态",
           pinned: "固定状态",
