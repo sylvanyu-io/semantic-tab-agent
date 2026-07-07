@@ -205,11 +205,13 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
   await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("placeholder", "例如：https://api.deepseek.com/v1");
   await expect(page.locator("#gatewayApiKey")).toHaveAttribute("placeholder", "没有密钥可留空");
+  await page.locator("#gatewayBaseUrl").fill("https://api.deepseek.com/v1");
+  await page.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.locator("#statusText")).toContainText("自定义 API 可用：gpt-5.4");
   await page.locator("#gatewayCustomModel").fill("glm-5.2");
   await expect(page.locator("#gatewayCustomModel")).toHaveValue("glm-5.2");
   await page.locator("#gatewayCustomAuxiliaryModel").fill("gpt-5.4-mini");
   await expect(page.locator("#gatewayCustomAuxiliaryModel")).toHaveValue("gpt-5.4-mini");
-  await page.locator("#gatewayBaseUrl").fill("https://api.deepseek.com/v1");
   await page.getByRole("button", { name: "测试连接" }).click();
   await expect(page.locator("#statusText")).toContainText("自定义 API 可用：glm-5.2 / gpt-5.4-mini");
   await page.locator("#gatewayProviderMode").selectOption("builtin");

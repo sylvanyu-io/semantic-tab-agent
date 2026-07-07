@@ -3519,11 +3519,14 @@ async function mockMessage(message) {
   }
   if (message.type === "tabs:cancelActiveJob") return { canceled: false, job: mockActiveJob };
   if (message.type === "gateway:testConnection") {
+    const primaryModel = message.settings?.gatewayCustomModel || message.settings?.gatewayModel || DEFAULT_SETTINGS.gatewayModel;
+    const rawAuxiliaryModel = message.settings?.gatewayCustomAuxiliaryModel || message.settings?.gatewayAuxiliaryModel || "";
+    const auxiliaryModel = rawAuxiliaryModel === "same_as_primary" ? primaryModel : rawAuxiliaryModel;
     return {
       ok: true,
       status: 200,
-      model: message.settings?.gatewayCustomModel || message.settings?.gatewayModel || "gpt-5.4",
-      auxiliaryModel: message.settings?.gatewayCustomAuxiliaryModel || message.settings?.gatewayAuxiliaryModel || "",
+      model: primaryModel,
+      auxiliaryModel,
       baseUrl: message.settings?.gatewayBaseUrl || ""
     };
   }
