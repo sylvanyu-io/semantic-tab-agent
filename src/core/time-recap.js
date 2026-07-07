@@ -1,6 +1,7 @@
 import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shared/settings.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
+import { isCleanupLikeRecapFollowUp } from "../shared/time-recap-safety.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
   applyThinkingIntensity,
@@ -21,35 +22,6 @@ const DEFAULT_RANGE_MS = 7 * DAY_MS;
 const MAX_RANGE_MS = 90 * DAY_MS;
 const MAX_RECAP_PAGES = 360;
 const REVIEW_AGE_MS = 14 * DAY_MS;
-const RECAP_CLEANUP_FOLLOW_UP_PATTERN = new RegExp(
-  [
-    "关闭",
-    "清理",
-    "删除",
-    "移除",
-    "值得复查",
-    "优先复查",
-    "先检查",
-    "要不要保留",
-    "是否保留",
-    "不再需要",
-    "低价值",
-    "过期",
-    "重复",
-    "close",
-    "delete",
-    "remove",
-    "cleanup",
-    "clean up",
-    "worth reviewing",
-    "review whether",
-    "stale",
-    "duplicate",
-    "low-value",
-    "no longer needed"
-  ].join("|"),
-  "i"
-);
 
 export { TIME_RECAP_GATEWAY_TIMEOUT_MS };
 
@@ -632,11 +604,6 @@ function localFollowUps(pages, settings) {
       reason: localizedText(settings.languageMode, "仍然打开，可以从这里继续。", "Still open; useful place to continue."),
       pageIds: [page.id]
     }));
-}
-
-function isCleanupLikeRecapFollowUp(item) {
-  const text = `${item?.title || ""} ${item?.reason || ""}`.toLowerCase();
-  return RECAP_CLEANUP_FOLLOW_UP_PATTERN.test(text);
 }
 
 function coverageNote(input, settings) {

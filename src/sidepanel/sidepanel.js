@@ -9,38 +9,10 @@ import {
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
+import { filterRecapFollowUps } from "../shared/time-recap-safety.js";
 
 const UI_LANGUAGE_STORAGE_KEY = "tabTidy.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
-const RECAP_CLEANUP_FOLLOW_UP_PATTERN = new RegExp(
-  [
-    "关闭",
-    "清理",
-    "删除",
-    "移除",
-    "值得复查",
-    "优先复查",
-    "先检查",
-    "要不要保留",
-    "是否保留",
-    "不再需要",
-    "低价值",
-    "过期",
-    "重复",
-    "close",
-    "delete",
-    "remove",
-    "cleanup",
-    "clean up",
-    "worth reviewing",
-    "review whether",
-    "stale",
-    "duplicate",
-    "low-value",
-    "no longer needed"
-  ].join("|"),
-  "i"
-);
 const UI_COPY = Object.freeze({
   "zh-CN": {
     "document.title": "TabRecap",
@@ -1710,13 +1682,8 @@ function renderTimeRecap(result) {
 function safeRecapForDisplay(recap = {}) {
   return {
     ...recap,
-    followUps: asArray(recap.followUps).filter((item) => !isCleanupLikeRecapFollowUp(item))
+    followUps: filterRecapFollowUps(recap.followUps)
   };
-}
-
-function isCleanupLikeRecapFollowUp(item) {
-  const text = `${item?.title || ""} ${item?.reason || item?.description || ""}`.toLowerCase();
-  return RECAP_CLEANUP_FOLLOW_UP_PATTERN.test(text);
 }
 
 function resetTimeRecapToSetup() {
