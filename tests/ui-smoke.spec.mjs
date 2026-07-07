@@ -468,9 +468,22 @@ test("time recap display filters cleanup-like follow-ups from runtime results", 
                 recap: {
                   schema: "tab_recap_time_recap_v1",
                   headline: "这段时间主要在做扩展发布",
-                  summary: "主要围绕 TabRecap 发布检查和权限研究推进。",
-                  themes: [],
-                  timeline: [],
+                  summary: "主要围绕 TabRecap 发布检查和权限研究推进。这个旧标签页可以关闭。",
+                  themes: [
+                    {
+                      title: "发布检查",
+                      description: "权限、发布和回顾体验是主线。Old cleanup note 是否保留可以回头判断。",
+                      pageIds: [1],
+                      evidence: ["发布检查", "建议关闭旧页面"]
+                    }
+                  ],
+                  timeline: [
+                    {
+                      label: "周末",
+                      description: "集中做发布验证。Review whether to keep stale tabs.",
+                      pageIds: [1]
+                    }
+                  ],
                   followUps: [
                     {
                       title: "关闭旧标签页",
@@ -500,8 +513,16 @@ test("time recap display filters cleanup-like follow-ups from runtime results", 
 
   await expect(page.locator(".recap-result")).toContainText("继续整理发布检查");
   await expect(page.locator(".recap-result")).toContainText("把 release checklist 的剩余步骤顺着做完。");
+  await expect(page.locator(".recap-result")).toContainText("主要围绕 TabRecap 发布检查和权限研究推进。");
+  await expect(page.locator(".recap-result")).toContainText("权限、发布和回顾体验是主线。");
+  await expect(page.locator(".recap-result")).toContainText("集中做发布验证。");
   await expect(page.locator(".recap-result")).not.toContainText("关闭旧标签页");
   await expect(page.locator(".recap-result")).not.toContainText("值得复查");
+  await expect(page.locator(".recap-result")).not.toContainText("可以关闭");
+  await expect(page.locator(".recap-result")).not.toContainText("是否保留");
+  await expect(page.locator(".recap-result")).not.toContainText("建议关闭");
+  await expect(page.locator(".recap-result")).not.toContainText("Review whether");
+  await expect(page.locator(".recap-result")).not.toContainText("stale tabs");
   await expect(page.locator("#recapDetailsText")).not.toContainText("Old cleanup note");
 });
 

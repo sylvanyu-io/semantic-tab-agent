@@ -9,7 +9,7 @@ import {
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
-import { filterRecapFollowUps } from "../shared/time-recap-safety.js";
+import { filterRecapFollowUps, stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 
 const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
@@ -1685,9 +1685,31 @@ function renderTimeRecap(result) {
 }
 
 function safeRecapForDisplay(recap = {}) {
+  const text = (value) => stripCleanupRecommendationsFromRecapText(value);
+  const themes = asArray(recap.themes).map((theme) => ({
+    ...theme,
+    title: text(theme?.title),
+    description: text(theme?.description || theme?.summary),
+    evidence: asArray(theme?.evidence).map(text).filter(Boolean)
+  })).filter((theme) => theme.title || theme.description || asArray(theme.pageIds || theme.ids).length);
+  const timeline = asArray(recap.timeline).map((item) => ({
+    ...item,
+    label: text(item?.label),
+    description: text(item?.description || item?.summary)
+  })).filter((item) => item.label || item.description || asArray(item.pageIds || item.ids).length);
+  const followUps = filterRecapFollowUps(recap.followUps).map((item) => ({
+    ...item,
+    title: text(item?.title),
+    reason: text(item?.reason || item?.description)
+  })).filter((item) => item.title || item.reason || asArray(item.pageIds || item.ids).length);
   return {
     ...recap,
-    followUps: filterRecapFollowUps(recap.followUps)
+    headline: text(recap.headline),
+    summary: text(recap.summary),
+    coverageNote: text(recap.coverageNote),
+    themes,
+    timeline,
+    followUps
   };
 }
 
