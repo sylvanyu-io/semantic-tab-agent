@@ -135,7 +135,11 @@ test("model product copy warning covers behavior payload field variants", () => 
     "toId",
     "startedAt",
     "endedAt",
-    "lastAt"
+    "lastAt",
+    "ids",
+    "strength",
+    "count",
+    "clues"
   ]) {
     assert.match(MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, new RegExp(`\\b${field}\\b`));
   }
@@ -168,4 +172,30 @@ test("model product copy removes behavior field id values", () => {
   assert.match(zh, /回到前面的标签页/);
   assert.match(zh, /来源标签页/);
   assert.match(zh, /下一个标签页/);
+});
+
+test("model product copy removes behavior evidence field values", () => {
+  const en = normalizeModelProductText(
+    "ids [10, 11], strength 0.69, count 2, clues quick handoff.",
+    { languageMode: "en-US" },
+    320
+  );
+  const zh = normalizeModelProductText(
+    "证据 ids [10, 11]，strength 0.69，count 2，clues 是 quick handoff。",
+    { languageMode: "zh-CN" },
+    320
+  );
+
+  assert.doesNotMatch(en, /\b(?:ids|strength|count|clues|10|11|0\.69|2|quick handoff)\b/i);
+  assert.doesNotMatch(en, /\[[^\]]+\]/);
+  assert.match(en, /related tabs/);
+  assert.match(en, /confidence signal/);
+  assert.match(en, /repeated signal/);
+  assert.match(en, /evidence note/);
+  assert.doesNotMatch(zh, /\b(?:ids|strength|count|clues|10|11|0\.69|2|quick handoff)\b/i);
+  assert.doesNotMatch(zh, /\[[^\]]+\]/);
+  assert.match(zh, /相关标签页/);
+  assert.match(zh, /信号强度/);
+  assert.match(zh, /重复线索/);
+  assert.match(zh, /依据线索/);
 });

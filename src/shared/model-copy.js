@@ -1,7 +1,7 @@
 import { localizedText } from "./language.js";
 
 export const MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING =
-  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, lifecycle, activationFlow, totalActiveSeconds, maxActiveSeconds, appearedInRuns, returnedToCount, nearbyIds, returnToId, repeatedIds, dwellSeconds, activeSeconds, avgDwellSeconds, transitionCount, fromId, toId, startedAt, endedAt, or lastAt in user-facing copy.";
+  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, lifecycle, activationFlow, totalActiveSeconds, maxActiveSeconds, appearedInRuns, returnedToCount, nearbyIds, returnToId, repeatedIds, dwellSeconds, activeSeconds, avgDwellSeconds, transitionCount, fromId, toId, startedAt, endedAt, lastAt, ids, strength, count, or clues in user-facing copy.";
 
 const IDENTITY_FIELD_PATTERN =
   /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\s*(?:为|=|is|:)?\s*(?:\[[^\]]*\]|["'#]?[A-Za-z0-9_.-]+(?:\s*,\s*["'#]?[A-Za-z0-9_.-]+)*)?/gi;
@@ -12,6 +12,7 @@ const INTERNAL_ID_VALUE = "(?:\\[[^\\]]*\\]|[\"'#]?\\d+(?:\\s*,\\s*[\"'#]?\\d+)*
 const INTERNAL_TIMESTAMP_VALUE = "(?:[\"']?\\d{4}-\\d{2}-\\d{2}(?:[T ][0-9:.+-]+Z?)?[\"']?)";
 const FIELD_VALUE_SEPARATOR = "\\s*(?:为|=|is|:)?\\s*";
 const INTERNAL_ID_FIELD_VALUE_PATTERNS = {
+  ids: new RegExp(`\\bids${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
   nearbyIds: new RegExp(`\\bnearby(?:Ids|[_\\s-]?ids?)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
   returnToId: new RegExp(`\\breturn(?:ToId|[_\\s-]?to(?:[_\\s-]?id)?)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
   repeatedIds: new RegExp(`\\brepeated(?:Ids|[_\\s-]?ids?)${FIELD_VALUE_SEPARATOR}${INTERNAL_ID_VALUE}`, "gi"),
@@ -20,6 +21,11 @@ const INTERNAL_ID_FIELD_VALUE_PATTERNS = {
   startedAt: new RegExp(`\\bstarted(?:At|[_\\s-]?at)${FIELD_VALUE_SEPARATOR}${INTERNAL_TIMESTAMP_VALUE}`, "gi"),
   endedAt: new RegExp(`\\bended(?:At|[_\\s-]?at)${FIELD_VALUE_SEPARATOR}${INTERNAL_TIMESTAMP_VALUE}`, "gi"),
   lastAt: new RegExp(`\\blast(?:At|[_\\s-]?at)${FIELD_VALUE_SEPARATOR}${INTERNAL_TIMESTAMP_VALUE}`, "gi")
+};
+const INTERNAL_SIGNAL_FIELD_VALUE_PATTERNS = {
+  strength: /\bstrength\s*(?:为|=|is|:)?\s*(?:0(?:\.\d+)?|1(?:\.0+)?|\d+(?:\.\d+)?%?)\b/gi,
+  count: /\bcount\s*(?:为|=|is|:)?\s*\d+(?:\.\d+)?\b/gi,
+  clues: /\bclues?\s*(?:为|=|is|:)?\s*(?:是\s*)?(?:\[[^\]]*\]|[^,.;，。；]+(?:[,，]\s*[^,.;，。；]+)*)/gi
 };
 
 const FIELD_NAME_PATTERNS = {
@@ -36,6 +42,7 @@ const FIELD_NAME_PATTERNS = {
   cache: /\bcache(?:Key|[_\s-]?key)?\b/gi,
   lifecycle: /\blifecycle(?:Status|[_\s-]?status)?\b/gi,
   activationFlow: /\bactivation(?:Flow|[_\s-]?flow)\b/gi,
+  ids: /\bids\b/gi,
   nearbyIds: /\bnearby(?:Ids|[_\s-]?ids?)\b/gi,
   returnToId: /\breturn(?:ToId|[_\s-]?to(?:[_\s-]?id)?)\b/gi,
   repeatedIds: /\brepeated(?:Ids|[_\s-]?ids?)\b/gi,
@@ -93,6 +100,7 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           cache: "local record",
           lifecycle: "activity record",
           activationFlow: "browsing flow",
+          ids: "related tabs",
           nearbyIds: "nearby tabs",
           returnToId: "returned to an earlier tab",
           repeatedIds: "repeatedly revisited tabs",
@@ -101,6 +109,9 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           appearedInRuns: "same browsing run",
           returnedToCount: "times returned",
           transitionCount: "tab switches",
+          strength: "confidence signal",
+          count: "repeated signal",
+          clues: "evidence note",
           fromId: "source tab",
           toId: "next tab",
           startedAt: "started",
@@ -125,6 +136,7 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           cache: "本地记录",
           lifecycle: "活动记录",
           activationFlow: "浏览轨迹",
+          ids: "相关标签页",
           nearbyIds: "相邻标签页",
           returnToId: "回到前面的标签页",
           repeatedIds: "反复切回的标签页",
@@ -133,6 +145,9 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           appearedInRuns: "同一段浏览过程",
           returnedToCount: "切回次数",
           transitionCount: "标签页切换次数",
+          strength: "信号强度",
+          count: "重复线索",
+          clues: "依据线索",
           fromId: "来源标签页",
           toId: "下一个标签页",
           startedAt: "开始时间",
@@ -147,8 +162,17 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
   for (const [raw, pattern] of Object.entries(INTERNAL_ID_FIELD_VALUE_PATTERNS)) {
     text = text.replace(pattern, labels[raw]);
   }
+  for (const [raw, pattern] of Object.entries(INTERNAL_SIGNAL_FIELD_VALUE_PATTERNS)) {
+    text = text.replace(pattern, labels[raw]);
+  }
 
-  for (const [raw, label] of Object.entries(labels)) {
+  const fieldNameEntries = Object.entries(labels).sort(([left], [right]) => {
+    if (left === "ids") return 1;
+    if (right === "ids") return -1;
+    return 0;
+  });
+
+  for (const [raw, label] of fieldNameEntries) {
     text = text.replace(FIELD_NAME_PATTERNS[raw] ?? new RegExp(`\\b${raw}\\b`, "gi"), label);
   }
 
