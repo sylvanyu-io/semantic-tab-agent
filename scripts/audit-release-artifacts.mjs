@@ -24,7 +24,14 @@ const artifacts = [
 const allowedTopLevel = new Set(["manifest.json", "src", "icons"]);
 const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".svg"]);
 const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
-const forbiddenProductCopy = ["Internal test", "Semantic Tab Agent", "Tab Tidy", "tabTidy.", "tab_tidy_", "tab-tidy"];
+const forbiddenProductCopy = [
+  { label: "Internal test", pattern: /Internal test/ },
+  { label: "Semantic Tab Agent", pattern: /Semantic\s+Tab\s+Agent/i },
+  { label: "Tab Tidy", pattern: /Tab\s+Tidy/i },
+  { label: "TabTidy", pattern: /TabTidy/i },
+  { label: "tab_tidy_", pattern: /tab_tidy_/i },
+  { label: "tab-tidy", pattern: /tab-tidy/i }
+];
 const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 const forbiddenEntryPatterns = [
   /^docs\//,
@@ -163,8 +170,8 @@ async function auditProductCopy(channel, extensionDir, files) {
     if (!textExtensions.has(extensionOf(file))) continue;
 
     const content = await readFile(join(extensionDir, file), "utf8");
-    for (const copy of forbiddenProductCopy) {
-      if (content.includes(copy)) fail(`${channel}: ${file} contains obsolete/internal product copy "${copy}".`);
+    for (const { label, pattern } of forbiddenProductCopy) {
+      if (pattern.test(content)) fail(`${channel}: ${file} contains obsolete/internal product copy "${label}".`);
     }
   }
 }

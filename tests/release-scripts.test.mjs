@@ -47,9 +47,38 @@ test("release artifact audit rejects obsolete product names and legacy extension
 
   assert.match(auditScript, /Semantic Tab Agent/);
   assert.match(auditScript, /Tab Tidy/);
-  assert.match(auditScript, /tabTidy\./);
+  assert.match(auditScript, /TabTidy/);
   assert.match(auditScript, /tab_tidy_/);
   assert.match(auditScript, /tab-tidy/);
+});
+
+test("release artifact audit fails built artifacts that contain legacy product name variants", async () => {
+  const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-audit-dist-"));
+  try {
+    for (const channel of ["dev", "store"]) {
+      const build = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXTENSION_DIST_DIR: tempDist,
+          ...(channel === "store" ? { EXTENSION_CHANNEL: "store" } : {})
+        }
+      });
+      assert.equal(build.status, 0, build.stderr || build.stdout);
+    }
+
+    const pollutedScript = join(tempDist, "extension", "src/sidepanel/sidepanel.js");
+    await writeFile(pollutedScript, `${await readFile(pollutedScript, "utf8")}\n// TabTidy must not ship.\n`);
+
+    const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_DIST_DIR: tempDist }
+    });
+    assert.notEqual(audit.status, 0, audit.stderr || audit.stdout);
+    assert.match(`${audit.stdout}\n${audit.stderr}`, /obsolete\/internal product copy "TabTidy"/);
+  } finally {
+    await rm(tempDist, { recursive: true, force: true });
+  }
 });
 
 test("release artifact audit locks store host permissions to the default gateway", async () => {
