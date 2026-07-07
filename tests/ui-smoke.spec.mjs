@@ -505,6 +505,90 @@ test("time recap display filters cleanup-like follow-ups from runtime results", 
   await expect(page.locator("#recapDetailsText")).not.toContainText("Old cleanup note");
 });
 
+test("time recap summary does not invent a continuation row after filtering cleanup follow-ups", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      continuousPageSummaries: false,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "activity:generateTimeRecap") {
+            return {
+              ok: true,
+              result: {
+                source: "ai",
+                input: {
+                  pages: [{ id: 1, tabId: 10, windowId: 1, title: "发布检查页", hostname: "github.com", open: true }],
+                  coverage: { includedPages: 1, sampledEntries: 0 }
+                },
+                recap: {
+                  schema: "tab_tidy_time_recap_v1",
+                  headline: "这段时间主要在做扩展发布",
+                  summary: "主要围绕发布检查推进。",
+                  themes: [],
+                  timeline: [],
+                  followUps: [
+                    {
+                      title: "关闭发布检查页",
+                      reason: "这个页面已经过期，值得复查是否保留。",
+                      pageIds: [1]
+                    }
+                  ],
+                  coverageNote: "使用本地线索。"
+                }
+              }
+            };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+
+  await expect(page.locator(".recap-summary-card")).toContainText("主要精力");
+  await expect(page.locator(".recap-summary-card")).not.toContainText("可以继续");
+  await expect(page.locator(".recap-result")).not.toContainText("下次继续");
+  await expect(page.locator(".recap-result")).not.toContainText("关闭发布检查页");
+  await expect(page.locator(".recap-result")).not.toContainText("值得复查");
+});
+
 test("time recap exposes page summary permission controls and sends enabled summary settings", async ({ page }) => {
   await page.addInitScript(() => {
     let settings = {

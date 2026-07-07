@@ -1722,7 +1722,7 @@ function recapMemoCard(result = {}) {
 function recapNarrativeRows(recap = {}) {
   const focus = recap.summary || recap.coverageNote || recap.headline || "";
   const returned = recapThemesSentence(recap.themes) || recapTimelineSentence(recap.timeline) || recap.coverageNote || "";
-  const next = recapFollowUpSentence(recap.followUps) || recap.coverageNote || focus;
+  const next = recapFollowUpSentence(recap.followUps);
   return [
     { tone: "focus", label: t("recap.memoFocus"), text: focus },
     { tone: "returned", label: t("recap.memoReturned"), text: returned },
