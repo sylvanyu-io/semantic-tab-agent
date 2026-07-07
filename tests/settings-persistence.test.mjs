@@ -132,7 +132,7 @@ test("AI gateway settings normalize safely", () => {
       gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
       gatewayCustomModel: " glm-5.2\n "
     }).gatewayModel,
-    GATEWAY_CUSTOM_MODEL_VALUE
+    DEFAULT_SETTINGS.gatewayModel
   );
   assert.equal(
     normalizeSettings({
@@ -140,7 +140,7 @@ test("AI gateway settings normalize safely", () => {
       gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
       gatewayCustomModel: " glm-5.2\n "
     }).gatewayCustomModel,
-    "glm-5.2"
+    ""
   );
   assert.equal(
     normalizeSettings({

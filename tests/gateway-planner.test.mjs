@@ -5,6 +5,7 @@ import { validatePlan } from "../src/core/plan-validator.js";
 import {
   DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
+  GATEWAY_PROVIDER_MODES,
   GROUPING_GRANULARITIES,
   PLANNER_PROVIDERS,
   PROMPT_PRESETS
@@ -935,7 +936,7 @@ test("AI gateway planner prefers manual model names when a custom base URL is se
   assert.deepEqual(plan, expectedPlan);
 });
 
-test("AI gateway planner sends a custom model name to the built-in gateway", async () => {
+test("AI gateway planner ignores custom model names unless a custom provider is selected", async () => {
   const expectedPlan = {
     schemaVersion: 1,
     mode: "current_window",
@@ -965,7 +966,7 @@ test("AI gateway planner sends a custom model name to the built-in gateway", asy
   const fetchImpl = async (url, options) => {
     assert.equal(url, "https://cliproxy.sylvanyu.io/v1/chat/completions");
     const body = JSON.parse(options.body);
-    assert.equal(body.model, "claude-opus-4-7");
+    assert.equal(body.model, DEFAULT_SETTINGS.gatewayModel);
     assert.equal(options.headers.authorization, undefined);
     return {
       ok: true,
@@ -996,6 +997,7 @@ test("AI gateway planner rejects blank custom model names", async () => {
       {
         ...DEFAULT_SETTINGS,
         plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+        gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
         gatewayBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
         gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
         gatewayCustomModel: ""

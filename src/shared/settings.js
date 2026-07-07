@@ -191,10 +191,18 @@ export function normalizeSettings(input = {}) {
   merged.gatewayCustomModel = normalizeGatewayCustomModel(merged.gatewayCustomModel);
   merged.gatewayCustomAuxiliaryModel = normalizeGatewayCustomModel(merged.gatewayCustomAuxiliaryModel);
   merged.gatewayModel = normalizeGatewayModel(merged.gatewayModel);
-  if (shouldPreferManualGatewayModel(merged) || merged.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM) {
+  if (shouldPreferManualGatewayModel(merged)) {
     merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.CUSTOM;
     merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
     merged.gatewayAuxiliaryModel = "same_as_primary";
+  } else {
+    if (merged.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE) {
+      merged.gatewayModel = DEFAULT_SETTINGS.gatewayModel;
+    }
+    if (!merged.gatewayBaseUrl) {
+      merged.gatewayCustomModel = "";
+      merged.gatewayCustomAuxiliaryModel = "";
+    }
   }
   merged.gatewayApiKey = String(merged.gatewayApiKey || "").trim();
   if (!merged.gatewayBaseUrl) {
@@ -284,15 +292,11 @@ export function resolveGatewayModel(settings = DEFAULT_SETTINGS) {
 }
 
 function shouldPreferManualGatewayModel(settings = {}) {
-  return Boolean(settings.gatewayBaseUrl && settings.gatewayCustomModel);
+  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl && settings.gatewayCustomModel);
 }
 
 function usesManualGatewayModel(settings = {}) {
-  return (
-    settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM ||
-    settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE ||
-    shouldPreferManualGatewayModel(settings)
-  );
+  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl && settings.gatewayCustomModel);
 }
 
 export function isCustomGatewayProvider(settings = DEFAULT_SETTINGS) {
