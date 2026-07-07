@@ -233,11 +233,17 @@ Production gateway smoke:
 npm run smoke:gateway
 ```
 
-For the built-in gateway, the smoke script checks `/healthz`, `/readyz`,
-`/monitor/status`, and a real chat-completions request. It reads
-`MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then this machine's default local
-runtime token file. On another machine, point it at the copied monitor token:
+For the built-in gateway, the smoke script checks `/healthz`, `/readyz`, reads
+`/monitor/status` when a token is available, and sends a real
+chat-completions request. The monitor snapshot is reported for diagnosis, but a
+stale scheduled outage does not block the live smoke when the current readiness
+and chat checks pass. It reads `MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then
+this machine's default local runtime token file. On another machine, point it
+at the copied monitor token:
 
 ```bash
 MONITOR_TOKEN_FILE="/path/to/cliproxy-monitor-token" npm run smoke:gateway
 ```
+
+Use `GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway` for release-blocking
+checks that also require a fresh healthy monitor snapshot.

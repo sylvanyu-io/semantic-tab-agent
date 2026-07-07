@@ -503,9 +503,12 @@ npm run smoke:gateway
 
 This checks the product-facing Worker health path, origin readiness path,
 `/monitor/status` configuration when a monitor token is available, and a real
-chat-completions request. It fails if `config.email` is not `configured` or if
-the latest monitor snapshot reports `down`. The script reads `MONITOR_TOKEN`,
-then `MONITOR_TOKEN_FILE`, then this machine's default local runtime token file.
+chat-completions request. The monitor snapshot is diagnostic in this mode: if
+the scheduled monitor still shows a stale outage but current `/readyz` and the
+real chat request pass, the live smoke passes and reports the stale monitor
+status in its output. It still fails if monitor configuration is incomplete.
+The script reads `MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then this
+machine's default local runtime token file.
 
 For a release-blocking live check, require a fresh monitor snapshot:
 
@@ -515,6 +518,10 @@ GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway
 
 This additionally fails if `/monitor/status` is skipped, not `ok`, older than
 two hours, or missing healthy `readyz` / `llm-readyz` summary codes.
+
+This distinction matters after manual recovery: `/monitor/status` is written by
+the scheduled Worker Cron, so it can lag behind current service health until the
+next 30-minute run.
 
 Full pre-release live gate:
 
@@ -529,6 +536,60 @@ rely on the built-in AI service.
 If `cloudflared` is running but public checks still return 530, inspect
 Cloudflare tunnel logs. If logs show QUIC timeouts or no free edge addresses,
 keep `protocol: http2` and restart the tunnel.
+
+## Incident Log
+
+### 2026-07-07: Worker healthy, origin proxy down
+
+Symptom:
+
+- `https://cliproxy.sylvanyu.io/healthz` returned 200.
+- `https://cliproxy.sylvanyu.io/readyz` returned 503 with
+  `upstream_unavailable`.
+- `npm run smoke:gateway` initially failed because the latest Worker monitor
+  snapshot still reported the earlier outage.
+
+Local diagnosis:
+
+```bash
+/Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh status
+```
+
+Result:
+
+- local main service `127.0.0.1:8317`: healthy.
+- local API-only proxy `127.0.0.1:18317`: down.
+- Cloudflare Tunnel process: running.
+- raw origin `cliproxy-origin.sylvanyu.io`: 502.
+
+Root cause:
+
+- The local helper script started the API-only proxy through a hard-coded
+  `/opt/homebrew/bin/node` path.
+- This machine's active Node binary is `/Users/yuyufeng/.local/bin/node`.
+- The proxy process therefore failed immediately, even though the main service
+  and tunnel were alive.
+
+Fix:
+
+- Updated the local helper to resolve Node dynamically from `NODE_BIN`,
+  `command -v node`, Homebrew locations, and `$HOME/.local/bin/node`.
+- Restarted the CLIProxyAPI stack.
+- Verified:
+  - local `8317`: 200.
+  - local `18317`: 200.
+  - raw origin health/models: 200.
+  - Worker `/healthz`: 200.
+  - Worker `/readyz`: 200.
+  - helper smoke: 200, valid `gpt-5.4` chat response in about 6.6 seconds.
+
+Operational note:
+
+- `/monitor/status` is a scheduled KV snapshot. It can remain `down` until the
+  next 30-minute Cron run even after the live service is recovered.
+- Use ordinary `npm run smoke:gateway` for immediate recovery validation.
+- Use `GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway` only when a fresh
+  healthy monitor snapshot is required, such as before release.
 
 ## Migration Checklist
 
