@@ -470,6 +470,81 @@ test("AI gateway planner returns cleanup candidates in the same full-detail plan
   assert.equal(plan.cleanup.candidates[1].priority, "low");
 });
 
+test("AI gateway planner normalizes cleanup copy away from implementation field names", async () => {
+  const activityOverview = {
+    openTabSignals: [
+      {
+        tabId: 10,
+        windowId: 1,
+        index: 0,
+        ageMs: 18 * 24 * 60 * 60 * 1000,
+        activeCount: 1
+      }
+    ]
+  };
+  const fetchImpl = async () => ({
+    ok: true,
+    async json() {
+      return {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                groups: [
+                  {
+                    key: "docs",
+                    title: "Docs",
+                    color: "blue",
+                    confidence: 0.9,
+                    ids: [10, 11],
+                    reason: "Documentation tabs."
+                  }
+                ],
+                review: [],
+                cleanup: {
+                  summary: "activeCount cleanup summary.",
+                  candidates: [
+                    {
+                      id: 10,
+                      priority: "high",
+                      reason: "activeCount=0, pageId 10, sampleable false and ageDays 18.",
+                      evidence: ["activeCount=0", "ageDays 18", "tabId 10", "sampleable false"]
+                    }
+                  ]
+                }
+              })
+            }
+          }
+        ]
+      };
+    }
+  });
+
+  const plan = await createGatewayPlan(
+    inventory,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://localhost:8317/v1",
+      gatewayApiKey: "gateway-test-key",
+      languageMode: "en-US"
+    },
+    fetchImpl,
+    { activityOverview }
+  );
+
+  const visibleCleanupCopy = [
+    plan.cleanup.summary,
+    plan.cleanup.candidates[0].reason,
+    ...plan.cleanup.candidates[0].evidence
+  ].join(" ");
+  assert.doesNotMatch(visibleCleanupCopy, /\b(?:activeCount|ageDays|idleDays|sampleable|tabId|pageId|windowId|sequenceIndex)\b/i);
+  assert.match(visibleCleanupCopy, /rarely reopened/);
+  assert.match(visibleCleanupCopy, /kept about 18 days/);
+  assert.match(visibleCleanupCopy, /page summary unavailable/);
+  assert.equal(plan.cleanup.candidates[0].activeCount, 1);
+});
+
 test("AI gateway planner keeps a ranked cleanup checklist beyond the old 12-item cap", async () => {
   const plannerTabs = Array.from({ length: 33 }, (_, index) => ({
     tabId: 40_000 + index,

@@ -851,12 +851,10 @@ function normalizeCleanupAnalysis(parsed, inventory, activityOverview = {}, sett
       discarded: Boolean(activity.discarded || tab.discarded),
       pinned: Boolean(tab.pinned),
       priority: normalizeCleanupPriority(raw?.priority),
-      reason: String(
-        raw?.reason ||
-          raw?.rationale ||
-          localizedText(settings.languageMode, "AI 建议优先复核这个标签页。", "AI suggests reviewing this tab first.")
-      ).slice(0, 220),
-      evidence: normalizeCleanupEvidence(raw?.evidence || raw?.signals || raw?.clues),
+      reason:
+        productCleanupText(raw?.reason || raw?.rationale, settings, 220) ||
+        localizedText(settings.languageMode, "AI 建议优先复核这个标签页。", "AI suggests reviewing this tab first."),
+      evidence: normalizeCleanupEvidence(raw?.evidence || raw?.signals || raw?.clues, settings),
       summary: activity.summary || null
     });
     if (candidates.length >= limit) break;
@@ -865,14 +863,16 @@ function normalizeCleanupAnalysis(parsed, inventory, activityOverview = {}, sett
 
   return {
     schema: "tab_tidy_cleanup_v1",
-    summary: String(
+    summary: productCleanupText(
       source?.summary ||
         localizedText(
           settings.languageMode,
           `找到 ${candidates.length} 个可以先检查的标签页。`,
           `Found ${candidates.length} tabs worth reviewing first.`
-        )
-    ).slice(0, 220),
+        ),
+      settings,
+      220
+    ),
     candidates
   };
 }
@@ -953,9 +953,63 @@ function normalizeCleanupPriority(value) {
   return "medium";
 }
 
-function normalizeCleanupEvidence(value) {
+function normalizeCleanupEvidence(value, settings = {}) {
   const values = Array.isArray(value) ? value : value ? [value] : [];
-  return values.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 4).map((item) => item.slice(0, 120));
+  return values.map((item) => productCleanupText(item, settings, 120)).filter(Boolean).slice(0, 4);
+}
+
+function productCleanupText(value, settings = {}, maxLength = 120) {
+  let text = String(value || "").trim().replace(/\s+/g, " ");
+  if (!text) return "";
+
+  const languageMode = settings?.languageMode === "en-US" ? "en-US" : "zh-CN";
+  const copy = (zhCN, enUS) => localizedText(languageMode, zhCN, enUS);
+  text = text
+    .replace(/\bactiveCount\s*(?:为|=|is|:)?\s*(?:0|zero)\b/gi, copy("基本没再打开", "rarely reopened"))
+    .replace(/\bactiveCount\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("打开过 $1 次", "opened $1 times"))
+    .replace(/\bageDays\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("已放约 $1 天", "kept about $1 days"))
+    .replace(/\bidleDays\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("闲置约 $1 天", "idle about $1 days"))
+    .replace(/\bsampleable\s*(?:为|=|is|:)?\s*(?:false|no|否)\b/gi, copy("页面摘要不可用", "page summary unavailable"))
+    .replace(/\bsampleable\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("可读取页面摘要", "page summary available"))
+    .replace(/\bdiscarded\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("休眠标签页", "sleeping tab"))
+    .replace(/\bpinned\s*(?:为|=|is|:)?\s*(?:true|yes|是)\b/gi, copy("固定标签页", "pinned tab"))
+    .replace(/\b(?:tabId|pageId|windowId|sequenceIndex)\s*(?:为|=|is|:)?\s*["'#]?[A-Za-z0-9_.-]+["']?/gi, "")
+    .replace(/\b(?:tabId|pageId|windowId|sequenceIndex)\b/gi, "");
+
+  const labels =
+    languageMode === "en-US"
+      ? {
+          activeCount: "times opened",
+          ageDays: "days kept",
+          idleDays: "days idle",
+          currentGroupTitle: "current group",
+          hostname: "site",
+          sampleable: "page summary access",
+          discarded: "sleeping",
+          pinned: "pinned"
+        }
+      : {
+          activeCount: "打开次数",
+          ageDays: "保留天数",
+          idleDays: "闲置天数",
+          currentGroupTitle: "现有分组",
+          hostname: "网站",
+          sampleable: "页面摘要权限",
+          discarded: "休眠状态",
+          pinned: "固定状态"
+        };
+  for (const [raw, label] of Object.entries(labels)) {
+    text = text.replace(new RegExp(`\\b${raw}\\b`, "gi"), label);
+  }
+
+  return text
+    .replace(/\s+([,.;:!?，。；：！？])/g, "$1")
+    .replace(/([,，;；:：])\s*([,，;；:：])/g, "$1")
+    .replace(/^\s*[,，;；:：-]+\s*/, "")
+    .replace(/\s*[,，;；:：-]+\s*$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function daysFromMs(value) {
