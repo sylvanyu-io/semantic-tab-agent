@@ -131,6 +131,44 @@ test("release artifact audit fails built artifacts that contain legacy product n
   }
 });
 
+test("release artifact audit fails built artifacts that contain secret patterns", async () => {
+  const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-audit-secret-dist-"));
+  try {
+    const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
+    for (const channel of ["dev", "store"]) {
+      const build = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXTENSION_DIST_DIR: tempDist,
+          ...(channel === "store" ? { EXTENSION_CHANNEL: "store" } : {})
+        }
+      });
+      assert.equal(build.status, 0, build.stderr || build.stdout);
+    }
+
+    const extensionDir = join(tempDist, "extension");
+    const pollutedScript = join(extensionDir, "src/sidepanel/sidepanel.js");
+    const fakeGithubToken = ["ghp", "A".repeat(36)].join("_");
+    await writeFile(pollutedScript, `${await readFile(pollutedScript, "utf8")}\n// ${fakeGithubToken}\n`);
+    const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${manifest.version}.zip`), "."], {
+      cwd: extensionDir,
+      encoding: "utf8"
+    });
+    assert.equal(zip.status, 0, zip.stderr || zip.stdout);
+
+    const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_DIST_DIR: tempDist }
+    });
+    assert.notEqual(audit.status, 0, audit.stderr || audit.stdout);
+    assert.match(`${audit.stdout}\n${audit.stderr}`, /contains secret pattern "github_classic_token"/);
+    assert.doesNotMatch(`${audit.stdout}\n${audit.stderr}`, new RegExp(fakeGithubToken));
+  } finally {
+    await rm(tempDist, { recursive: true, force: true });
+  }
+});
+
 test("release artifact audit fails when zip contents drift from the unpacked extension", async () => {
   const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-audit-zip-dist-"));
   const zipWork = await mkdtemp(join(tmpdir(), "tab-recap-audit-zip-work-"));

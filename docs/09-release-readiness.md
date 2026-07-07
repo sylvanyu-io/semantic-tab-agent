@@ -127,7 +127,8 @@ Blocking gates:
   or AWS access key id appears in git history, screenshots, test output, or
   fixtures. The current and history scanners share the same secret-pattern list;
   history scanning only skips known old fake test fixtures that were already
-  removed from source.
+  removed from source. Release artifact audit also scans the final unpacked
+  extension files and fails without printing matched secret values.
 - Extension package contains no `node_modules`, test outputs, or local secrets.
 - Extension zip entries exactly match their unpacked build directories and only
   contain publishable extension assets: `manifest.json`, `src/`, and `icons/`.

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { SECRET_PATTERNS } from "./lib/secret-patterns.mjs";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
@@ -69,6 +70,7 @@ for (const artifact of artifacts) {
   await auditSidePanelHtml(artifact.channel, artifact.extensionDir, manifest);
   await auditSidePanelRuntimeGuards(artifact.channel, artifact.extensionDir, unpackedFiles);
   await auditProductCopy(artifact.channel, artifact.extensionDir, unpackedFiles);
+  await auditSecrets(artifact.channel, artifact.extensionDir, unpackedFiles);
 }
 
 if (failures) {
@@ -180,6 +182,20 @@ async function auditProductCopy(channel, extensionDir, files) {
     const content = await readFile(join(extensionDir, file), "utf8");
     for (const { label, pattern } of forbiddenProductCopy) {
       if (pattern.test(content)) fail(`${channel}: ${file} contains obsolete/internal product copy "${label}".`);
+    }
+  }
+}
+
+async function auditSecrets(channel, extensionDir, files) {
+  for (const file of files) {
+    if (!textExtensions.has(extensionOf(file))) continue;
+
+    const content = await readFile(join(extensionDir, file), "utf8");
+    for (const rule of SECRET_PATTERNS) {
+      rule.pattern.lastIndex = 0;
+      if (rule.pattern.test(content)) {
+        fail(`${channel}: ${file} contains secret pattern "${rule.name}".`);
+      }
     }
   }
 }
