@@ -40,7 +40,8 @@ export async function collectTabInventory(chromeApi, rawSettings, invocation = {
     settings.existingGroupMode === EXISTING_GROUP_MODES.PRESERVE
       ? tabs.filter((tab) => !lockedTabIds.has(tab.tabId))
       : tabs;
-  const activationFlow = await getTabActivationFlowContext(chromeApi, tabs).catch(() => ({
+  const activationFlowTabs = [...tabs, ...excludedTabs];
+  const activationFlow = await getTabActivationFlowContext(chromeApi, activationFlowTabs).catch(() => ({
     tabActivity: [],
     runs: [],
     transitions: [],

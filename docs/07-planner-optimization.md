@@ -195,6 +195,10 @@ when the entire row belongs to the scoped request. The runtime must not turn
 `[A, locked group tab, B]` into `[A, B]`, because preserved groups, excluded
 tabs, and out-of-bucket tabs are behavior barriers.
 
+Inventory collection therefore builds local activation flow from eligible plus
+excluded visible tabs. The planner payload still emits only planner-scope rows,
+but pinned or otherwise excluded tabs can break a run before the AI sees it.
+
 ## Next Implementation Steps
 
 1. Continue refactoring `gateway-planner.js` into explicit planner stages:

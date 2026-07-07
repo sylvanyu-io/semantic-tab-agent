@@ -108,12 +108,15 @@ Additional verification on 2026-07-08:
 
 - fixed activation-flow scoping so preserved existing groups remain behavior
   barriers instead of being removed before flow extraction;
+- fixed inventory collection so excluded but visible tabs, such as pinned tabs
+  that are not part of the organizer plan, still act as local activation-flow
+  barriers before the planner payload is scoped;
 - fixed refinement sub-inventories so `activationFlowEvidence` rows are kept
   only when the whole evidence row belongs to the subrequest; the runtime no
   longer turns a larger `[A, locked, B]` evidence row into a fake `[A, B]`
   relationship;
-- targeted behavior/planner tests: 53 pass;
-- full Node/Worker test suite: 266 pass;
+- targeted behavior/planner tests: 54 pass;
+- full Node/Worker test suite: 267 pass;
 - current secret scan passed.
 
 ## Transition Payload Check

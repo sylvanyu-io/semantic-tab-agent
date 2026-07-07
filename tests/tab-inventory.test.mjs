@@ -94,6 +94,46 @@ test("tab inventory keeps preserved group tabs as activation-flow barriers", asy
   );
 });
 
+test("tab inventory keeps excluded tabs as activation-flow barriers", async () => {
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const tabs = [
+    { id: 10, title: "Research brief", url: "https://docs.example/brief", active: true },
+    { id: 11, title: "Pinned mail", url: "https://mail.example/inbox", pinned: true },
+    { id: 12, title: "Render notes", url: "https://render.example/notes" }
+  ];
+  const chrome = createFakeChrome({
+    windows: [{ id: 1, focused: true, tabs }]
+  });
+
+  await rememberTabsLifecycle(
+    chrome,
+    tabs.map((tab, index) => ({ ...tab, windowId: 1, index })),
+    { now }
+  );
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[0], windowId: 1, index: 0, active: true }, { now: now + 1000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[1], windowId: 1, index: 1, active: true }, { now: now + 6000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[2], windowId: 1, index: 2, active: true }, { now: now + 10_000 });
+
+  const inventory = await collectTabInventory(chrome, DEFAULT_SETTINGS, { windowId: 1, strictWindowId: true });
+
+  assert.deepEqual(
+    inventory.plannerTabs.map((tab) => tab.tabId),
+    [10, 12]
+  );
+  assert.deepEqual(
+    inventory.excludedTabs.map((tab) => [tab.tabId, tab.exclusionReason]),
+    [[11, "Pinned tabs are excluded by policy."]]
+  );
+  assert.deepEqual(inventory.activationFlow.runs.map((run) => run.ids), [[10, 11, 12]]);
+  assert.deepEqual(
+    inventory.activationFlow.transitions.map((transition) => [transition.fromId, transition.toId]),
+    [
+      [10, 11],
+      [11, 12]
+    ]
+  );
+});
+
 test("tab inventory keeps activation flow shape when behavior storage is unavailable", async () => {
   const chrome = createFakeChrome({
     windows: [
