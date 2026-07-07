@@ -71,3 +71,23 @@ test("model product copy removes plural identity fields with list values", () =>
   assert.doesNotMatch(zh, /\[[^\]]+\]|(?:^|[^\d])(?:1|2|3|4|7|9)(?:[^\d]|$)/);
   assert.match(zh, /基本没再打开/);
 });
+
+test("model product copy replaces cache and lifecycle implementation wording", () => {
+  const zh = normalizeModelProductText(
+    "cache 显示这个页面已有记录，lifecycle 显示最近有活动。",
+    { languageMode: "zh-CN" },
+    200
+  );
+  const en = normalizeModelProductText(
+    "cacheKey shows an existing page record and lifecycle status shows recent activity.",
+    { languageMode: "en-US" },
+    200
+  );
+
+  assert.doesNotMatch(zh, /\b(?:cache|lifecycle)\b/i);
+  assert.match(zh, /本地记录/);
+  assert.match(zh, /活动记录/);
+  assert.doesNotMatch(en, /\b(?:cache|cacheKey|lifecycle|lifecycle status)\b/i);
+  assert.match(en, /local record/);
+  assert.match(en, /activity record/);
+});
