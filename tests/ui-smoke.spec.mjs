@@ -1735,6 +1735,73 @@ test("custom provider model errors use custom API copy", async ({ page }) => {
   await expect(page.locator("#statusText")).toHaveText("The custom API does not support this model. Check the model name or run Test connection first.");
 });
 
+test("error diagnostic details redact secrets and tokenized urls", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      gatewayProviderMode: "custom",
+      rememberProviderKeys: true,
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "deepseek-v4",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "sk-private-secret-token-1234567890",
+      customPrompt: ""
+    };
+    const activeJob = {
+      operationId: "job_sensitive_error",
+      status: "error",
+      phase: "error",
+      progress: 100,
+      message:
+        "AI gateway failed for https://private.example.com/secret/project?token=abc123 with sk-private-secret-token-1234567890",
+      error:
+        "AI gateway failed for https://private.example.com/secret/project?token=abc123 with sk-private-secret-token-1234567890",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString()
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: activeJob };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await expect(page.locator(".error-panel")).toBeVisible();
+  await expect(page.locator("#detailsText")).toContainText("[redacted-key]");
+  await expect(page.locator("#detailsText")).toContainText("https://private.example.com/...");
+  await expect(page.locator("#detailsText")).not.toContainText("sk-private-secret-token");
+  await expect(page.locator("#detailsText")).not.toContainText("token=abc123");
+  await expect(page.locator("#detailsText")).not.toContainText("/secret/project");
+});
+
 test("preview keeps review-like groups at the bottom", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {

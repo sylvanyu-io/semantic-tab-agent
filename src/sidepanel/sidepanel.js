@@ -2561,7 +2561,7 @@ function renderError(error) {
   nodes.previewRoot.className = "error-panel";
   nodes.previewRoot.replaceChildren(errorPanelContent(lastError));
   nodes.detailsRoot.hidden = false;
-  nodes.detailsText.textContent = JSON.stringify({ error: lastError.message, visibleError: visibleErrorMessage(lastError) }, null, 2);
+  nodes.detailsText.textContent = JSON.stringify({ error: lastError.message, visibleError: visibleErrorMessage(lastError) }, replacerForDetails, 2);
   syncActionState();
 }
 
@@ -2622,7 +2622,8 @@ async function clearAnalysisState() {
 }
 
 function replacerForDetails(key, value) {
-  if (key === "gatewayApiKey") return "";
+  if (isSensitiveDetailKey(key)) return "";
+  if (typeof value === "string") return redactDetailString(value);
   if (key === "inventory" && value?.tabs) {
     return {
       ...value,
@@ -2632,6 +2633,28 @@ function replacerForDetails(key, value) {
     };
   }
   return value;
+}
+
+function isSensitiveDetailKey(key) {
+  return /(?:api[_-]?key|authorization|bearer|token|secret|password|cookie)/i.test(String(key || ""));
+}
+
+function redactDetailString(value) {
+  const text = String(value || "");
+  return text
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
+    .replace(/https?:\/\/[^\s"')]+/gi, redactUrlForDetails);
+}
+
+function redactUrlForDetails(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
+  } catch {
+    return rawUrl;
+  }
 }
 
 function setBusy(isBusy, label = "", options = {}) {
