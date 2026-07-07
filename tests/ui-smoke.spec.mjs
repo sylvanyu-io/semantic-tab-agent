@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 680 });
   if (!testInfo.title.includes("auto-selects English UI")) {
     await page.addInitScript(() => {
-      localStorage.setItem("tabTidy.uiLanguage", "zh-CN");
+      localStorage.setItem("tabRecap.uiLanguage", "zh-CN");
     });
   }
 });
@@ -1308,7 +1308,7 @@ test("cleanup-only mode renders cleanup copy without fake grouping", async ({ pa
 
 test("auto-selects English UI and can manually switch back", async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.removeItem("tabTidy.uiLanguage");
+    localStorage.removeItem("tabRecap.uiLanguage");
     Object.defineProperty(navigator, "language", { get: () => "en-US" });
     Object.defineProperty(navigator, "languages", { get: () => ["en-US"] });
   });
@@ -1353,7 +1353,7 @@ test("auto-selects English UI and can manually switch back", async ({ page }) =>
 
 test("default result language follows the English UI when generating", async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.removeItem("tabTidy.uiLanguage");
+    localStorage.removeItem("tabRecap.uiLanguage");
     Object.defineProperty(navigator, "language", { get: () => "en-US" });
     Object.defineProperty(navigator, "languages", { get: () => ["en-US"] });
     const settings = {
@@ -1476,7 +1476,7 @@ test("side panel restores a completed background preview after reopening", async
       gatewayApiKey: "",
       customPrompt: ""
     };
-    const wasCleared = localStorage.getItem("tabTidyClearedPreview") === "1";
+    const wasCleared = localStorage.getItem("tabRecapClearedPreview") === "1";
     let activeJob = wasCleared
       ? null
       : {
@@ -1521,7 +1521,7 @@ test("side panel restores a completed background preview after reopening", async
             return { ok: true, result: { operationId: activeJob?.operationId || "new_job" } };
           }
           if (message.type === "tabs:clearAnalysisState") {
-            localStorage.setItem("tabTidyClearedPreview", "1");
+            localStorage.setItem("tabRecapClearedPreview", "1");
             activeJob = null;
             job = null;
             return { ok: true, result: { cleared: true } };
@@ -1864,7 +1864,7 @@ test("side panel shows optimistic progress while waiting for AI", async ({ page 
 
 test("English UI localizes known background progress messages", async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.removeItem("tabTidy.uiLanguage");
+    localStorage.removeItem("tabRecap.uiLanguage");
     Object.defineProperty(navigator, "language", { get: () => "en-US" });
     Object.defineProperty(navigator, "languages", { get: () => ["en-US"] });
     const settings = {

@@ -11,7 +11,7 @@ import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { filterRecapFollowUps } from "../shared/time-recap-safety.js";
 
-const UI_LANGUAGE_STORAGE_KEY = "tabTidy.uiLanguage";
+const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
 const UI_COPY = Object.freeze({
   "zh-CN": {

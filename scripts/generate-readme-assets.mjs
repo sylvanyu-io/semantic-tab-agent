@@ -401,7 +401,7 @@ async function renderScreenshotShowcase() {
 
 async function installChromeMock(page, mockOptions = {}) {
   await page.addInitScript((options) => {
-    localStorage.setItem("tabTidy.uiLanguage", "zh-CN");
+    localStorage.setItem("tabRecap.uiLanguage", "zh-CN");
     Object.defineProperty(navigator, "language", { get: () => "zh-CN" });
     Object.defineProperty(navigator, "languages", { get: () => ["zh-CN", "zh"] });
 

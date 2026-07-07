@@ -4,8 +4,8 @@ import { capturePageSummaryIfAllowed } from "../core/page-summary-cache.js";
 import { reconcileTabLifecycle, recordTabClosed, rememberTabLifecycle } from "../core/tab-lifecycle-log.js";
 
 const summaryCaptureTimers = new Map();
-const SUMMARY_SWEEP_ALARM = "tabTidy.summarySweep";
-const LIFECYCLE_RECONCILE_ALARM = "tabTidy.lifecycleReconcile";
+const SUMMARY_SWEEP_ALARM = "tabRecap.summarySweep";
+const LIFECYCLE_RECONCILE_ALARM = "tabRecap.lifecycleReconcile";
 const SUMMARY_SWEEP_PERIOD_MINUTES = 30;
 const LIFECYCLE_RECONCILE_PERIOD_MINUTES = 15;
 const SUMMARY_CAPTURE_DELAY_MS = 1200;

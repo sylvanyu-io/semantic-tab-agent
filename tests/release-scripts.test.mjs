@@ -42,6 +42,14 @@ test("dist cleanup removes stale release and stress artifacts", async () => {
   assert.match(cleanScript, /entry\.endsWith\("\.zip"\)/);
 });
 
+test("release artifact audit rejects obsolete product names and legacy extension keys", async () => {
+  const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
+
+  assert.match(auditScript, /Semantic Tab Agent/);
+  assert.match(auditScript, /Tab Tidy/);
+  assert.match(auditScript, /tabTidy\./);
+});
+
 test("release scripts honor custom extension dist directories", async () => {
   const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-release-dist-"));
   try {
