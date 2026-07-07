@@ -150,6 +150,7 @@ export function createFakeChrome(seed = {}) {
         let tabs = [...state.windows.values()].flatMap((window) => window.tabs);
         if (queryInfo.groupId !== undefined) tabs = tabs.filter((tab) => tab.groupId === queryInfo.groupId);
         if (queryInfo.windowId !== undefined) tabs = tabs.filter((tab) => tab.windowId === queryInfo.windowId);
+        if (queryInfo.active !== undefined) tabs = tabs.filter((tab) => tab.active === Boolean(queryInfo.active));
         return tabs.map((tab) => structuredClone(tab));
       }
     },

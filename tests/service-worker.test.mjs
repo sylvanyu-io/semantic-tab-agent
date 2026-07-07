@@ -78,6 +78,12 @@ test("service worker records focused-window returns for lifecycle evidence", asy
         tabs: [
           {
             id: 20,
+            title: "Window two background",
+            url: "https://example.com/two-background",
+            active: false
+          },
+          {
+            id: 21,
             title: "Window two reference",
             url: "https://example.com/two",
             active: true
@@ -95,11 +101,12 @@ test("service worker records focused-window returns for lifecycle evidence", asy
 
     listeners.windowFocusChanged(2);
     await waitForCondition(
-      () => lifecycleEvents(chrome).some((event) => event.type === "window_focused" && event.tabId === 20),
+      () => lifecycleEvents(chrome).some((event) => event.type === "window_focused" && event.tabId === 21),
       "Timed out waiting for focused-window lifecycle log."
     );
 
-    const session = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).find((item) => item.tabId === 20);
+    assert.equal(lifecycleEvents(chrome).some((event) => event.type === "window_focused" && event.tabId === 20), false);
+    const session = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).find((item) => item.tabId === 21);
     assert.equal(session.activeCount, 1);
     assert.equal(session.lastActivatedAt.length > 0, true);
   } finally {
