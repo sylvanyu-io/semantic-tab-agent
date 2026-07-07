@@ -2,7 +2,7 @@ import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shar
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
 import { normalizeModelProductText } from "../shared/model-copy.js";
-import { isCleanupLikeRecapFollowUp, stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
+import { stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
   applyThinkingIntensity,
@@ -366,7 +366,7 @@ export function buildLocalTimeRecap(input, rawSettings = {}) {
     summary: localSummary(themes, pages, input, settings),
     themes,
     timeline: localTimeline(pages, input, settings),
-    followUps: localFollowUps(pages, settings),
+    followUps: [],
     coverageNote: coverageNote(input, settings)
   };
 }
@@ -382,7 +382,7 @@ function buildTimeRecapSystemPrompt(settings) {
     "Use closed pages and still-open pages equally when their activity falls inside the range.",
     "Write user-facing product copy. Do not expose raw implementation terms such as activeCount, ageDays, idleDays, pageId, tabId, sampleable, sequenceIndex, cache, lifecycle, or hostname as labels.",
     "Do not recommend closing, deleting, cleaning, or reviewing tabs. This feature is recap-only; cleanup recommendations belong to the organizer flow.",
-    "Required JSON shape: {schema:\"tab_recap_time_recap_v1\",language:\"zh-CN\"|\"en-US\",headline:string,summary:string,themes:[{title:string,description:string,confidence:\"high\"|\"medium\"|\"low\",ids:number[],evidence:string[]}],timeline:[{label:string,description:string,ids:number[]}],followUps:[{title:string,reason:string,ids:number[]}],coverageNote:string}.",
+    "Required JSON shape: {schema:\"tab_recap_time_recap_v1\",language:\"zh-CN\"|\"en-US\",headline:string,summary:string,themes:[{title:string,description:string,confidence:\"high\"|\"medium\"|\"low\",ids:number[],evidence:string[]}],timeline:[{label:string,description:string,ids:number[]}],coverageNote:string}.",
     settings.languageMode === "en-US"
       ? "Write all user-visible text in English."
       : "Write all user-visible text in Simplified Chinese."
@@ -421,14 +421,6 @@ function normalizeTimeRecap(parsed, input, settings) {
     pageIds: normalizeIds(item).slice(0, 12)
   })).filter((item) => item.label || item.description);
 
-  const rawFollowUps = asArray(source.followUps || source.nextSteps);
-  const followUps = rawFollowUps.slice(0, 8).map((item) => ({
-    title: text(item?.title || "", 80),
-    reason: text(item?.reason || item?.description || "", 260),
-    pageIds: normalizeIds(item).slice(0, 12)
-  })).filter((item) => (item.title || item.reason) && !isCleanupLikeRecapFollowUp(item));
-  const hasExplicitFollowUps = hasOwn(source, "followUps") || hasOwn(source, "nextSteps");
-
   const local = buildLocalTimeRecap(input, settings);
   return {
     schema: "tab_recap_time_recap_v1",
@@ -437,7 +429,7 @@ function normalizeTimeRecap(parsed, input, settings) {
     summary: text(source.summary, 700) || text(local.summary, 700),
     themes: themes.length ? themes : local.themes,
     timeline: timeline.length ? timeline : local.timeline,
-    followUps: followUps.length || hasExplicitFollowUps ? followUps : local.followUps,
+    followUps: [],
     coverageNote: text(source.coverageNote, 300) || text(local.coverageNote, 300)
   };
 }
@@ -598,27 +590,12 @@ function timelineDescription(dayPages, settings) {
   );
 }
 
-function localFollowUps(pages, settings) {
-  return pages
-    .filter((page) => page.open)
-    .slice(0, 5)
-    .map((page) => ({
-      title: page.title,
-      reason: localizedText(settings.languageMode, "仍然打开，可以从这里继续。", "Still open; useful place to continue."),
-      pageIds: [page.id]
-    }));
-}
-
 function coverageNote(input, settings) {
   return localizedText(
     settings.languageMode,
     `已结合 ${input.coverage.includedPages} 个本机页面线索、${input.coverage.sampledEntries} 个页面摘要、打开/关闭状态和活动记录。`,
     `Used ${input.coverage.includedPages} local page signals, ${input.coverage.sampledEntries} page summaries, open/closed state, and activity records.`
   );
-}
-
-function hasOwn(value, key) {
-  return Object.prototype.hasOwnProperty.call(value || {}, key);
 }
 
 function normalizeEntryMap(cache) {

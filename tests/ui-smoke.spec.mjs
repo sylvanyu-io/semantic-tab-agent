@@ -383,7 +383,7 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await expect(page.locator(".recap-summary-card")).toContainText("这段时间主要在忙什么");
   await expect(page.locator(".recap-summary-card")).toContainText("主要精力");
   await expect(page.locator(".recap-summary-card")).toContainText("反复回到");
-  await expect(page.locator(".recap-summary-card")).toContainText("可以继续");
+  await expect(page.locator(".recap-summary-card")).not.toContainText("可以继续");
   await expect(page.locator(".recap-summary-card")).toContainText("最近主要在打磨扩展体验和验证 AI 整理策略。");
   await expect(page.locator(".recap-section-title").first()).toHaveText("时间线");
   await expect(page.locator(".recap-card").getByText("扩展产品打磨", { exact: true })).toBeVisible();
@@ -416,7 +416,7 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
 });
 
-test("time recap display filters cleanup-like follow-ups from runtime results", async ({ page }) => {
+test("time recap display ignores runtime follow-ups because recap is recap-only", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
       organizeMode: "current_window",
@@ -514,11 +514,11 @@ test("time recap display filters cleanup-like follow-ups from runtime results", 
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
 
-  await expect(page.locator(".recap-result")).toContainText("继续整理发布检查");
-  await expect(page.locator(".recap-result")).toContainText("把 release checklist 的剩余步骤顺着做完。");
   await expect(page.locator(".recap-result")).toContainText("主要围绕 TabRecap 发布检查和权限研究推进。");
   await expect(page.locator(".recap-result")).toContainText("权限、发布和回顾体验是主线。");
   await expect(page.locator(".recap-result")).toContainText("集中做发布验证。");
+  await expect(page.locator(".recap-result")).not.toContainText("继续整理发布检查");
+  await expect(page.locator(".recap-result")).not.toContainText("把 release checklist 的剩余步骤顺着做完。");
   await expect(page.locator(".recap-result")).not.toContainText("关闭旧标签页");
   await expect(page.locator(".recap-result")).not.toContainText("值得复查");
   await expect(page.locator(".recap-result")).not.toContainText("可以关闭");
@@ -529,7 +529,7 @@ test("time recap display filters cleanup-like follow-ups from runtime results", 
   await expect(page.locator("#recapDetailsText")).not.toContainText("Old cleanup note");
 });
 
-test("time recap summary does not invent a continuation row after filtering cleanup follow-ups", async ({ page }) => {
+test("time recap summary does not invent a continuation row from AI follow-ups", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
       organizeMode: "current_window",

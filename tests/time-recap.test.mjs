@@ -274,6 +274,7 @@ test("time recap gateway request parses fenced JSON and keeps page references va
   assert.equal(result.source, "ai");
   assert.equal(result.recap.headline, "Extension work dominated the week.");
   assert.deepEqual(result.recap.themes[0].pageIds, [1]);
+  assert.deepEqual(result.recap.followUps, []);
   assert.equal("reviewCandidates" in result.recap, false);
 });
 
@@ -354,13 +355,12 @@ test("time recap model copy is normalized away from implementation field names",
     result.recap.themes[0].description,
     ...result.recap.themes[0].evidence,
     result.recap.timeline[0].label,
-    result.recap.timeline[0].description,
-    result.recap.followUps[0].title,
-    result.recap.followUps[0].reason
+    result.recap.timeline[0].description
   ].join("\n");
 
   assert.notEqual(result.recap.headline, "");
   assert.equal("reviewCandidates" in result.recap, false);
+  assert.deepEqual(result.recap.followUps, []);
   assert.doesNotMatch(visibleText, /\b(?:activeCount|seenCount|ageDays|idleDays|sampleable|tabId|pageId|windowId|sequenceIndex|currentGroupTitle|hostname)\b/i);
   assert.doesNotMatch(visibleText, /、、/);
   assert.match(visibleText, /打开次数/);
@@ -368,7 +368,7 @@ test("time recap model copy is normalized away from implementation field names",
   assert.match(visibleText, /已放约 12 天/);
 });
 
-test("time recap drops cleanup-like follow-ups from AI output", async () => {
+test("time recap ignores AI follow-ups because recap is recap-only", async () => {
   const chrome = seededRecapChrome();
   const fetchImpl = async () =>
     new Response(
@@ -430,9 +430,9 @@ test("time recap drops cleanup-like follow-ups from AI output", async () => {
   const visibleFollowUps = JSON.stringify(result.recap.followUps);
 
   assert.equal(result.source, "ai");
-  assert.equal(result.recap.followUps.length, 1);
-  assert.equal(result.recap.followUps[0].title, "继续整理发布检查");
+  assert.equal(result.recap.followUps.length, 0);
   assert.equal(visibleFollowUps.includes("关闭旧标签页"), false);
+  assert.equal(visibleFollowUps.includes("继续整理发布检查"), false);
   assert.equal(visibleFollowUps.includes("值得复查"), false);
 });
 

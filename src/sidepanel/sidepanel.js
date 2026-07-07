@@ -9,7 +9,7 @@ import {
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
-import { filterRecapFollowUps, stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
+import { stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 
 const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
@@ -168,10 +168,8 @@ const UI_COPY = Object.freeze({
     "recap.memoHeading": "这段时间主要在忙什么",
     "recap.memoFocus": "主要精力",
     "recap.memoReturned": "反复回到",
-    "recap.memoContinue": "可以继续",
     "recap.themes": "主题线索",
     "recap.timeline": "时间线",
-    "recap.followUps": "下次继续",
     "recap.evidence": "证据详情",
     "recap.evidenceRange": "时间范围：{from} - {to}",
     "recap.evidenceCoverage": "已整理 {included} 个本机页面线索，其中 {summaries} 个带页面摘要。",
@@ -439,10 +437,8 @@ const UI_COPY = Object.freeze({
     "recap.memoHeading": "What this period was mainly about",
     "recap.memoFocus": "Main focus",
     "recap.memoReturned": "Kept returning to",
-    "recap.memoContinue": "Good next steps",
     "recap.themes": "Topic clues",
     "recap.timeline": "Timeline",
-    "recap.followUps": "Continue next",
     "recap.evidence": "Evidence details",
     "recap.evidenceRange": "Time range: {from} - {to}",
     "recap.evidenceCoverage": "Reviewed {included} local page signals, including {summaries} page summaries.",
@@ -1682,7 +1678,6 @@ function renderTimeRecap(result) {
   const children = [summary];
   children.push(...recapTimelineSection(recap.timeline, pagesById));
   children.push(...recapSection(t("recap.themes"), recap.themes, pagesById, { sectionClass: "recap-topic-grid" }));
-  children.push(...recapSection(t("recap.followUps"), recap.followUps, pagesById, { descriptionKey: "reason", sectionClass: "recap-followup-list" }));
 
   nodes.recapResult.replaceChildren(...children);
   nodes.recapDetailsRoot.hidden = false;
@@ -1702,11 +1697,6 @@ function safeRecapForDisplay(recap = {}) {
     label: text(item?.label),
     description: text(item?.description || item?.summary)
   })).filter((item) => item.label || item.description || asArray(item.pageIds || item.ids).length);
-  const followUps = filterRecapFollowUps(recap.followUps).map((item) => ({
-    ...item,
-    title: text(item?.title),
-    reason: text(item?.reason || item?.description)
-  })).filter((item) => item.title || item.reason || asArray(item.pageIds || item.ids).length);
   return {
     ...recap,
     headline: text(recap.headline),
@@ -1714,7 +1704,7 @@ function safeRecapForDisplay(recap = {}) {
     coverageNote: text(recap.coverageNote),
     themes,
     timeline,
-    followUps
+    followUps: []
   };
 }
 
@@ -1754,11 +1744,9 @@ function recapMemoCard(result = {}) {
 function recapNarrativeRows(recap = {}) {
   const focus = recap.summary || recap.coverageNote || recap.headline || "";
   const returned = recapThemesSentence(recap.themes) || recapTimelineSentence(recap.timeline) || recap.coverageNote || "";
-  const next = recapFollowUpSentence(recap.followUps);
   return [
     { tone: "focus", label: t("recap.memoFocus"), text: focus },
-    { tone: "returned", label: t("recap.memoReturned"), text: returned },
-    { tone: "continue", label: t("recap.memoContinue"), text: next }
+    { tone: "returned", label: t("recap.memoReturned"), text: returned }
   ].filter((row) => row.text);
 }
 
@@ -1777,12 +1765,6 @@ function recapTimelineSentence(timeline = []) {
   const item = asArray(timeline).find((entry) => entry?.description || entry?.label);
   if (!item) return "";
   return [item.label, item.description].filter(Boolean).join(uiLanguage === "en-US" ? ": " : "：");
-}
-
-function recapFollowUpSentence(followUps = []) {
-  const item = asArray(followUps).find((entry) => entry?.title || entry?.reason || entry?.description);
-  if (!item) return "";
-  return [item.title, item.reason || item.description].filter(Boolean).join(uiLanguage === "en-US" ? ": " : "：");
 }
 
 function recapMemoRow(row) {
@@ -1954,7 +1936,6 @@ function recapReferencedPages(recap = {}, input = {}, pagesById = new Map()) {
 
   collect(recap.timeline);
   collect(recap.themes);
-  collect(recap.followUps);
 
   const referenced = uniqueNumbers(ids)
     .map((id) => pagesById.get(id))
@@ -3666,13 +3647,6 @@ function mockTimeRecap() {
           label: uiLanguage === "en-US" ? "This week" : "这一周",
           description: uiLanguage === "en-US" ? "Most activity points to release cleanup and side panel iteration." : "活动主要集中在发布收口和侧边栏迭代。",
           pageIds: [1, 2, 3]
-        }
-      ],
-      followUps: [
-        {
-          title: uiLanguage === "en-US" ? "Verify the recap flow" : "验证回顾流程",
-          reason: uiLanguage === "en-US" ? "The new surface should be tested with cached summaries and local fallback." : "新入口需要覆盖缓存摘要和本地回退两条路径。",
-          pageIds: [1, 3]
         }
       ],
       coverageNote: uiLanguage === "en-US" ? "Used local activity plus available summaries." : "已结合本机活动和可用摘要。"
