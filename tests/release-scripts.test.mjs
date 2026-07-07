@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -18,6 +18,18 @@ test("public release scripts include real extension stress and live gateway gate
   assert.match(scripts["release:check:live"], /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
 
   assert.equal(scripts["stress:summary"], "node scripts/summarize-stress-artifact.mjs");
+});
+
+test("README image assets are referenced by the README or its generator", async () => {
+  const readme = await readFile("README.md", "utf8");
+  const generator = await readFile("scripts/generate-readme-assets.mjs", "utf8");
+  const referencedNames = `${readme}\n${generator}`;
+  const assets = await readdir("docs/assets");
+
+  for (const asset of assets) {
+    if (!/\.(?:png|svg)$/i.test(asset)) continue;
+    assert.match(referencedNames, new RegExp(escapeRegExp(asset)), `${asset} is not referenced`);
+  }
 });
 
 test("dist cleanup removes stale release and stress artifacts", async () => {
@@ -87,3 +99,7 @@ test("real extension stress forces the UI sampling branch onto the fake planner"
   assert.match(stressScript, /Stress harness failed to select the fake planner provider/);
   assert.match(stressScript, /assertEqual\(job\.settings\?\.plannerProvider, "fake", "UI sampling planner provider"\)/);
 });
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
