@@ -187,6 +187,17 @@ monitor email: configured
 planner validation: ok
 ```
 
+Helper smoke alignment, 2026-07-07 14:47 CST:
+
+```text
+manage-cliroxyapi-service.sh smoke now uses gpt-5.4 / low reasoning to match
+the product default model family instead of the older gpt-5.5 smoke payload.
+
+HTTP_STATUS: 200
+TOTAL_TIME: 7.42s
+model: gpt-5.4
+```
+
 If the stack is running from `screen` fallback, current traffic can be healthy,
 but macOS reboot recovery depends on the helper script or re-enabling the
 LaunchAgents. Use `manage-cliroxyapi-service.sh restart` before deeper
