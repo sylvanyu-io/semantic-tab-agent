@@ -144,7 +144,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await page.getByText("更多选项").click();
   await expect(page.locator("#analysisModeSelect")).toBeVisible();
   await expect(page.locator("#analysisModeSelect")).toHaveValue("both");
-  await expect(page.locator("#analysisModeHint")).toContainText("一次分析，同时给出分组方案和可复查的标签页");
+  await expect(page.locator("#analysisModeHint")).toContainText("一次分析，同时给出分组方案和建议先检查的标签页");
   await expect(page.getByText("会读取页面文字摘要")).toHaveCount(0);
   await expect(page.getByText("会在后台保存短摘要")).toHaveCount(0);
   await expect(page.getByText("整理偏好")).toHaveCount(0);
@@ -276,7 +276,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".cleanup-preview").getByText("旧方案对比笔记")).toBeVisible();
   await expect(page.locator(".cleanup-row-actions .icon-action").first()).toBeVisible();
   await expect(page.locator(".cleanup-row-actions").first().locator(".icon-action")).toHaveText(["定位", "关闭"]);
-  await expect(page.locator(".cleanup-row-actions").first().locator(".cleanup-priority")).toHaveText("优先复查");
+  await expect(page.locator(".cleanup-row-actions").first().locator(".cleanup-priority")).toHaveText("优先检查");
   await expect(page.locator(".cleanup-title-line").first().locator(".cleanup-priority")).toHaveCount(0);
   await expect(page.locator(".cleanup-row-actions").first()).toHaveCSS("float", "right");
   await expect(page.locator(".cleanup-row-actions").first()).toHaveCSS("position", "static");
@@ -289,7 +289,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".stat-chip")).toHaveCount(0);
   await page.locator("#uiLanguageToggle").click();
   await expect(page.locator("#previewCount")).toHaveText("3 groups");
-  await expect(page.locator(".cleanup-row-actions").first().locator(".cleanup-priority")).toHaveText("Review first");
+  await expect(page.locator(".cleanup-row-actions").first().locator(".cleanup-priority")).toHaveText("Check first");
   await expect(page.locator(".cleanup-row-actions").first().locator(".icon-action")).toHaveText(["Find", "Close"]);
   await expect(
     page
@@ -1291,7 +1291,7 @@ test("cleanup-only mode renders cleanup copy without fake grouping", async ({ pa
   await page.locator("#analysisModeSelect").selectOption("cleanup");
   await expect(page.locator("#analyzeGrouping")).not.toBeChecked();
   await expect(page.locator("#analyzeCleanup")).toBeChecked();
-  await expect(page.locator("#analysisModeHint")).toContainText("列出值得复查的标签页");
+  await expect(page.locator("#analysisModeHint")).toContainText("列出建议先检查的标签页");
 
   await page.getByRole("button", { name: "生成方案" }).click();
   await expect(page.locator(".preview .step-label")).toHaveText("清理预览");
