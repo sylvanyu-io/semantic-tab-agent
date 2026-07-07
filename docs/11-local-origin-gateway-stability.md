@@ -307,3 +307,27 @@ Current runtime note: launchd services were not loaded, but the three fallback `
 The live release gate now fails if `/monitor/status` is skipped, not `ok`, or
 older than two hours, so public release checks cannot pass on a stale green
 monitor snapshot.
+
+2026-07-08 00:25 Asia/Shanghai patch-release recheck:
+
+| Check | Result |
+| --- | --- |
+| Commit | `9ce1116` |
+| Release | `v0.2.6` |
+| `npm run release:check` | passed |
+| Node/Worker tests | 250/250 passed |
+| UI smoke tests | 36/36 passed |
+| Secret scan | clean |
+| Git history secret scan | clean |
+| Dev extension package | `dist/tab-recap-0.2.6.zip` |
+| Store extension package | `dist/tab-recap-0.2.6-store.zip` |
+| Release artifact audit | passed |
+| `/healthz` | 200 |
+| `/readyz` | 200, upstream ready |
+| `/monitor/status` | `ok`, `lastStatusAt=2026-07-07T16:00:36.000Z`, email configured |
+| Public chat smoke | 200, `gpt-5.4`, high reasoning, 57.5 s |
+
+This recheck followed a local origin recovery where the API-only proxy on
+`127.0.0.1:18317` was down because the helper script used a stale Node path.
+The helper now resolves Node dynamically; see
+`docs/12-default-ai-gateway-runbook.md` for the incident record.

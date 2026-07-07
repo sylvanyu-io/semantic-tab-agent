@@ -161,6 +161,23 @@ Latest full release gates:
   was not set for this remote stress run.
 - Remote stress artifact uploaded by CI: `sta-stress-mr9txdu8.json`.
 
+Latest patch release and live-gateway evidence:
+
+- `2026-07-08` Asia/Shanghai: released `v0.2.6` from `main` at `9ce1116`.
+- Local standard release gate passed for `0.2.6`: 250 Node/Worker tests, 36
+  Playwright UI smoke tests, current and history secret scans, dev plus store
+  builds, and release artifact audit.
+- Local packages produced by the gate:
+  `dist/tab-recap-0.2.6.zip` and `dist/tab-recap-0.2.6-store.zip`.
+- GitHub Actions push CI passed on the same commit:
+  `https://github.com/sylvanyu-io/tab-recap/actions/runs/28881789229`.
+- Built-in AI gateway smoke passed after the local origin recovery:
+  `/healthz=200`, `/readyz=200`, `/monitor/status=ok`, `lastStatusAt`
+  `2026-07-07T16:00:36.000Z`, and a real `gpt-5.4` high-reasoning chat request
+  returned a valid plan in 57.5 seconds.
+- `v0.2.6` release assets uploaded:
+  `tab-recap-0.2.6.zip` and `tab-recap-0.2.6-store.zip`.
+
 Recommended before public listing:
 
 - Keep the local-memory clearing control visible before recap history becomes a
