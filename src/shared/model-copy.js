@@ -1,7 +1,7 @@
 import { localizedText } from "./language.js";
 
 export const MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING =
-  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, or lifecycle in user-facing copy.";
+  "Do not expose raw implementation field names or variants such as activeCount, active_count, active-count, tabId, tabIds, tab_id, tab_ids, pageId, page_ids, windowId, sequenceIndex, sequence_index, ageDays, idleDays, sampleable, currentGroupTitle, hostname, cache, lifecycle, activationFlow, nearbyIds, returnToId, repeatedIds, dwellSeconds, or activeSeconds in user-facing copy.";
 
 const IDENTITY_FIELD_PATTERN =
   /\b(?:tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices))\s*(?:为|=|is|:)?\s*(?:\[[^\]]*\]|["'#]?[A-Za-z0-9_.-]+(?:\s*,\s*["'#]?[A-Za-z0-9_.-]+)*)?/gi;
@@ -21,6 +21,14 @@ const FIELD_NAME_PATTERNS = {
   hostname: /\b(?:hostname|host(?:Name|[_\s-]?name))\b/gi,
   cache: /\bcache(?:Key|[_\s-]?key)?\b/gi,
   lifecycle: /\blifecycle(?:Status|[_\s-]?status)?\b/gi,
+  activationFlow: /\bactivation(?:Flow|[_\s-]?flow)\b/gi,
+  nearbyIds: /\bnearby(?:Ids|[_\s-]?ids?)\b/gi,
+  returnToId: /\breturn(?:ToId|[_\s-]?to(?:[_\s-]?id)?)\b/gi,
+  repeatedIds: /\brepeated(?:Ids|[_\s-]?ids?)\b/gi,
+  dwellSeconds: /\bdwell(?:Seconds|[_\s-]?seconds?)\b/gi,
+  activeSeconds: /\b(?:(?:active|totalActive|maxActive|avgDwell)(?:Seconds|[_\s-]?seconds?)|total[_\s-]?active[_\s-]?seconds?|max[_\s-]?active[_\s-]?seconds?|avg[_\s-]?dwell[_\s-]?seconds?)\b/gi,
+  appearedInRuns: /\bappeared(?:InRuns|[_\s-]?in(?:[_\s-]?runs?)?)\b/gi,
+  transitionCount: /\btransition(?:Count|[_\s-]?count)\b/gi,
   sampleable: /\bsample(?:able|[_\s-]?able)\b/gi,
   discarded: /\bdiscarded\b/gi,
   pinned: /\bpinned\b/gi,
@@ -63,6 +71,14 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           hostname: "site",
           cache: "local record",
           lifecycle: "activity record",
+          activationFlow: "browsing flow",
+          nearbyIds: "nearby tabs",
+          returnToId: "returned to an earlier tab",
+          repeatedIds: "repeatedly revisited tabs",
+          dwellSeconds: "time spent",
+          activeSeconds: "active time",
+          appearedInRuns: "same browsing run",
+          transitionCount: "tab switches",
           sampleable: "page summary access",
           discarded: "sleeping",
           pinned: "pinned",
@@ -81,6 +97,14 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
           hostname: "网站",
           cache: "本地记录",
           lifecycle: "活动记录",
+          activationFlow: "浏览轨迹",
+          nearbyIds: "相邻标签页",
+          returnToId: "回到前面的标签页",
+          repeatedIds: "反复切回的标签页",
+          dwellSeconds: "停留时长",
+          activeSeconds: "活跃时长",
+          appearedInRuns: "同一段浏览过程",
+          transitionCount: "标签页切换次数",
           sampleable: "页面摘要权限",
           discarded: "休眠状态",
           pinned: "固定状态",

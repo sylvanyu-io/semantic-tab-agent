@@ -91,3 +91,29 @@ test("model product copy replaces cache and lifecycle implementation wording", (
   assert.match(en, /local record/);
   assert.match(en, /activity record/);
 });
+
+test("model product copy replaces activation flow implementation wording", () => {
+  const zh = normalizeModelProductText(
+    "activationFlow 里 nearbyIds 很近，returnToId 说明回到旧页，dwellSeconds 较长，transition_count 高。",
+    { languageMode: "zh-CN" },
+    260
+  );
+  const en = normalizeModelProductText(
+    "activation_flow shows nearby ids, repeatedIds, total active seconds, and appeared in runs.",
+    { languageMode: "en-US" },
+    260
+  );
+
+  assert.doesNotMatch(zh, /\b(?:activationFlow|nearbyIds|returnToId|dwellSeconds|transition_count)\b/i);
+  assert.match(zh, /浏览轨迹/);
+  assert.match(zh, /相邻标签页/);
+  assert.match(zh, /回到前面的标签页/);
+  assert.match(zh, /停留时长/);
+  assert.match(zh, /标签页切换次数/);
+  assert.doesNotMatch(en, /\b(?:activation_flow|nearby ids|repeatedIds|total active seconds|appeared in runs)\b/i);
+  assert.match(en, /browsing flow/);
+  assert.match(en, /nearby tabs/);
+  assert.match(en, /repeatedly revisited tabs/);
+  assert.match(en, /active time/);
+  assert.match(en, /same browsing run/);
+});
