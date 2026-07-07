@@ -761,7 +761,6 @@ h2 {
 
 .recap-card-list,
 .recap-topic-grid,
-.recap-followup-list,
 .recap-timeline-list {
   display: grid;
   gap: 8px;
@@ -771,14 +770,12 @@ h2 {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.recap-topic-grid .recap-card,
-.recap-followup-list .recap-card {
+.recap-topic-grid .recap-card {
   position: relative;
   padding-left: 15px;
 }
 
-.recap-topic-grid .recap-card::before,
-.recap-followup-list .recap-card::before {
+.recap-topic-grid .recap-card::before {
   content: "";
   position: absolute;
   top: 12px;
@@ -789,13 +786,11 @@ h2 {
   background: var(--primary);
 }
 
-.recap-topic-grid .recap-card:nth-child(2)::before,
-.recap-followup-list .recap-card:nth-child(2)::before {
+.recap-topic-grid .recap-card:nth-child(2)::before {
   background: var(--coral);
 }
 
-.recap-topic-grid .recap-card:nth-child(3)::before,
-.recap-followup-list .recap-card:nth-child(3)::before {
+.recap-topic-grid .recap-card:nth-child(3)::before {
   background: var(--group-c);
 }
 
