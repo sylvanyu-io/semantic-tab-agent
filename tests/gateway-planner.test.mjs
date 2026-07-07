@@ -311,6 +311,167 @@ test("planner payload segments scoped activation runs without dwell drift", () =
   ]);
 });
 
+test("planner payload does not bridge activation evidence across non-planner tabs", () => {
+  const payload = buildPlannerPayload(
+    {
+      ...inventory,
+      plannerTabs: [
+        { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Research brief", hostname: "docs.example" },
+        { tabId: 12, windowId: 1, index: 2, sequenceIndex: 2, title: "Render notes", hostname: "render.example" }
+      ],
+      pageSamples: [],
+      activationFlow: {
+        tabActivity: [
+          {
+            id: 10,
+            activeCount: 1,
+            totalActiveSeconds: 5,
+            maxActiveSeconds: 5,
+            lastActivatedAt: "2026-06-25T00:00:01.000Z",
+            appearedInRuns: 1,
+            returnedToCount: 0,
+            nearbyIds: [11, 12]
+          },
+          {
+            id: 12,
+            activeCount: 1,
+            totalActiveSeconds: 0,
+            maxActiveSeconds: 0,
+            lastActivatedAt: "2026-06-25T00:00:10.000Z",
+            appearedInRuns: 1,
+            returnedToCount: 0,
+            nearbyIds: [10, 11]
+          }
+        ],
+        runs: [
+          {
+            windowId: 1,
+            startedAt: "2026-06-25T00:00:01.000Z",
+            endedAt: "2026-06-25T00:00:10.000Z",
+            ids: [10, 11, 12],
+            dwellSeconds: [5, 4],
+            returnToId: null,
+            repeatedIds: []
+          }
+        ],
+        transitions: [
+          {
+            fromId: 10,
+            toId: 11,
+            count: 1,
+            avgDwellSeconds: 5,
+            maxDwellSeconds: 5,
+            lastAt: "2026-06-25T00:00:10.000Z",
+            clues: ["quick handoff"]
+          },
+          {
+            fromId: 11,
+            toId: 12,
+            count: 1,
+            avgDwellSeconds: 4,
+            maxDwellSeconds: 4,
+            lastAt: "2026-06-25T00:00:10.000Z",
+            clues: ["quick handoff"]
+          }
+        ],
+        evidence: [
+          {
+            ids: [10, 11, 12],
+            strength: 0.61,
+            count: 1,
+            lastAt: "2026-06-25T00:00:10.000Z",
+            clues: ["same activation run", "quick handoff"]
+          }
+        ]
+      }
+    },
+    DEFAULT_SETTINGS
+  );
+
+  assert.deepEqual(payload.activationFlowRuns, []);
+  assert.deepEqual(payload.activationFlowTransitions, []);
+  assert.deepEqual(payload.activationFlowEvidence, []);
+  assert.deepEqual(payload.activationFlowTabActivity[0].at(-1), []);
+  assert.deepEqual(payload.activationFlowTabActivity[1].at(-1), []);
+});
+
+test("planner payload keeps direct activation evidence within planner scope", () => {
+  const payload = buildPlannerPayload(
+    {
+      ...inventory,
+      plannerTabs: [
+        { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Research brief", hostname: "docs.example" },
+        { tabId: 12, windowId: 1, index: 2, sequenceIndex: 2, title: "Render notes", hostname: "render.example" }
+      ],
+      pageSamples: [],
+      activationFlow: {
+        tabActivity: [
+          {
+            id: 10,
+            activeCount: 1,
+            totalActiveSeconds: 5,
+            maxActiveSeconds: 5,
+            lastActivatedAt: "2026-06-25T00:00:01.000Z",
+            appearedInRuns: 1,
+            returnedToCount: 0,
+            nearbyIds: [12]
+          },
+          {
+            id: 12,
+            activeCount: 1,
+            totalActiveSeconds: 0,
+            maxActiveSeconds: 0,
+            lastActivatedAt: "2026-06-25T00:00:06.000Z",
+            appearedInRuns: 1,
+            returnedToCount: 0,
+            nearbyIds: [10]
+          }
+        ],
+        runs: [
+          {
+            windowId: 1,
+            startedAt: "2026-06-25T00:00:01.000Z",
+            endedAt: "2026-06-25T00:00:06.000Z",
+            ids: [10, 12],
+            dwellSeconds: [5],
+            returnToId: null,
+            repeatedIds: []
+          }
+        ],
+        transitions: [
+          {
+            fromId: 10,
+            toId: 12,
+            count: 1,
+            avgDwellSeconds: 5,
+            maxDwellSeconds: 5,
+            lastAt: "2026-06-25T00:00:06.000Z",
+            clues: ["quick handoff"]
+          }
+        ],
+        evidence: [
+          {
+            ids: [10, 12],
+            strength: 0.51,
+            count: 1,
+            lastAt: "2026-06-25T00:00:06.000Z",
+            clues: ["same activation run", "quick handoff"]
+          }
+        ]
+      }
+    },
+    DEFAULT_SETTINGS
+  );
+
+  assert.deepEqual(payload.activationFlowRuns, [
+    [1, "2026-06-25T00:00:01.000Z", "2026-06-25T00:00:06.000Z", [10, 12], [5], null, []]
+  ]);
+  assert.deepEqual(payload.activationFlowTransitions, [[10, 12, 1, 5, 5, "2026-06-25T00:00:06.000Z", ["quick handoff"]]]);
+  assert.deepEqual(payload.activationFlowEvidence, [[[10, 12], 0.51, 1, "2026-06-25T00:00:06.000Z", ["same activation run", "quick handoff"]]]);
+  assert.deepEqual(payload.activationFlowTabActivity[0].at(-1), [12]);
+  assert.deepEqual(payload.activationFlowTabActivity[1].at(-1), [10]);
+});
+
 test("planner payload keeps behavior evidence compact and sanitized", () => {
   const payload = buildPlannerPayload(
     {

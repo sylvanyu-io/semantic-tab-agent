@@ -659,6 +659,7 @@ export function buildPlannerPayload(inventory, settings, options = {}) {
 
 function buildActivationFlowActivityRows(inventory = {}) {
   const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
+  const nearbyIdsByTabId = buildActivationFlowNearbyIds(inventory.activationFlow?.runs || [], tabIds);
   return (inventory.activationFlow?.tabActivity || [])
     .filter((activity) => tabIds.has(activity.id))
     .map((activity) => [
@@ -669,8 +670,34 @@ function buildActivationFlowActivityRows(inventory = {}) {
       activity.lastActivatedAt || "",
       Math.max(0, Number(activity.appearedInRuns || 0)),
       Math.max(0, Number(activity.returnedToCount || 0)),
-      (activity.nearbyIds || []).filter((id) => tabIds.has(id)).slice(0, 6)
+      (activity.nearbyIds || []).filter((id) => (nearbyIdsByTabId.get(activity.id) || new Set()).has(id)).slice(0, 6)
     ]);
+}
+
+function buildActivationFlowNearbyIds(runs = [], tabIds = new Set()) {
+  const nearbyById = new Map([...tabIds].map((id) => [id, new Map()]));
+  for (const run of activationRunSegmentsForTabIds(runs, tabIds)) {
+    const ids = uniqueNumbers(run.ids || []);
+    for (const id of ids) {
+      const counts = nearbyById.get(id);
+      if (!counts) continue;
+      for (const nearbyId of ids) {
+        if (nearbyId === id) continue;
+        counts.set(nearbyId, (counts.get(nearbyId) || 0) + 1);
+      }
+    }
+  }
+  return new Map(
+    [...nearbyById.entries()].map(([id, counts]) => [
+      id,
+      new Set(
+        [...counts.entries()]
+          .sort((left, right) => right[1] - left[1] || left[0] - right[0])
+          .slice(0, 6)
+          .map(([nearbyId]) => nearbyId)
+      )
+    ])
+  );
 }
 
 function buildActivationFlowRunRows(inventory = {}) {
@@ -776,11 +803,7 @@ function buildActivationFlowTransitionRows(inventory = {}) {
 function buildActivationFlowEvidenceRows(inventory = {}) {
   const tabIds = new Set((inventory.plannerTabs || []).map((tab) => tab.tabId));
   return (inventory.activationFlow?.evidence || [])
-    .map((evidence) => ({
-      ...evidence,
-      ids: (evidence.ids || []).filter((id) => tabIds.has(id))
-    }))
-    .filter((evidence) => evidence.ids.length >= 2)
+    .filter((evidence) => Array.isArray(evidence.ids) && evidence.ids.length >= 2 && evidence.ids.every((id) => tabIds.has(id)))
     .map((evidence) => [
       evidence.ids.slice(0, 8),
       Math.max(0, Math.min(1, Number(evidence.strength || 0))),
