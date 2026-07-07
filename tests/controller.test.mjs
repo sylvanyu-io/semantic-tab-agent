@@ -102,6 +102,30 @@ test("cleanup candidate focus activates the tab without closing anything", async
   assert.equal((await chrome.tabs.query({})).length, 2);
 });
 
+test("cleanup candidate focus leaves only one active tab in the target window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          { id: 10, title: "Cleanup candidate", url: "https://example.com/old", active: false },
+          { id: 11, title: "Current tab", url: "https://example.com/current", active: true }
+        ]
+      }
+    ]
+  });
+
+  await handleRuntimeMessage(chrome, { type: "activity:focusTab", tabId: 10, windowId: 1 });
+
+  assert.equal((await chrome.tabs.get(10)).active, true);
+  assert.equal((await chrome.tabs.get(11)).active, false);
+  assert.deepEqual(
+    (await chrome.tabs.query({ active: true, lastFocusedWindow: true })).map((tab) => tab.id),
+    [10]
+  );
+});
+
 test("clearing local memory removes activity records without closing tabs or preferences", async () => {
   const chrome = createFakeChrome({
     windows: [
@@ -481,6 +505,29 @@ test("window-scoped jobs and undo state do not overwrite another window", async 
   await applyLastPlan(chrome, { windowId: 1 });
   assert.equal((await canUndoLastApply(chrome, 1)).canUndo, true);
   assert.equal((await canUndoLastApply(chrome, 2)).canUndo, false);
+});
+
+test("default scoped job lookup follows the last focused active tab window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: false,
+        tabs: [{ id: 10, title: "Window one docs", url: "https://example.com/one", active: true }]
+      },
+      {
+        id: 2,
+        focused: true,
+        tabs: [{ id: 20, title: "Window two docs", url: "https://example.com/two", active: true }]
+      }
+    ]
+  });
+  chrome.__state.storage[`${STORAGE_KEYS.lastJob}:1`] = { operationId: "window-one", status: "complete" };
+  chrome.__state.storage[`${STORAGE_KEYS.lastJob}:2`] = { operationId: "window-two", status: "complete" };
+
+  const job = await getLastJob(chrome);
+
+  assert.equal(job.operationId, "window-two");
 });
 
 test("current-window analysis ignores invalid invocation window ids", async () => {

@@ -84,6 +84,7 @@ export function createFakeChrome(seed = {}) {
           tabs: []
         });
         state.windows.set(windowId, newWindow);
+        if (newWindow.focused) setFocusedWindow(state, windowId);
         if (properties.tabId !== undefined) {
           moveTabs(state, [properties.tabId], windowId, -1);
         }
@@ -133,6 +134,10 @@ export function createFakeChrome(seed = {}) {
       async update(tabId, updateProperties) {
         const tab = findTab(state, tabId);
         if (!tab) throw new Error(`No tab with id ${tabId}`);
+        if (updateProperties.active) {
+          const ownerWindow = findWindowForTab(state, tabId);
+          for (const item of ownerWindow?.tabs || []) item.active = false;
+        }
         Object.assign(tab, updateProperties);
         return structuredClone(tab);
       },
@@ -148,6 +153,10 @@ export function createFakeChrome(seed = {}) {
       },
       async query(queryInfo = {}) {
         let tabs = [...state.windows.values()].flatMap((window) => window.tabs);
+        if (queryInfo.lastFocusedWindow) {
+          const focusedWindow = lastFocusedWindow(state);
+          tabs = tabs.filter((tab) => tab.windowId === focusedWindow?.id);
+        }
         if (queryInfo.groupId !== undefined) tabs = tabs.filter((tab) => tab.groupId === queryInfo.groupId);
         if (queryInfo.windowId !== undefined) tabs = tabs.filter((tab) => tab.windowId === queryInfo.windowId);
         if (queryInfo.active !== undefined) tabs = tabs.filter((tab) => tab.active === Boolean(queryInfo.active));
@@ -239,6 +248,14 @@ function findWindowForTab(state, tabId) {
     if (window.tabs.some((tab) => tab.id === tabId)) return window;
   }
   return null;
+}
+
+function lastFocusedWindow(state) {
+  return [...state.windows.values()].find((window) => window.focused) || [...state.windows.values()][0] || null;
+}
+
+function setFocusedWindow(state, windowId) {
+  for (const window of state.windows.values()) window.focused = window.id === windowId;
 }
 
 function moveTabs(state, tabIds, targetWindowId, index = -1) {
