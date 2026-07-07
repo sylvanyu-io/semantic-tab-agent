@@ -224,7 +224,7 @@ Validation rules:
 - Compatibility parser also accepts `pageIds`, `pages`, and `tabIds`, but normalized UI state uses page IDs.
 - Empty or duplicate themes are merged or removed locally.
 - Time recap only explains the activity pattern for the selected range; cleanup recommendations belong to the organizer flow and are not shown in recap results.
-- Recap output must not include manual close controls, cleanup checklists, or "worth reviewing" tab recommendations.
+- Recap output must not include manual close controls, cleanup checklists, or "worth reviewing" tab recommendations. Runtime normalization filters cleanup-like follow-ups even if a model returns them.
 - Output language must follow the selected UI language.
 - Do not allow the model to request permissions or browser mutations.
 

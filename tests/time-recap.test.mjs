@@ -367,6 +367,74 @@ test("time recap model copy is normalized away from implementation field names",
   assert.match(visibleText, /保留天数/);
 });
 
+test("time recap drops cleanup-like follow-ups from AI output", async () => {
+  const chrome = seededRecapChrome();
+  const fetchImpl = async () =>
+    new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                schema: "tab_tidy_time_recap_v1",
+                language: "zh-CN",
+                headline: "这一周主要在做扩展发布",
+                summary: "主要围绕 TabRecap 发布检查和权限研究推进。",
+                themes: [
+                  {
+                    title: "扩展发布",
+                    description: "发布检查和权限研究是主要线索。",
+                    confidence: "high",
+                    ids: [1],
+                    evidence: ["发布检查"]
+                  }
+                ],
+                timeline: [],
+                followUps: [
+                  {
+                    title: "关闭旧标签页",
+                    reason: "这个页面已经过期，值得复查是否保留。",
+                    ids: [2]
+                  },
+                  {
+                    title: "继续整理发布检查",
+                    reason: "把 release checklist 的剩余步骤顺着做完。",
+                    ids: [1]
+                  }
+                ],
+                coverageNote: "使用本地线索。"
+              })
+            }
+          }
+        ]
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      fetchImpl
+    }
+  );
+  const visibleFollowUps = JSON.stringify(result.recap.followUps);
+
+  assert.equal(result.source, "ai");
+  assert.equal(result.recap.followUps.length, 1);
+  assert.equal(result.recap.followUps[0].title, "继续整理发布检查");
+  assert.equal(visibleFollowUps.includes("关闭旧标签页"), false);
+  assert.equal(visibleFollowUps.includes("值得复查"), false);
+});
+
 test("time recap runtime message returns local fallback without mutating tabs", async () => {
   const chrome = seededRecapChrome();
 
