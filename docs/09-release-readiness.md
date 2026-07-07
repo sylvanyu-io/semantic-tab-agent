@@ -49,6 +49,9 @@ Implemented:
   diagnostics package summarizes settings shape, local-memory counts, job
   states, rollback counts, and coarse error classes without exporting custom
   keys, page URLs, page titles, page text, or custom prompts.
+- Side-panel diagnostic details and user-visible custom gateway errors redact
+  provider keys, bearer tokens, tokenized URLs, cookies, passwords, and common
+  secret query parameters before rendering.
 - The default AI gateway Worker exposes a token-protected `/monitor/status`
   endpoint for outage triage. It reads the last scheduled monitor snapshot from
   KV without spending model usage and only returns redacted readiness, LLM probe,
@@ -133,6 +136,9 @@ Blocking gates:
   rollback snapshots.
 - Diagnostics can be exported for support without exposing custom gateway keys,
   page URLs, page titles, page text, or custom prompts.
+- Raw provider error payloads may be kept for local debugging paths only after
+  UI-facing details are redacted; product copy must not expose keys, bearer
+  tokens, tokenized URLs, cookies, passwords, or secret query parameters.
 - Gateway monitor status can be queried with `MONITOR_TOKEN`, does not trigger
   a live model request, and does not expose upstream URLs, alert mailboxes, or
   provider secrets.
@@ -199,6 +205,7 @@ key. Runtime rules:
 - Never commit custom gateway keys.
 - Persist custom keys only when the user explicitly opts in.
 - Redact custom keys from job snapshots and logs.
+- Redact custom provider error details before they reach visible product copy.
 - Request gateway host permission only for the configured gateway origin.
 - Keep provider output as planning intent only; validator/executor remain local.
 
