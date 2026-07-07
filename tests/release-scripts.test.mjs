@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { SECRET_PATTERNS } from "../scripts/lib/secret-patterns.mjs";
 
 test("public release scripts include real extension stress and live gateway gates", async () => {
   const manifest = JSON.parse(await readFile("package.json", "utf8"));
@@ -52,6 +53,24 @@ test("release artifact audit rejects obsolete product names and legacy extension
   assert.match(auditScript, /TabTidy/);
   assert.match(auditScript, /tab_tidy_/);
   assert.match(auditScript, /tab-tidy/);
+});
+
+test("secret scanners cover model provider and alert email provider key shapes", () => {
+  const providerKey = ["sk", "provider-token-1234567890"].join("-");
+  const resendKey = ["re", "alert-token-1234567890"].join("_");
+
+  assert.equal(matchesSecretRule("provider_api_key", providerKey), true);
+  assert.equal(matchesSecretRule("resend_api_key", resendKey), true);
+});
+
+test("history secret scanner only allowlists known old fake provider fixtures", async () => {
+  const historyScanner = await readFile("scripts/scan-secrets-history.mjs", "utf8");
+
+  assert.match(historyScanner, /allowedHistoricalFixtureFragments/);
+  assert.match(historyScanner, /private-provider-token/);
+  assert.match(historyScanner, /private-secret-token/);
+  assert.doesNotMatch(historyScanner, /\b(?:sk-proj|sk-ant|sk-or|sk)-[A-Za-z0-9_-]{20,}\b/);
+  assert.doesNotMatch(historyScanner, /resend_api_key[^]*allowedHistoricalFixtureFragments/);
 });
 
 test("release artifact audit fails built artifacts that contain legacy product name variants", async () => {
@@ -200,4 +219,11 @@ test("real extension stress forces the UI sampling branch onto the fake planner"
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesSecretRule(ruleName, value) {
+  const rule = SECRET_PATTERNS.find((entry) => entry.name === ruleName);
+  assert.ok(rule, `Missing secret scanner rule ${ruleName}`);
+  rule.pattern.lastIndex = 0;
+  return rule.pattern.test(value);
 }

@@ -1,20 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { SECRET_PATTERNS } from "./lib/secret-patterns.mjs";
 
 const rootDir = new URL("..", import.meta.url).pathname;
 const ignoredDirs = new Set([".git", "node_modules", "dist", "test-results", "playwright-report", "coverage"]);
-const secretPatterns = [
-  {
-    name: "provider_api_key",
-    pattern: /\b(?:sk|sk-ant|sk-or|sk-proj)-[A-Za-z0-9_-]{20,}\b/g
-  }
-];
 
 const findings = [];
 for (const filePath of walk(rootDir)) {
   const text = await readFile(filePath, "utf8").catch(() => "");
-  for (const rule of secretPatterns) {
+  for (const rule of SECRET_PATTERNS) {
     for (const match of text.matchAll(rule.pattern)) {
       findings.push({
         file: relative(rootDir, filePath),
