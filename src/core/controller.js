@@ -465,18 +465,13 @@ async function closeCleanupCandidatesLocked(chromeApi, message = {}) {
 function removeTabsFromStoredJob(job, tabIds) {
   const removeIds = new Set(uniqueNumbers(tabIds));
   if (!removeIds.size) return job;
-  const settings = normalizeSettings(job.settings || {});
   const inventory = filterInventoryTabs(job.inventory, removeIds);
   const plan = filterPlanTabs(job.plan, removeIds);
-  const validation = validatePlan(plan, inventory, settings);
-  const preview = buildPreview(plan, inventory, validation, settings);
-  return {
+  return normalizeStoredJobForPreview({
     ...job,
     inventory,
-    plan,
-    validation,
-    preview
-  };
+    plan
+  });
 }
 
 function filterInventoryTabs(inventory = {}, removeIds) {
@@ -691,7 +686,14 @@ async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId
 }
 
 export async function getLastJob(chromeApi, windowId = null) {
-  return getScopedLocal(chromeApi, STORAGE_KEYS.lastJob, windowId);
+  const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
+  const job = await getScopedLocal(chromeApi, STORAGE_KEYS.lastJob, resolvedWindowId);
+  if (!job) return null;
+  const normalizedJob = normalizeStoredJobForPreview(job);
+  if (JSON.stringify(normalizedJob) !== JSON.stringify(sanitizeJobForStorage(job))) {
+    await setScopedLocal(chromeApi, STORAGE_KEYS.lastJob, resolvedWindowId, normalizedJob);
+  }
+  return normalizedJob;
 }
 
 export async function clearAnalysisState(chromeApi, windowId = null) {
@@ -1206,6 +1208,21 @@ function sanitizeJobForStorage(job) {
     settings: job.settings ? redactSettingsForJob(job.settings) : job.settings,
     inventory: sanitizeInventoryForStorage(job.inventory)
   };
+}
+
+function normalizeStoredJobForPreview(job) {
+  if (!job?.plan || !job?.inventory) return sanitizeJobForStorage(job);
+  const settings = normalizeSettings(job.settings || {});
+  const plan = normalizePlanForSettings(job.plan, job.inventory, settings);
+  const validation = validatePlan(plan, job.inventory, settings);
+  const preview = buildPreview(plan, job.inventory, validation, settings);
+  return sanitizeJobForStorage({
+    ...job,
+    settings: redactSettingsForJob(settings),
+    plan,
+    validation,
+    preview
+  });
 }
 
 function sanitizeInventoryForStorage(inventory) {

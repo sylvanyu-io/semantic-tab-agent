@@ -753,6 +753,113 @@ test("review group title follows the selected result language when applying", as
   assert.equal(groups[0].title, "Needs Review");
 });
 
+test("stored plans are normalized before preview is returned", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          { id: 10, title: "Project issue", url: "https://github.com/acme/repo/issues/1", active: true },
+          { id: 11, title: "Unclear page", url: "https://rare.example/page" }
+        ]
+      }
+    ]
+  });
+  const settings = {
+    ...FAKE_PLANNER_SETTINGS,
+    reviewGroupMode: "create_review_group",
+    languageMode: "zh-CN"
+  };
+  const staleJob = {
+    operationId: "job_stale_review_group",
+    createdAt: new Date().toISOString(),
+    settings,
+    invocation: { windowId: 1 },
+    inventory: {
+      scope: { kind: "current_window", currentWindowId: 1, invocationWindowId: 1, windowIds: [1] },
+      windows: [{ windowId: 1, type: "normal", focused: true, incognito: false, tabCount: 2 }],
+      tabs: [
+        { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Project issue", hostname: "github.com" },
+        { tabId: 11, windowId: 1, index: 1, sequenceIndex: 1, title: "Unclear page", hostname: "rare.example" }
+      ],
+      plannerTabs: [
+        { tabId: 10, windowId: 1, index: 0, sequenceIndex: 0, title: "Project issue", hostname: "github.com" },
+        { tabId: 11, windowId: 1, index: 1, sequenceIndex: 1, title: "Unclear page", hostname: "rare.example" }
+      ],
+      excludedTabs: [],
+      lockedGroups: [],
+      pageSamples: []
+    },
+    plan: {
+      schemaVersion: 1,
+      mode: settings.organizeMode,
+      scope: { kind: "current_window", windowIds: [1] },
+      targetWindow: { kind: "current_window", windowId: 1 },
+      eligibleTabs: [
+        { tabId: 10, windowId: 1 },
+        { tabId: 11, windowId: 1 }
+      ],
+      excludedTabs: [],
+      groups: [
+        {
+          groupKey: "needs-review",
+          title: "待确认",
+          color: "grey",
+          confidence: 0.9,
+          reason: "AI 暂时拿不准。",
+          tabRefs: [{ tabId: 11, windowId: 1 }]
+        },
+        {
+          groupKey: "project",
+          title: "当前项目",
+          color: "blue",
+          confidence: 0.9,
+          reason: "Issue and project work.",
+          tabRefs: [{ tabId: 10, windowId: 1 }]
+        }
+      ],
+      reviewTabs: [],
+      cleanup: null
+    },
+    validation: { ok: true, errors: [], warnings: [] },
+    preview: {
+      groups: [
+        { title: "当前项目", tabCount: 1 },
+        { title: "待确认", tabCount: 1 }
+      ],
+      groupedTabsCount: 2,
+      reviewTabsCount: 0
+    }
+  };
+  await chrome.storage.local.set({ [`${STORAGE_KEYS.lastJob}:1`]: staleJob });
+
+  const job = await getLastJob(chrome, 1);
+
+  assert.equal(job.validation.ok, true);
+  assert.deepEqual(
+    job.plan.groups.map((group) => group.title),
+    ["当前项目"]
+  );
+  assert.deepEqual(
+    job.plan.reviewTabs.map((ref) => ref.tabId),
+    [11]
+  );
+  assert.deepEqual(
+    job.preview.groups.map((group) => group.title),
+    ["当前项目"]
+  );
+  assert.equal(job.preview.reviewTabsCount, 1);
+  assert.equal(job.preview.reviewGroupTitle, "待分类");
+
+  const persisted = chrome.__state.storage[`${STORAGE_KEYS.lastJob}:1`];
+  assert.deepEqual(
+    persisted.plan.groups.map((group) => group.title),
+    ["当前项目"]
+  );
+  assert.equal(persisted.preview.reviewTabsCount, 1);
+});
+
 test("apply preserves planned order when excluded tabs sit between planned tabs", async () => {
   const chrome = createFakeChrome({
     windows: [
