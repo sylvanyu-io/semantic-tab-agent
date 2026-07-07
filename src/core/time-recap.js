@@ -420,11 +420,13 @@ function normalizeTimeRecap(parsed, input, settings) {
     pageIds: normalizeIds(item).slice(0, 12)
   })).filter((item) => item.label || item.description);
 
-  const followUps = asArray(source.followUps || source.nextSteps).slice(0, 8).map((item) => ({
+  const rawFollowUps = asArray(source.followUps || source.nextSteps);
+  const followUps = rawFollowUps.slice(0, 8).map((item) => ({
     title: text(item?.title || "", 80),
     reason: text(item?.reason || item?.description || "", 260),
     pageIds: normalizeIds(item).slice(0, 12)
   })).filter((item) => (item.title || item.reason) && !isCleanupLikeRecapFollowUp(item));
+  const hasExplicitFollowUps = hasOwn(source, "followUps") || hasOwn(source, "nextSteps");
 
   const local = buildLocalTimeRecap(input, settings);
   return {
@@ -434,7 +436,7 @@ function normalizeTimeRecap(parsed, input, settings) {
     summary: text(source.summary, 700) || text(local.summary, 700),
     themes: themes.length ? themes : local.themes,
     timeline: timeline.length ? timeline : local.timeline,
-    followUps: followUps.length ? followUps : local.followUps,
+    followUps: followUps.length || hasExplicitFollowUps ? followUps : local.followUps,
     coverageNote: text(source.coverageNote, 300) || text(local.coverageNote, 300)
   };
 }
@@ -612,6 +614,10 @@ function coverageNote(input, settings) {
     `已结合 ${input.coverage.includedPages} 个本机页面线索、${input.coverage.sampledEntries} 个页面摘要、打开/关闭状态和活动记录。`,
     `Used ${input.coverage.includedPages} local page signals, ${input.coverage.sampledEntries} page summaries, open/closed state, and activity records.`
   );
+}
+
+function hasOwn(value, key) {
+  return Object.prototype.hasOwnProperty.call(value || {}, key);
 }
 
 function normalizeEntryMap(cache) {

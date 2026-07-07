@@ -435,6 +435,59 @@ test("time recap drops cleanup-like follow-ups from AI output", async () => {
   assert.equal(visibleFollowUps.includes("值得复查"), false);
 });
 
+test("time recap does not replace filtered cleanup follow-ups with local continuation items", async () => {
+  const chrome = seededRecapChrome();
+  const fetchCalls = [];
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key"
+    },
+    {
+      now: Date.parse("2026-06-27T12:00:00.000Z"),
+      fetchImpl: async (url, options) => {
+        fetchCalls.push({ url, options });
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      schema: "tab_tidy_time_recap_v1",
+                      language: "zh-CN",
+                      headline: "主要在整理发布检查。",
+                      summary: "这段时间主要围绕发布检查推进。",
+                      themes: [],
+                      timeline: [],
+                      followUps: [
+                        {
+                          title: "关闭发布检查页",
+                          reason: "这个页面已经过期，值得复查是否保留。",
+                          ids: [1]
+                        }
+                      ],
+                      coverageNote: "Used local signals."
+                    })
+                  }
+                }
+              ]
+            })
+        };
+      }
+    }
+  );
+
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(result.source, "ai");
+  assert.deepEqual(result.recap.followUps, []);
+});
+
 test("time recap runtime message returns local fallback without mutating tabs", async () => {
   const chrome = seededRecapChrome();
 
