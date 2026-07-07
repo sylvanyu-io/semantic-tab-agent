@@ -12,6 +12,35 @@ import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 
 const UI_LANGUAGE_STORAGE_KEY = "tabTidy.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
+const RECAP_CLEANUP_FOLLOW_UP_PATTERN = new RegExp(
+  [
+    "关闭",
+    "清理",
+    "删除",
+    "移除",
+    "值得复查",
+    "优先复查",
+    "先检查",
+    "要不要保留",
+    "是否保留",
+    "不再需要",
+    "低价值",
+    "过期",
+    "重复",
+    "close",
+    "delete",
+    "remove",
+    "cleanup",
+    "clean up",
+    "worth reviewing",
+    "review whether",
+    "stale",
+    "duplicate",
+    "low-value",
+    "no longer needed"
+  ].join("|"),
+  "i"
+);
 const UI_COPY = Object.freeze({
   "zh-CN": {
     "document.title": "TabRecap",
@@ -1647,7 +1676,8 @@ function dateTimeInputIso(value, boundary = "start") {
 }
 
 function renderTimeRecap(result) {
-  const recap = result?.recap || {};
+  const recap = safeRecapForDisplay(result?.recap || {});
+  const displayResult = { ...(result || {}), recap };
   const input = result?.input || {};
   const pagesById = new Map((input.pages || []).map((page) => [page.id, page]));
   nodes.recapResult.className = "recap-result";
@@ -1659,7 +1689,7 @@ function renderTimeRecap(result) {
     return;
   }
 
-  const summary = recapMemoCard(result);
+  const summary = recapMemoCard(displayResult);
   if (result.source === "local_fallback" || result.error) {
     const fallback = document.createElement("p");
     fallback.className = "recap-fallback-note";
@@ -1674,7 +1704,19 @@ function renderTimeRecap(result) {
 
   nodes.recapResult.replaceChildren(...children);
   nodes.recapDetailsRoot.hidden = false;
-  nodes.recapDetailsText.textContent = recapEvidenceDetailsText(result, pagesById);
+  nodes.recapDetailsText.textContent = recapEvidenceDetailsText(displayResult, pagesById);
+}
+
+function safeRecapForDisplay(recap = {}) {
+  return {
+    ...recap,
+    followUps: asArray(recap.followUps).filter((item) => !isCleanupLikeRecapFollowUp(item))
+  };
+}
+
+function isCleanupLikeRecapFollowUp(item) {
+  const text = `${item?.title || ""} ${item?.reason || item?.description || ""}`.toLowerCase();
+  return RECAP_CLEANUP_FOLLOW_UP_PATTERN.test(text);
 }
 
 function resetTimeRecapToSetup() {

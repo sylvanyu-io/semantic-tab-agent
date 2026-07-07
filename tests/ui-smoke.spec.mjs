@@ -413,6 +413,98 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
 });
 
+test("time recap display filters cleanup-like follow-ups from runtime results", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      continuousPageSummaries: false,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "activity:generateTimeRecap") {
+            return {
+              ok: true,
+              result: {
+                source: "ai",
+                input: {
+                  pages: [
+                    { id: 1, tabId: 10, windowId: 1, title: "TabRecap release checklist", hostname: "github.com", open: true },
+                    { id: 2, tabId: 11, windowId: 1, title: "Old cleanup note", hostname: "docs.example", open: true }
+                  ],
+                  coverage: { includedPages: 2, sampledEntries: 0 }
+                },
+                recap: {
+                  schema: "tab_tidy_time_recap_v1",
+                  headline: "这段时间主要在做扩展发布",
+                  summary: "主要围绕 TabRecap 发布检查和权限研究推进。",
+                  themes: [],
+                  timeline: [],
+                  followUps: [
+                    {
+                      title: "关闭旧标签页",
+                      reason: "这个页面已经过期，值得复查是否保留。",
+                      pageIds: [2]
+                    },
+                    {
+                      title: "继续整理发布检查",
+                      reason: "把 release checklist 的剩余步骤顺着做完。",
+                      pageIds: [1]
+                    }
+                  ],
+                  coverageNote: "使用本地线索。"
+                }
+              }
+            };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+
+  await expect(page.locator(".recap-result")).toContainText("继续整理发布检查");
+  await expect(page.locator(".recap-result")).toContainText("把 release checklist 的剩余步骤顺着做完。");
+  await expect(page.locator(".recap-result")).not.toContainText("关闭旧标签页");
+  await expect(page.locator(".recap-result")).not.toContainText("值得复查");
+  await expect(page.locator("#recapDetailsText")).not.toContainText("Old cleanup note");
+});
+
 test("time recap exposes page summary permission controls and sends enabled summary settings", async ({ page }) => {
   await page.addInitScript(() => {
     let settings = {
