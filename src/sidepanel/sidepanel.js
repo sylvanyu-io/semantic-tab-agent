@@ -3009,8 +3009,8 @@ function setStatus(text, isError = false, options = {}) {
   if (mode === currentPanelMode) renderStatus();
 }
 
-function setErrorStatus(error, fallback = t("status.previousFailed"), options = {}) {
-  setStatus(String(error?.message || error || fallback), true, options);
+function setErrorStatus(error, fallback = "", options = {}) {
+  setStatus(fallback || friendlyErrorMessage(error) || t("status.previousFailed"), true, options);
 }
 
 function renderStatus() {
@@ -3511,7 +3511,13 @@ async function mockMessage(message) {
       baseUrl: message.settings?.gatewayBaseUrl || ""
     };
   }
-  if (message.type === "activity:focusTab") return { focused: true, tabId: message.tabId, windowId: message.windowId };
+  if (message.type === "activity:focusTab") {
+    if (globalThis.__mockFailNextFocusTab) {
+      globalThis.__mockFailNextFocusTab = false;
+      throw new Error(`No tab with id ${message.tabId}`);
+    }
+    return { focused: true, tabId: message.tabId, windowId: message.windowId };
+  }
   if (message.type === "activity:clearLocalMemory") return { cleared: true, removedCount: 3 };
   if (message.type === "activity:cancelTimeRecap") return { canceled: true, operationId: message.operationId || "mock_recap" };
   if (message.type === "activity:generateTimeRecap") {

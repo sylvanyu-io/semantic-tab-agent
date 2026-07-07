@@ -1292,6 +1292,12 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview").getByRole("button", { name: "全选清理建议" })).toHaveCount(0);
   await expect(page.locator(".cleanup-preview").getByRole("button", { name: "取消全选清理建议" })).toHaveCount(0);
   await expect(page.locator(".cleanup-preview").getByRole("button", { name: "关闭选中的标签页" })).toHaveCount(0);
+  await page.evaluate(() => {
+    window.__mockFailNextFocusTab = true;
+  });
+  await page.locator(".cleanup-preview").getByRole("button", { name: "定位这个标签页" }).first().click();
+  await expect(page.locator("#statusText")).toHaveText("标签页可能已经关闭，请刷新清理建议。");
+  await expect(page.locator("#statusText")).not.toContainText("No tab with id");
   const transientStatus = await page
     .locator(".cleanup-preview")
     .getByRole("button", { name: "关闭这个标签页" })
