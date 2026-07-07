@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DEFAULT_SETTINGS, GATEWAY_MODELS } from "../../src/shared/settings.js";
 import { createWorkerHandler, runScheduledMonitor } from "../src/index.js";
 
 const handle = createWorkerHandler({
@@ -308,6 +309,15 @@ test("worker validates models and token caps before forwarding", async () => {
   assert.equal((await tooManyTokens.json()).error.code, "max_tokens_exceeded");
 });
 
+test("worker default allowlist accepts every built-in extension model preset", async () => {
+  assert.equal(GATEWAY_MODELS.includes(DEFAULT_SETTINGS.gatewayModel), true);
+
+  for (const model of GATEWAY_MODELS) {
+    const response = await handle(chatRequest({ model }), envWithKv());
+    assert.equal(response.status, 200, `${model} should be accepted by the built-in gateway Worker defaults`);
+  }
+});
+
 test("worker derives planner models from the configured allowlist", async () => {
   const env = envWithKv({ ALLOWED_MODELS: "gpt-5.4-mini,gpt-5.3-codex-spark" });
   const planner = await handle(chatRequest({ model: "gpt-5.4-mini" }), env);
@@ -568,7 +578,7 @@ function legacyHeaderRequest(headers = {}, overrides = {}) {
 
 function validBody(overrides = {}) {
   return {
-    model: "gpt-5.5",
+    model: DEFAULT_SETTINGS.gatewayModel,
     messages: [
       {
         role: "system",
