@@ -362,9 +362,10 @@ test("time recap model copy is normalized away from implementation field names",
   assert.notEqual(result.recap.headline, "");
   assert.equal("reviewCandidates" in result.recap, false);
   assert.doesNotMatch(visibleText, /\b(?:activeCount|seenCount|ageDays|idleDays|sampleable|tabId|pageId|windowId|sequenceIndex|currentGroupTitle|hostname)\b/i);
+  assert.doesNotMatch(visibleText, /、、/);
   assert.match(visibleText, /打开次数/);
   assert.match(visibleText, /现有分组/);
-  assert.match(visibleText, /保留天数/);
+  assert.match(visibleText, /已放约 12 天/);
 });
 
 test("time recap drops cleanup-like follow-ups from AI output", async () => {

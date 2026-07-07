@@ -1,6 +1,7 @@
 import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shared/settings.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
+import { normalizeModelProductText } from "../shared/model-copy.js";
 import { isCleanupLikeRecapFollowUp } from "../shared/time-recap-safety.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
@@ -398,7 +399,7 @@ function buildTimeRecapUserPrompt(input) {
 function normalizeTimeRecap(parsed, input, settings) {
   const source = parsed?.recap || parsed?.result || parsed?.data || parsed || {};
   const pagesById = new Map((input.pages || []).map((page) => [page.id, page]));
-  const text = (value, maxLength) => productRecapText(value, settings, maxLength);
+  const text = (value, maxLength) => normalizeModelProductText(value, settings, maxLength);
   const normalizeIds = (value) => uniqueNumbers(value?.ids || value?.pageIds || value?.pages || value?.tabIds)
     .map((id) => (pagesById.has(id) ? id : pageIdForTabId(input, id)))
     .filter((id) => pagesById.has(id));
@@ -783,54 +784,6 @@ function normalizeConfidence(value) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
-}
-
-function productRecapText(value, settings, maxLength = 120) {
-  const languageMode = settings?.languageMode === "en-US" ? "en-US" : "zh-CN";
-  const labels =
-    languageMode === "en-US"
-      ? {
-          activeCount: "times opened",
-          seenCount: "times seen",
-          ageDays: "days kept",
-          idleDays: "days idle",
-          firstSeenAt: "first seen",
-          lastSeenAt: "last active",
-          lastActivatedAt: "last used",
-          closedAt: "closed",
-          currentGroupTitle: "current group",
-          hostname: "site"
-        }
-      : {
-          activeCount: "打开次数",
-          seenCount: "记录次数",
-          ageDays: "保留天数",
-          idleDays: "闲置天数",
-          firstSeenAt: "首次看到",
-          lastSeenAt: "最近活跃",
-          lastActivatedAt: "最近使用",
-          closedAt: "已关闭时间",
-          currentGroupTitle: "现有分组",
-          hostname: "网站"
-        };
-  let text = String(value || "").trim().replace(/\s+/g, " ");
-  if (!text) return "";
-
-  text = text
-    .replace(/\b(?:tabId|pageId|windowId|sequenceIndex)\s*(?:为|=|is|:)?\s*["'#]?[A-Za-z0-9_.-]+["']?/gi, "")
-    .replace(/\b(?:tabId|pageId|windowId|sequenceIndex)\b/gi, "")
-    .replace(/\b(?:sampleable|discarded|pinned|audible)\s*(?:为|=|is|:)?\s*(?:true|false|yes|no|是|否)\b/gi, "");
-
-  for (const [raw, label] of Object.entries(labels)) {
-    text = text.replace(new RegExp(`\\b${raw}\\b`, "gi"), label);
-  }
-
-  return text
-    .replace(/\s+([,.;:!?，。；：！？])/g, "$1")
-    .replace(/([,，;；:：])\s*([,，;；:：])/g, "$1")
-    .replace(/^[,，;；:：\s]+|[,，;；:：\s]+$/g, "")
-    .replace(/\s+/g, " ")
-    .slice(0, maxLength);
 }
 
 function stableHash(value) {
