@@ -385,36 +385,84 @@ export function gatewayErrorMessage(response, data, settings) {
   const rawProviderMessage = extractProviderErrorMessage(data);
   const providerMessage = sanitizeGatewayErrorDetail(rawProviderMessage);
   const requestId = extractGatewayRequestId(response, data);
-  const suffix = requestId ? `（请求号 ${requestId}）` : "";
+  const suffix = gatewayRequestIdSuffix(settings, requestId);
   const isCustomProvider = isCustomGatewayProvider(settings);
   if (response.status === 401 || response.status === 403) {
     return isCustomProvider
-      ? "AI 服务拒绝访问。请检查自定义网关地址和密钥。"
-      : `默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。${suffix}`;
+      ? localizedText(
+          settings.languageMode,
+          "AI 服务拒绝访问。请检查自定义网关地址和密钥。",
+          "The AI service rejected access. Check the custom gateway URL and key."
+        )
+      : `${localizedText(
+          settings.languageMode,
+          "默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。",
+          "The default AI service rejected access. Try again later, or switch to a custom gateway in More options."
+        )}${suffix}`;
   }
   if (isModelNotAllowedError(data, rawProviderMessage)) {
     return isCustomProvider
-      ? `自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。${suffix}`
-      : `默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。${suffix}`;
+      ? `${localizedText(
+          settings.languageMode,
+          "自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。",
+          "The custom API does not support this model. Check the model name or run Test connection first."
+        )}${suffix}`
+      : `${localizedText(
+          settings.languageMode,
+          "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
+          "The default AI service does not support this model right now. Try again later, or switch models in More options."
+        )}${suffix}`;
   }
   if (isLocalOriginOffline(response, rawProviderMessage, data)) {
     return isCustomProvider
-      ? `自定义 AI 网关的本地源站暂时离线。请检查本机服务、Cloudflare Tunnel 和上游模型。${suffix}`
-      : `默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。${suffix}`;
+      ? `${localizedText(
+          settings.languageMode,
+          "自定义 AI 网关的本地源站暂时离线。请检查本机服务、Cloudflare Tunnel 和上游模型。",
+          "The custom AI gateway local origin is offline. Check the local service, Cloudflare Tunnel, and upstream model."
+        )}${suffix}`
+      : `${localizedText(
+          settings.languageMode,
+          "默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。",
+          "The default AI service local origin is offline. Try again later; if it keeps failing, the local gateway or Cloudflare Tunnel needs recovery."
+        )}${suffix}`;
   }
   if (isGatewayInfrastructureError(response, rawProviderMessage)) {
     return isCustomProvider
-      ? `自定义 AI 网关暂时连不上。请检查网关地址、隧道或上游服务是否在线。${suffix}`
-      : `默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。${suffix}`;
+      ? `${localizedText(
+          settings.languageMode,
+          "自定义 AI 网关暂时连不上。请检查网关地址、隧道或上游服务是否在线。",
+          "The custom AI gateway is not reachable right now. Check the gateway URL, tunnel, or upstream service."
+        )}${suffix}`
+      : `${localizedText(
+          settings.languageMode,
+          "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+          "The default AI service is temporarily unavailable. Try again later, or temporarily switch to a custom AI gateway in More options."
+        )}${suffix}`;
   }
   if (isCustomProvider) {
     return providerMessage
-      ? `自定义 AI 网关这次没有完成请求（${response.status}）。${providerMessage}`
-      : `自定义 AI 网关这次没有完成请求（${response.status}）。请检查网关服务后重试。`;
+      ? `${localizedText(
+          settings.languageMode,
+          `自定义 AI 网关这次没有完成请求（${response.status}）。`,
+          `The custom AI gateway did not complete this request (${response.status}). `
+        )}${providerMessage}`
+      : localizedText(
+          settings.languageMode,
+          `自定义 AI 网关这次没有完成请求（${response.status}）。请检查网关服务后重试。`,
+          `The custom AI gateway did not complete this request (${response.status}). Check the gateway service and try again.`
+        );
   }
   return providerMessage
-    ? `默认 AI 服务这次没有成功完成。请稍后再试，或在更多选项里临时切换自定义 AI 网关。${suffix}`
-    : `默认 AI 服务这次没有成功响应。请稍后再试，或在更多选项里临时切换自定义 AI 网关。${suffix}`;
+    ? `${localizedText(
+        settings.languageMode,
+        "默认 AI 服务这次没有成功完成。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+        "The default AI service did not complete this request. Try again later, or temporarily switch to a custom AI gateway in More options."
+      )}${suffix}`
+    : `${localizedText(
+        settings.languageMode,
+        "默认 AI 服务这次没有成功响应。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+        "The default AI service did not respond successfully. Try again later, or temporarily switch to a custom AI gateway in More options."
+      )}${suffix}`;
 }
 
 function extractProviderErrorMessage(data) {
@@ -423,6 +471,11 @@ function extractProviderErrorMessage(data) {
   if (typeof data.error?.message === "string") return data.error.message.trim();
   if (typeof data.message === "string") return data.message.trim();
   return "";
+}
+
+function gatewayRequestIdSuffix(settings, requestId) {
+  if (!requestId) return "";
+  return localizedText(settings.languageMode, `（请求号 ${requestId}）`, ` (request id ${requestId})`);
 }
 
 function sanitizeGatewayErrorDetail(message) {

@@ -1943,6 +1943,46 @@ test("AI gateway planner maps built-in model allowlist failures to model copy", 
   );
 });
 
+test("AI gateway planner localizes request ids in English error copy", async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 400,
+    headers: {
+      get(name) {
+        return name.toLowerCase() === "x-tab-recap-request-id" ? "req_en_model" : "";
+      }
+    },
+    async text() {
+      return JSON.stringify({
+        error: {
+          code: "model_not_allowed",
+          message: "This model is not available on the default service."
+        }
+      });
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          languageMode: "en-US"
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /The default AI service does not support this model right now/);
+      assert.match(message, /\(request id req_en_model\)/);
+      assert.doesNotMatch(message, /请求号/);
+      return true;
+    }
+  );
+});
+
 test("AI gateway planner maps custom model allowlist failures to custom model copy", async () => {
   const fetchImpl = async () => ({
     ok: false,
