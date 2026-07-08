@@ -2321,8 +2321,8 @@ test("side panel translates stored gateway infrastructure errors", async ({ page
       status: "error",
       phase: "error",
       progress: 100,
-      message: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
-      error: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+      message: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 ui_gateway_123）",
+      error: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 ui_gateway_123）",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString()
@@ -2340,13 +2340,15 @@ test("side panel translates stored gateway infrastructure errors", async ({ page
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。");
+  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 ui_gateway_123）");
   await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不可用。");
+  await expect(page.locator(".error-panel")).toContainText("请求号 ui_gateway_123");
   await page.locator("#uiLanguageToggle").click();
   await expect(page.locator("#statusText")).toHaveText(
-    "The default AI service is temporarily unavailable. Try again later, or switch to a custom AI gateway in More options."
+    "The default AI service is temporarily unavailable. Try again later, or switch to a custom AI gateway in More options. (request id ui_gateway_123)"
   );
   await expect(page.locator(".error-panel")).toContainText("The default AI service is temporarily unavailable.");
+  await expect(page.locator(".error-panel")).toContainText("request id ui_gateway_123");
 });
 
 test("side panel translates stored English gateway infrastructure errors", async ({ page }) => {
