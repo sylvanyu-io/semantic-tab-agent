@@ -1276,13 +1276,13 @@ function allowedCorsOrigin(origin) {
 }
 
 function compactResponseText(text) {
-  return redactSensitiveText(text)
+  return redactSensitiveText(text, { redactUrls: true })
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 300);
 }
 
-function redactSensitiveText(value) {
+function redactSensitiveText(value, options = {}) {
   return String(value || "")
     .replace(/-----BEGIN (?:[A-Z0-9]+ )?PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z0-9]+ )?PRIVATE KEY-----/g, "[redacted-key]")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
@@ -1301,7 +1301,10 @@ function redactSensitiveText(value) {
       "$1$2[redacted]$3"
     )
     .replace(/([?&](?:access_token|refresh_token|api[_-]?key|private[_-]?key|session[_-]?key|token|secret|password|key)=)[^&\s"')<>]+/gi, "$1[redacted]")
-    .replace(/https?:\/\/[^\s"')<>]+/gi, redactSensitiveUrl);
+    .replace(/https?:\/\/[^\s"')<>]+/gi, (rawUrl) => {
+      if (options.redactUrls) return options.fallback || "[redacted-url]";
+      return redactSensitiveUrl(rawUrl);
+    });
 }
 
 function redactSensitiveUrl(rawUrl) {

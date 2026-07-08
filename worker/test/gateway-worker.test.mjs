@@ -139,6 +139,7 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   assert.equal(serialized.includes(bearer), false);
   assert.equal(serialized.includes("token=abc123"), false);
   assert.equal(serialized.includes("api_key=def456"), false);
+  assert.equal(serialized.includes("raw-llm.example"), false);
   assert.equal(serialized.includes("/private/health"), false);
   assert.equal(serialized.includes(pemBegin), false);
   assert.equal(serialized.includes(pemBody), false);
@@ -151,6 +152,7 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   }
   assert.equal(serialized.includes("[redacted-key]"), true);
   assert.equal(serialized.includes("Bearer [redacted]"), true);
+  assert.equal(serialized.includes("[redacted-url]"), true);
 });
 
 test("worker protects the monitor status snapshot with a monitor token", async () => {
@@ -383,6 +385,7 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
     assert.equal(serialized.includes(bearer), false);
     assert.equal(serialized.includes("token=abc123"), false);
     assert.equal(serialized.includes("secret=def456"), false);
+    assert.equal(serialized.includes("raw-llm.example"), false);
     assert.equal(serialized.includes(privateKey), false);
     assert.equal(serialized.includes(sessionKey), false);
     assert.equal(serialized.includes(pemBegin), false);
@@ -392,6 +395,7 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
   }
   assert.equal(serializedEmail.includes("[redacted-key]"), true);
   assert.equal(serializedEmail.includes("Bearer [redacted]"), true);
+  assert.equal(serializedEmail.includes("[redacted-url]"), true);
 });
 
 test("worker rejects chat requests without a rate limit store", async () => {
