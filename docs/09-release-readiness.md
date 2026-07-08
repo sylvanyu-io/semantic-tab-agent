@@ -218,6 +218,10 @@ Post-release hardening verification:
   progress/cancellation, organize and recap parallel generation, page-summary
   permission controls, custom provider model/ping errors, store content-access
   hiding, and stale generation cancellation behavior.
+- `npm run stress:extension`: passed with `240` synthetic tabs across `4`
+  windows after the stress harness was updated to follow scoped stored jobs. The
+  run validated all-window apply/undo, current-window apply/undo, risk-gated
+  sampling, UI-driven page sampling `240/240`, and active-tab sampling `4/4`.
 
 Recommended before public listing:
 
