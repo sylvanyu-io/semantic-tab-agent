@@ -49,6 +49,17 @@ the whole story: the Worker route for `cliproxy.sylvanyu.io/*` is what makes the
 extension traffic go through validation, quotas, secret injection, retries, and
 monitoring.
 
+The Worker is intentionally not a general LLM proxy. `/v1/chat/completions`
+accepts only the TabRecap request shapes used by:
+
+- organize/cleanup planning payloads with compact tab rows;
+- time recap payloads with compact page rows and coverage metadata;
+- short progress-copy requests from the extension.
+
+The Worker validates the model allowlist, `max_tokens`, JSON response mode,
+top-level fields, TabRecap schema names, compact field lists, and row shape
+before it injects the upstream key.
+
 ## Local Machine
 
 Local project:

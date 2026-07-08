@@ -1,4 +1,6 @@
 const PROGRESS_COPY_MODEL = "gpt-5.3-codex-spark";
+const PLANNER_INPUT_SCHEMAS = new Set(["tab_recap_compact_v1", "tab_recap_cleanup_ranking_v1"]);
+const TIME_RECAP_INPUT_SCHEMAS = new Set(["tab_recap_time_recap_input_v1", "tab_tidy_time_recap_input_v1"]);
 const DEFAULT_ALLOWED_MODELS = [
   "gpt-5.5",
   "gpt-5.4",
@@ -256,7 +258,10 @@ function validateChatRequest(body, env, limits) {
   if (body.response_format?.type !== "json_object") {
     return { ok: false, code: "json_required", message: "TabRecap gateway requests must use JSON object output." };
   }
-  if (Number(body.max_tokens || 0) > limits.maxTokens) {
+  if (!Number.isInteger(body.max_tokens) || body.max_tokens <= 0) {
+    return { ok: false, code: "max_tokens_required", message: "max_tokens must be a positive integer." };
+  }
+  if (body.max_tokens > limits.maxTokens) {
     return { ok: false, code: "max_tokens_exceeded", message: `max_tokens must be <= ${limits.maxTokens}.` };
   }
   if (body.model === PROGRESS_COPY_MODEL) {
@@ -324,10 +329,7 @@ function validatePlannerRequest(body, modelAllowlist, options = {}) {
   if (!/browser tabs|browser tab inventory|tab inventory|broad semantic buckets/i.test(userText)) {
     return { ok: false, code: "planner_shape_required", message: "Planner user payload is not recognized as a TabRecap request." };
   }
-  if (!/"tabFields"\s*:/.test(userText) || !/"tabs"\s*:/.test(userText)) {
-    return { ok: false, code: "planner_payload_required", message: "Planner payload must include compact TabRecap tab fields." };
-  }
-  return { ok: true };
+  return validatePlannerPayload(userText);
 }
 
 function isProgressCopyRequest(body) {
@@ -364,10 +366,7 @@ function validateTimeRecapRequest(body, modelAllowlist, options = {}) {
   if (!/tab_recap_time_recap_input_v1|tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText)) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload is not recognized as a TabRecap request." };
   }
-  if (!/"pageFields"\s*:/.test(userText) || !/"pages"\s*:/.test(userText) || !/"coverage"\s*:/.test(userText)) {
-    return { ok: false, code: "recap_payload_required", message: "Recap payload must include compact TabRecap page fields." };
-  }
-  return { ok: true };
+  return validateTimeRecapPayload(userText);
 }
 
 function validateProgressCopyRequest(body) {
@@ -404,6 +403,98 @@ function messageText(message) {
     return message.content.map((part) => (typeof part === "string" ? part : part?.text || "")).join("\n");
   }
   return "";
+}
+
+function validatePlannerPayload(userText) {
+  const payload = extractJsonPayload(userText);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { ok: false, code: "planner_payload_required", message: "Planner payload must include compact TabRecap JSON." };
+  }
+  if (!PLANNER_INPUT_SCHEMAS.has(payload.schema)) {
+    return { ok: false, code: "planner_payload_required", message: "Planner payload schema is not recognized." };
+  }
+  const fields = payload.tabFields;
+  const rows = payload.tabs;
+  if (!validFieldList(fields, ["id", "windowId", "index", "title"]) || !Array.isArray(rows)) {
+    return { ok: false, code: "planner_payload_required", message: "Planner payload must include compact TabRecap tab fields." };
+  }
+  if (!rows.every((row) => validDataRow(row, fields, ["id", "windowId", "index", "title"]))) {
+    return { ok: false, code: "planner_payload_required", message: "Planner payload contains invalid tab rows." };
+  }
+  return { ok: true };
+}
+
+function validateTimeRecapPayload(userText) {
+  const payload = extractJsonPayload(userText);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { ok: false, code: "recap_payload_required", message: "Recap payload must include compact TabRecap JSON." };
+  }
+  if (!TIME_RECAP_INPUT_SCHEMAS.has(payload.schema)) {
+    return { ok: false, code: "recap_payload_required", message: "Recap payload schema is not recognized." };
+  }
+  const fields = payload.pageFields;
+  const rows = payload.pages;
+  if (!payload.coverage || typeof payload.coverage !== "object" || Array.isArray(payload.coverage)) {
+    return { ok: false, code: "recap_payload_required", message: "Recap payload must include coverage metadata." };
+  }
+  if (!validFieldList(fields, ["id", "title", "firstSeenAt", "lastSeenAt"]) || !Array.isArray(rows)) {
+    return { ok: false, code: "recap_payload_required", message: "Recap payload must include compact TabRecap page fields." };
+  }
+  if (!rows.every((row) => validDataRow(row, fields, ["id", "title"]))) {
+    return { ok: false, code: "recap_payload_required", message: "Recap payload contains invalid page rows." };
+  }
+  return { ok: true };
+}
+
+function extractJsonPayload(text) {
+  const raw = String(text || "").trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function validFieldList(fields, requiredFields) {
+  return (
+    Array.isArray(fields) &&
+    fields.length > 0 &&
+    fields.length <= 80 &&
+    fields.every((field) => typeof field === "string" && field.length > 0 && field.length <= 80) &&
+    requiredFields.every((field) => fields.includes(field))
+  );
+}
+
+function validDataRow(row, fields, requiredFields) {
+  if (Array.isArray(row)) {
+    if (row.length > fields.length + 4) return false;
+    return requiredFields.every((field) => {
+      const value = row[fields.indexOf(field)];
+      return validRequiredFieldValue(field, value);
+    });
+  }
+  if (row && typeof row === "object") {
+    return requiredFields.every((field) => {
+      const value = row[field];
+      return validRequiredFieldValue(field, value);
+    });
+  }
+  return false;
+}
+
+function validRequiredFieldValue(field, value) {
+  if (value === undefined || value === null || String(value).trim() === "") return false;
+  if (["id", "tabId", "windowId", "index", "sequenceIndex"].includes(field)) {
+    return Number.isFinite(Number(value));
+  }
+  return true;
 }
 
 function forwardedChatBody(body) {

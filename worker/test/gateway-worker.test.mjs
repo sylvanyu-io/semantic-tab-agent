@@ -453,6 +453,14 @@ test("worker validates models and token caps before forwarding", async () => {
   const tooManyTokens = await handle(chatRequest({ max_tokens: 9000 }), env);
   assert.equal(tooManyTokens.status, 400);
   assert.equal((await tooManyTokens.json()).error.code, "max_tokens_exceeded");
+
+  const missingTokens = await handle(chatRequest({ max_tokens: undefined }), env);
+  assert.equal(missingTokens.status, 400);
+  assert.equal((await missingTokens.json()).error.code, "max_tokens_required");
+
+  const stringTokens = await handle(chatRequest({ max_tokens: "lots" }), env);
+  assert.equal(stringTokens.status, 400);
+  assert.equal((await stringTokens.json()).error.code, "max_tokens_required");
 });
 
 test("worker default allowlist accepts every built-in extension model preset", async () => {
@@ -518,6 +526,42 @@ test("worker only accepts TabRecap request shapes", async () => {
   assert.equal(genericChat.status, 400);
   assert.equal((await genericChat.json()).error.code, "planner_shape_required");
 
+  const magicWordsOnly = await handle(
+    chatRequest({
+      messages: [
+        { role: "system", content: "You are a JSON-only planner for a Chrome tab organization extension." },
+        {
+          role: "user",
+          content: [
+            "Please classify this browser tab inventory.",
+            JSON.stringify({ schema: "not_tab_recap", tabFields: ["id", "windowId", "index", "title"], tabs: [[1, 1, 0, "A"]] })
+          ].join("\n")
+        }
+      ]
+    }),
+    env
+  );
+  assert.equal(magicWordsOnly.status, 400);
+  assert.equal((await magicWordsOnly.json()).error.code, "planner_payload_required");
+
+  const invalidRows = await handle(
+    chatRequest({
+      messages: [
+        { role: "system", content: "You are a JSON-only planner for a Chrome tab organization extension." },
+        {
+          role: "user",
+          content: [
+            "Please classify this browser tab inventory.",
+            JSON.stringify({ schema: "tab_recap_compact_v1", tabFields: ["id", "windowId", "index", "title"], tabs: [["not-a-number", 1, 0, "A"]] })
+          ].join("\n")
+        }
+      ]
+    }),
+    env
+  );
+  assert.equal(invalidRows.status, 400);
+  assert.equal((await invalidRows.json()).error.code, "planner_payload_required");
+
   const markdownChat = await handle(chatRequest({ response_format: { type: "text" } }), env);
   assert.equal(markdownChat.status, 400);
   assert.equal((await markdownChat.json()).error.code, "json_required");
@@ -535,6 +579,9 @@ test("worker only accepts TabRecap request shapes", async () => {
   );
   assert.equal(malformedRecap.status, 400);
   assert.equal((await malformedRecap.json()).error.code, "recap_payload_required");
+
+  const cleanupRanking = await handle(chatRequest(validCleanupRankingBody()), env);
+  assert.equal(cleanupRanking.status, 200);
 });
 
 test("worker rejects oversized bodies using content length", async () => {
@@ -837,6 +884,35 @@ function validProgressCopyBody(overrides = {}) {
     response_format: { type: "json_object" },
     max_tokens: 1200,
     reasoning_effort: undefined,
+    ...overrides
+  };
+}
+
+function validCleanupRankingBody(overrides = {}) {
+  return {
+    model: "gpt-5.4",
+    messages: [
+      {
+        role: "system",
+        content: "You are a JSON-only cleanup ranking planner for a Chrome tab organization extension."
+      },
+      {
+        role: "user",
+        content: [
+          "Software engineering task input: rank browser tabs for manual cleanup review.",
+          "Return compact cleanup JSON only.",
+          JSON.stringify({
+            schema: "tab_recap_cleanup_ranking_v1",
+            tabFields: ["id", "windowId", "index", "sequenceIndex", "title"],
+            tabs: [[10, 1, 0, 0, "Chrome tabs API docs"]],
+            coverage: { includedTabs: 1 }
+          })
+        ].join("\n")
+      }
+    ],
+    response_format: { type: "json_object" },
+    max_tokens: 2048,
+    reasoning_effort: "low",
     ...overrides
   };
 }
