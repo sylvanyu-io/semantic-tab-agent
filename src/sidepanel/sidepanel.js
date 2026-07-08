@@ -2047,10 +2047,14 @@ function friendlyErrorMessage(error) {
     return t("status.gatewayUnsupportedModel");
   }
   if (/默认 AI 服务拒绝访问|default AI service denied access/i.test(message)) return t("status.gatewayAuthDenied");
-  if (/默认 AI 服务的本地源站暂时离线|default AI service origin is temporarily offline/i.test(message)) {
+  if (
+    /默认 AI 服务的本地源站暂时离线|default AI service origin is temporarily offline|local TabRecap AI origin is offline|Cloudflare could not reach the local TabRecap AI origin|Worker could not connect to the local TabRecap AI origin/i.test(
+      message
+    )
+  ) {
     return t("status.gatewayLocalOriginOffline");
   }
-  if (/默认 AI 服务暂时不可用|default AI service is temporarily unavailable/i.test(message)) {
+  if (/默认 AI 服务暂时不可用|default AI service is temporarily unavailable|TabRecap AI origin is temporarily unavailable/i.test(message)) {
     return t("status.gatewayUnavailable");
   }
   if (/默认 AI 服务这次没有成功|default AI service did not respond successfully/i.test(message)) return t("status.gatewayFailed");

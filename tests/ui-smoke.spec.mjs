@@ -2404,6 +2404,65 @@ test("side panel translates stored English gateway infrastructure errors", async
   await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不可用。");
 });
 
+test("side panel localizes raw worker gateway origin errors", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    const activeJob = {
+      operationId: "job_worker_origin_down",
+      status: "error",
+      phase: "error",
+      progress: 100,
+      message: "Cloudflare could not reach the local TabRecap AI origin.",
+      error: "Cloudflare could not reach the local TabRecap AI origin.",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString()
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: activeJob };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。");
+  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务的本地源站暂时离线。");
+});
+
 test("custom provider model errors use custom API copy", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
