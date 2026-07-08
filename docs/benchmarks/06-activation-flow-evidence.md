@@ -158,30 +158,43 @@ This proves the harness now captures and transmits behavior evidence in a
 bounded, non-answer-leaking form, and that the planner prompt treats it as
 secondary evidence.
 
-## Live A/B Result
+## Live A/B Results
 
-One live synthetic A/B run has been recorded. This is enough to justify keeping
-the feature path, but not enough to claim a universal quality win.
+Two live synthetic A/B pairs have been recorded. They are enough to justify
+keeping the feature path, but not enough to claim a universal quality win across
+all real browsing sessions.
 
-| Condition | Run | Time | Requests | Tokens | Groups | Coverage | Topic F1 | Family F1 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| activationFlow enabled | `planner-scale-2026-07-06T10-31-52-720Z-pid19058` | 86.7s | 2 | 20,808 | 7 | 100.0% | 100.0% | 65.5% |
-| activationFlow disabled | `planner-scale-2026-07-06T10-34-02-822Z-pid21095` | 103.0s | 2 | 16,034 | 5 | 81.3% | 84.9% | 54.4% |
+| Date | Condition | Run | Tabs | Time | Requests | Groups | Coverage | Topic F1 | Family F1 |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2026-07-06 | activationFlow enabled | `planner-scale-2026-07-06T10-31-52-720Z-pid19058` | 48 | 86.7s | 2 | 7 | 100.0% | 100.0% | 65.5% |
+| 2026-07-06 | activationFlow disabled | `planner-scale-2026-07-06T10-34-02-822Z-pid21095` | 48 | 103.0s | 2 | 5 | 81.3% | 84.9% | 54.4% |
+| 2026-07-09 | activationFlow enabled | `planner-scale-2026-07-08T23-18-08-085Z-pid32611` | 50 | 29.7s | 3 | 8 | 98.0% | 80.3% | 51.6% |
+| 2026-07-09 | activationFlow disabled | `planner-scale-2026-07-08T23-19-00-443Z-pid33587` | 50 | 47.6s | 3 | 8 | 94.0% | 66.7% | 48.8% |
 
-What changed in this run:
+What changed across these runs:
 
-- With activation flow, the model grouped all 48 tabs and matched synthetic
-  fine-grained topics perfectly.
-- Without activation flow, 9 tabs went to review and Topic F1 dropped to 84.9%.
+- With activation flow, Topic F1 stayed higher in both pairs: `100.0%` vs
+  `84.9%`, then `80.3%` vs `66.7%`.
+- Coverage stayed higher with activation flow: `100.0%` vs `81.3%`, then
+  `98.0%` vs `94.0%`.
+- The 2026-07-09 pair grouped two more tabs automatically with activation flow
+  (`49` grouped, `1` review) than without it (`47` grouped, `3` review).
 - The activation-flow payload used more prompt tokens, as expected.
-- The enabled run was still faster in this sample, but this should not be
-  treated as a latency guarantee because model variance is high.
+- Both enabled runs were faster in these samples, but this should not be treated
+  as a latency guarantee because model variance is high.
 
 Artifacts:
 
-- With activation flow: `docs/benchmarks/data/planner-scale-2026-07-06T10-31-52-720Z-pid19058.json`
-- Without activation flow: `docs/benchmarks/data/planner-scale-2026-07-06T10-34-02-822Z-pid21095.json`
-- Quality report: `docs/benchmarks/archive/generated/activation-flow-quality.md`
+- 2026-07-06 with activation flow:
+  `docs/benchmarks/data/planner-scale-2026-07-06T10-31-52-720Z-pid19058.json`
+- 2026-07-06 without activation flow:
+  `docs/benchmarks/data/planner-scale-2026-07-06T10-34-02-822Z-pid21095.json`
+- 2026-07-09 with activation flow:
+  `docs/benchmarks/data/planner-scale-2026-07-08T23-18-08-085Z-pid32611.json`
+- 2026-07-09 without activation flow:
+  `docs/benchmarks/data/planner-scale-2026-07-08T23-19-00-443Z-pid33587.json`
+- Combined quality report:
+  `docs/benchmarks/archive/generated/activation-flow-quality.md`
 - Individual reports:
   - `docs/benchmarks/archive/generated/activation-flow-with.md`
   - `docs/benchmarks/archive/generated/activation-flow-without.md`

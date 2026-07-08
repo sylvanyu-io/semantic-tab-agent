@@ -19,7 +19,7 @@
 - 33 tabs 页面摘要场景是低信号样本，最终路线为 `gpt-5.5 high` 分组 + `gpt-5.3-codex-spark low` 清理，耗时 `41.3s`，Topic F1 保持 `98.7%`。
 - 50/120/300 tabs 当前规模测试是 `task_bursts` metadata-only 场景，主要走 spark 路线，分别为 `11.8s / 36.6s / 69.9s`。
 - 当前优化结论是“同条件下更快且质量不降”，不是“tab 数越少一定越快”。
-- 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；2026-07-06 的单次 live A/B 中，带行为证据 Topic F1 为 `100.0%`，剥离后为 `84.9%`。这支持继续保留该路线，但仍需要更多真实浏览会话验证。
+- 行为证据已接入 planner payload，并新增 `behavior_flow` synthetic fixture；两轮 live A/B 均支持保留该路线。2026-07-06：带行为证据 Topic F1 `100.0%`，剥离后 `84.9%`；2026-07-09：带行为证据 `80.3%`，剥离后 `66.7%`。这仍不能替代真实浏览会话验证。
 - 行为证据现在包含 directed transition rows。48-tab 本地 fixture 中新增 36 条转移行，payload 增加 2,855 bytes / 20.4%，换来更直接的 `tab A -> tab B` 证据。
 - 真实会话验证应先导出 redacted evidence snapshot；只有 lifecycle events、activation runs 和 summary coverage 足够时，live A/B 结论才有解释价值。
 - 回顾模式新增真实扩展规模 benchmark：在独立 Chromium profile 加载 unpacked extension，构造 30/120/300 个本地标签页、写入 activity/summary/lifecycle 证据，再通过 `activity:generateTimeRecap` runtime message 验证本地回顾输入构建和 fallback 渲染。
@@ -34,3 +34,5 @@
 - 120/300 tabs final: `data/planner-scale-2026-06-26T20-52-24-931Z-pid36868.json`
 - Activation flow A/B with flow: `data/planner-scale-2026-07-06T10-31-52-720Z-pid19058.json`
 - Activation flow A/B without flow: `data/planner-scale-2026-07-06T10-34-02-822Z-pid21095.json`
+- Activation flow A/B 2026-07-09 with flow: `data/planner-scale-2026-07-08T23-18-08-085Z-pid32611.json`
+- Activation flow A/B 2026-07-09 without flow: `data/planner-scale-2026-07-08T23-19-00-443Z-pid33587.json`

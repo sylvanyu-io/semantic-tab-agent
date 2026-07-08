@@ -1,6 +1,6 @@
 # Planner Benchmark Quality Analysis
 
-Generated: 2026-07-06T10:36:14.133Z
+Generated: 2026-07-08T23:21:53.268Z
 
 This report evaluates synthetic benchmark outputs against explicit fixture truth when available, with URL-path inference kept only for older benchmark files. Review tabs are treated as singleton clusters, so coverage and recall drop when the planner leaves tabs for manual confirmation.
 
@@ -8,6 +8,8 @@ This report evaluates synthetic benchmark outputs against explicit fixture truth
 
 - `docs/benchmarks/data/planner-scale-2026-07-06T10-31-52-720Z-pid19058.json` (planner-scale-2026-07-06T10-31-52-720Z-pid19058, partial: false)
 - `docs/benchmarks/data/planner-scale-2026-07-06T10-34-02-822Z-pid21095.json` (planner-scale-2026-07-06T10-34-02-822Z-pid21095, partial: false)
+- `docs/benchmarks/data/planner-scale-2026-07-08T23-18-08-085Z-pid32611.json` (planner-scale-2026-07-08T23-18-08-085Z-pid32611, partial: false)
+- `docs/benchmarks/data/planner-scale-2026-07-08T23-19-00-443Z-pid33587.json` (planner-scale-2026-07-08T23-19-00-443Z-pid33587, partial: false)
 
 ## Metrics
 
@@ -15,6 +17,8 @@ This report evaluates synthetic benchmark outputs against explicit fixture truth
 | --- | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | planner-scale-2026-07-06T10-31-52-720Z-pid19058.json | behavior_flow | 48 | auto | ok | 86.7s | 2 | 7 | 100.0% | 100.0% | 100.0% | 100.0% | 65.5% |
 | planner-scale-2026-07-06T10-34-02-822Z-pid21095.json | behavior_flow | 48 | auto | ok | 103.0s | 2 | 5 | 81.3% | 91.0% | 79.6% | 84.9% | 54.4% |
+| planner-scale-2026-07-08T23-18-08-085Z-pid32611.json | behavior_flow | 50 | auto | ok | 29.7s | 3 | 8 | 98.0% | 85.3% | 75.8% | 80.3% | 51.6% |
+| planner-scale-2026-07-08T23-19-00-443Z-pid33587.json | behavior_flow | 50 | auto | ok | 47.6s | 3 | 8 | 94.0% | 70.3% | 63.4% | 66.7% | 48.8% |
 
 ## Reading The Numbers
 
