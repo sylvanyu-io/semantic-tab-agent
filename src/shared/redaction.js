@@ -17,7 +17,10 @@ export function redactSensitiveText(value, options = {}) {
       "$1$2[redacted]$3"
     )
     .replace(/([?&](?:access_token|refresh_token|api[_-]?key|private[_-]?key|session[_-]?key|token|secret|password|key)=)[^&\s"')<>]+/gi, "$1[redacted]")
-    .replace(/https?:\/\/[^\s"')<>]+/gi, (rawUrl) => redactSensitiveUrl(rawUrl, options));
+    .replace(/https?:\/\/[^\s"')<>]+/gi, (rawUrl) => {
+      if (options.redactUrls) return options.fallback || "[redacted-url]";
+      return redactSensitiveUrl(rawUrl, options);
+    });
 }
 
 export function redactSensitiveUrl(rawUrl, options = {}) {

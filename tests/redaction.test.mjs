@@ -97,3 +97,10 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
 test("redacts malformed URL matches to a stable placeholder", () => {
   assert.equal(redactSensitiveUrl("https://", { fallback: "[url]" }), "[url]");
 });
+
+test("can fully hide URLs for visible UI diagnostics", () => {
+  const output = redactSensitiveText("failed at https://private.example.com/path?token=abc123", { redactUrls: true });
+
+  assert.equal(output, "failed at [redacted-url]");
+  assert.equal(output.includes("private.example.com"), false);
+});

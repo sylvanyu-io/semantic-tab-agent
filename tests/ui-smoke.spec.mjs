@@ -2214,7 +2214,8 @@ test("error diagnostic details redact secrets and tokenized urls", async ({ page
   await expect(page.locator(".error-panel")).not.toContainText(["sk", "private-secret-token"].join("-"));
   await expect(page.locator(".error-panel")).not.toContainText(["token", "abc123"].join("="));
   await expect(page.locator("#detailsText")).toContainText("[redacted-key]");
-  await expect(page.locator("#detailsText")).toContainText("https://private.example.com/...");
+  await expect(page.locator("#detailsText")).toContainText("[redacted-url]");
+  await expect(page.locator("#detailsText")).not.toContainText("private.example.com");
   await expect(page.locator("#detailsText")).not.toContainText(["sk", "private-secret-token"].join("-"));
   await expect(page.locator("#detailsText")).not.toContainText(["token", "abc123"].join("="));
   await expect(page.locator("#detailsText")).not.toContainText(["", "secret", "project"].join("/"));

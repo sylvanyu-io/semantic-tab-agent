@@ -2726,7 +2726,7 @@ function isSensitiveDetailKey(key) {
 }
 
 function redactDetailString(value) {
-  return redactSensitiveText(value);
+  return redactSensitiveText(value, { redactUrls: true });
 }
 
 function setBusy(isBusy, label = "", options = {}) {
