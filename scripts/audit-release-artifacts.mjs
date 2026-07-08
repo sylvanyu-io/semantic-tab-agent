@@ -117,7 +117,11 @@ function auditManifest(channel, manifest, files) {
       storeHostPermissions,
       `${channel}: store build must only request the default AI gateway host permission.`
     );
-    assertNotIncludes(manifest.optional_permissions, "scripting", `${channel}: store build must not request optional scripting.`);
+    assertExactList(
+      manifest.optional_permissions,
+      [],
+      `${channel}: store build must not request optional extension permissions.`
+    );
     assertExactList(
       manifest.optional_host_permissions,
       storeOptionalHostPermissions,

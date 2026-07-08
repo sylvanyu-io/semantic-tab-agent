@@ -260,6 +260,7 @@ test("release artifact audit locks store host permissions to the default gateway
   assert.match(auditScript, /storeOptionalHostPermissions/);
   assert.match(auditScript, /https:\/\/cliproxy\.sylvanyu\.io\/\*/);
   assert.match(auditScript, /store build must only request the default AI gateway host permission/);
+  assert.match(auditScript, /store build must not request optional extension permissions/);
   assert.match(auditScript, /store build must keep optional host permissions for custom AI API origins/);
 });
 
@@ -292,6 +293,10 @@ test("release scripts honor custom extension dist directories", async () => {
       });
       assert.equal(build.status, 0, build.stderr || build.stdout);
     }
+
+    const storeManifest = JSON.parse(await readFile(join(tempDist, "extension-store", "manifest.json"), "utf8"));
+    assert.equal(Object.hasOwn(storeManifest, "optional_permissions"), false);
+    assert.deepEqual(storeManifest.optional_host_permissions, ["https://*/*", "http://*/*"]);
 
     const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
       encoding: "utf8",
