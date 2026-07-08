@@ -19,6 +19,7 @@ const RECAP_CLEANUP_RECOMMENDATION_PATTERN = new RegExp(
     "\\b(?:check|decide)\\s+later\\s+whether\\s+to\\s+keep\\b",
     "\\b(?:not\\s+worth|not\\s+useful\\s+enough)\\b[^.!?\\n]{0,24}\\b(?:keep|keeping)\\s+open\\b",
     "\\b(?:tab|tabs|page|pages)\\b[^.!?\\n]{0,36}\\b(?:safe\\s+to\\s+drop|get\\s+rid\\s+of|no\\s+need\\s+to\\s+keep|do\\s+not\\s+need\\s+to\\s+keep|don[’']?t\\s+need\\s+to\\s+keep|discard|drop)\\b",
+    "\\b(?:tab|tabs|page|pages)\\b[^.!?\\n]{0,24}\\b(?:can|could|should)\\s+be\\s+(?:closed|deleted|removed|cleaned\\s*up)\\b",
     "\\b(?:drop|discard|get\\s+rid\\s+of)\\b[^.!?\\n]{0,36}\\b(?:tab|tabs|page|pages)\\b",
     "\\b(?:no\\s+need|do\\s+not\\s+need|don[’']?t\\s+need)\\b[^.!?\\n]{0,18}\\bkeep\\b[^.!?\\n]{0,18}\\b(?:tab|tabs|page|pages)\\b",
     "\\b(?:low-value|stale)\\b[^.!?\\n]{0,24}\\b(?:tab|tabs|page|pages)\\b",
@@ -30,22 +31,30 @@ const RECAP_CLEANUP_RECOMMENDATION_PATTERN = new RegExp(
 export function stripCleanupRecommendationsFromRecapText(value) {
   const text = String(value || "").trim();
   if (!text) return "";
-  const pieces = splitRecapSentences(text);
+  const pieces = splitRecapSafetyPieces(text);
   const kept = pieces.filter((piece) => !RECAP_CLEANUP_RECOMMENDATION_PATTERN.test(piece));
   if (kept.length === pieces.length) return text;
-  return kept.join("").replace(/\s+/g, " ").trim();
+  return cleanupRecapSafetyText(kept.join(""));
 }
 
-function splitRecapSentences(text) {
+function splitRecapSafetyPieces(text) {
   const pieces = [];
   let current = "";
   for (const char of text) {
     current += char;
-    if ("。！？!?.；;\n".includes(char)) {
+    if ("。！？!?.；;，,\n".includes(char)) {
       if (current.trim()) pieces.push(current);
       current = "";
     }
   }
   if (current.trim()) pieces.push(current);
   return pieces.length ? pieces : [text];
+}
+
+function cleanupRecapSafetyText(text) {
+  return String(text || "")
+    .replace(/[，,；;]\s*([。！？!?.])/g, "$1")
+    .replace(/[，,；;]\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

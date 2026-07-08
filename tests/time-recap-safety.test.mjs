@@ -15,6 +15,19 @@ test("recap safety strips cleanup recommendations without removing evidence word
   assert.equal(cleaned.includes("Review whether"), false);
 });
 
+test("recap safety strips cleanup clauses without dropping useful recap clauses", () => {
+  const cleaned = stripCleanupRecommendationsFromRecapText(
+    "权限、发布和回顾体验是主线，YachtWorld 页面是否保留可以回头判断。Release QA stayed central, but these tabs can be closed later. 已结合打开次数和停留时长。"
+  );
+
+  assert.equal(cleaned.includes("权限、发布和回顾体验是主线"), true);
+  assert.equal(cleaned.includes("Release QA stayed central"), true);
+  assert.equal(cleaned.includes("打开次数和停留时长"), true);
+  assert.equal(cleaned.includes("YachtWorld"), false);
+  assert.equal(cleaned.includes("是否保留"), false);
+  assert.equal(cleaned.includes("can be closed"), false);
+});
+
 test("recap safety keeps stale and duplicate when they describe actual work", () => {
   const cleaned = stripCleanupRecommendationsFromRecapText(
     "上午排查重复请求导致的账单 bug。下午修了重复标签页创建问题。Afternoon work focused on stale cache behavior and duplicate webhook events. 这些都是主要工作线索。"
