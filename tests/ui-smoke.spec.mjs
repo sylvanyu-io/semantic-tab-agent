@@ -1186,6 +1186,133 @@ test("time recap and organize generation can run in parallel", async ({ page }) 
     .toEqual({ recap: 1, analyze: 1 });
 });
 
+test("stale organize runs do not overwrite a newer preview after cancel and restart", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    const completedPlan = {
+      operationId: "second_analysis",
+      settings,
+      validation: { ok: true, warnings: [] },
+      preview: {
+        requiresConfirmation: false,
+        groups: [{ title: "第二次整理结果", reason: "取消后重新生成的方案。", tabCount: 2 }],
+        totalTabsCount: 2,
+        eligibleTabsCount: 2,
+        groupedTabsCount: 2,
+        reviewTabsCount: 0,
+        reviewGroupWillBeCreated: false,
+        excludedTabsCount: 0,
+        lockedGroupsCount: 0,
+        analysisFeatures: { grouping: true, cleanup: true },
+        cleanup: { summary: "", candidateCount: 0, candidates: [] },
+        warnings: []
+      }
+    };
+    window.__messages = [];
+    window.__permissionChecks = 0;
+    window.__releaseFirstPermission = null;
+    window.__analysisStarted = false;
+    window.chrome = {
+      permissions: {
+        contains: async (request) => {
+          const isPlannerGatewayPermission = (request.origins || []).includes("https://cliproxy.sylvanyu.io/*");
+          if (isPlannerGatewayPermission) {
+            window.__permissionChecks += 1;
+          }
+          if (isPlannerGatewayPermission && window.__permissionChecks === 1) {
+            return await new Promise((resolve) => {
+              window.__releaseFirstPermission = () => resolve(true);
+            });
+          }
+          return true;
+        },
+        request: async () => true
+      },
+      windows: {
+        get: async (windowId) => ({ id: windowId, type: "normal" }),
+        getLastFocused: async () => ({ id: 7, type: "normal" })
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          window.__messages.push(message);
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "tabs:getActiveJob") {
+            if (!window.__analysisStarted) return { ok: true, result: null };
+            return {
+              ok: true,
+              result: {
+                operationId: "second_analysis",
+                status: "complete",
+                phase: "complete",
+                progress: 100,
+                message: "方案好了，可以先检查"
+              }
+            };
+          }
+          if (message.type === "tabs:getLastJob") return { ok: true, result: completedPlan };
+          if (message.type === "tabs:cancelActiveJob") {
+            window.__analysisStarted = false;
+            return { ok: true, result: { job: { status: "canceled" } } };
+          }
+          if (message.type === "tabs:startAnalyze") {
+            window.__analysisStarted = true;
+            return { ok: true, result: { operationId: "second_analysis" } };
+          }
+          if (message.type === "progressCopy:generate") return { ok: true, result: { messages: ["重新生成整理方案"] } };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
+  await page.getByRole("button", { name: "生成方案" }).click();
+  await expect(page.locator("#statusText")).toHaveText("正在检查权限");
+
+  await page.getByRole("button", { name: "停止生成" }).click();
+  await expect(page.locator("#statusText")).toHaveText("已停止生成。");
+  await page.getByRole("button", { name: "生成方案" }).click();
+  await expect(page.locator(".preview").getByText("第二次整理结果", { exact: true })).toBeVisible();
+
+  await page.evaluate(() => window.__releaseFirstPermission?.());
+  await expect(page.locator(".preview").getByText("第二次整理结果", { exact: true })).toBeVisible();
+  await expect(page.locator("#statusText")).toHaveText("方案好了，可以先检查");
+  await expect
+    .poll(() => page.evaluate(() => window.__messages.filter((message) => message.type === "tabs:startAnalyze").length))
+    .toBe(1);
+});
+
 test("time recap cancellation restores the shared bottom controls immediately", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {

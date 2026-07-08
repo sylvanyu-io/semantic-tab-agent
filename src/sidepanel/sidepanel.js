@@ -1408,12 +1408,17 @@ async function analyze() {
     const persistedSettings = readSettings();
     const settings = readEffectiveRunSettings();
     await ensureGatewayPermissionForRun(settings, 8, PANEL_MODE_ORGANIZE);
+    if (shouldIgnoreAnalyzeRun(runId)) return;
     await ensurePageSummaryPermissionsForRun(settings, 12, PANEL_MODE_ORGANIZE);
+    if (shouldIgnoreAnalyzeRun(runId)) return;
     updateLocalProgress(t("status.resolvingWindow"), 14, PANEL_MODE_ORGANIZE);
     const windowId = await resolveInvocationWindowId();
+    if (shouldIgnoreAnalyzeRun(runId)) return;
     updateLocalProgress(t("status.startingBackground"), 16, PANEL_MODE_ORGANIZE);
     const started = await sendMessage({ type: "tabs:startAnalyze", settings, persistedSettings, windowId });
+    if (shouldIgnoreAnalyzeRun(runId)) return;
     const job = await waitForAnalysisCompletion(started?.operationId);
+    if (shouldIgnoreAnalyzeRun(runId)) return;
     lastPreview = job.preview;
     lastCanApply = Boolean(job.validation?.ok);
     renderPreview(job);
@@ -1422,6 +1427,7 @@ async function analyze() {
     syncActionState();
     setStatusKey(job.validation?.ok ? "status.planReady" : "status.planNeedsReview", {}, !job.validation?.ok, { mode: PANEL_MODE_ORGANIZE });
   } catch (error) {
+    if (shouldIgnoreAnalyzeRun(runId)) return;
     if (canceledAnalyzeRuns.has(runId) || isCancellationError(error)) {
       setStatusKey("status.canceled", {}, false, { mode: PANEL_MODE_ORGANIZE });
     } else {
@@ -1430,11 +1436,17 @@ async function analyze() {
       renderError(error);
     }
   } finally {
-    stopProgressPolling();
-    setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
-    if (activeAnalyzeRunId === runId) activeAnalyzeRunId = null;
+    if (activeAnalyzeRunId === runId) {
+      stopProgressPolling();
+      setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
+      activeAnalyzeRunId = null;
+    }
     canceledAnalyzeRuns.delete(runId);
   }
+}
+
+function shouldIgnoreAnalyzeRun(runId) {
+  return activeAnalyzeRunId !== runId || canceledAnalyzeRuns.has(runId);
 }
 
 async function generateTimeRecap() {
