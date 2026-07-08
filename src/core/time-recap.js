@@ -264,6 +264,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       "id",
       "tabId",
       "windowId",
+      "index",
       "open",
       "title",
       "hostname",
@@ -278,6 +279,8 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       "currentGroupTitle",
       "discarded",
       "pinned",
+      "audible",
+      "sampleable",
       "summary"
     ],
     pages

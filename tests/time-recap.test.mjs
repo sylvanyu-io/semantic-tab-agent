@@ -26,6 +26,7 @@ test("time recap input combines local activity, summaries, lifecycle, and curren
   assert.equal(serialized.includes("Readable forum discussion about browser extensions"), true);
   assert.equal(input.coverage.currentOpenTabs, 3);
   assert.equal(input.coverage.includedPages >= 3, true);
+  assert.deepEqual([...input.pageFields].sort(), Object.keys(input.pages[0]).sort());
 });
 
 test("time recap input accumulates repeated page sessions and estimated dwell time", async () => {
