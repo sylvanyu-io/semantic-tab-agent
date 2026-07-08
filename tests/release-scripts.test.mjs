@@ -341,6 +341,15 @@ test("real extension stress forces the UI sampling branch onto the fake planner"
   assert.match(stressScript, /assertEqual\(job\.settings\?\.plannerProvider, "fake", "UI sampling planner provider"\)/);
 });
 
+test("real extension stress can find UI sampling jobs across scoped storage", async () => {
+  const stressScript = await readFile("scripts/stress-extension.mjs", "utf8");
+
+  assert.match(stressScript, /STORAGE_KEYS/);
+  assert.match(stressScript, /findStoredLastSamplingJob/);
+  assert.match(stressScript, /createdAfterMs/);
+  assert.match(stressScript, /key === lastJobBaseKey \|\| key\.startsWith\(`\$\{lastJobBaseKey\}:`\)/);
+});
+
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -4,6 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { STORAGE_KEYS } from "../src/core/storage.js";
 import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS } from "../src/shared/settings.js";
 import { formatStressSummaryMarkdown, summarizeStressArtifact } from "./summarize-stress-artifact.mjs";
 
@@ -430,8 +431,9 @@ async function runUiSamplingAnalyze(page, options) {
       }));
       throw new Error(`Timed out waiting for page sampling origin cache: ${error.message}; ${JSON.stringify(debug)}`);
     });
+  const startedAtMs = Date.now();
   await page.click("#analyzeBtn");
-  const job = await waitForLastJob(page, options.sourceWindowId, 180000);
+  const job = await waitForLastJob(page, options.sourceWindowId, 180000, { createdAfterMs: startedAtMs - 1000 });
   assertEqual(job.settings?.plannerProvider, "fake", "UI sampling planner provider");
   const statuses = countBy((job.inventory.pageSamples || []).map((sample) => sample.status));
   if (job.preview.pageSampling.ok !== options.expectedSamples) {
@@ -461,8 +463,9 @@ async function runUiSamplingAnalyze(page, options) {
   return job;
 }
 
-async function waitForLastJob(page, windowId, timeoutMs) {
+async function waitForLastJob(page, windowId, timeoutMs, options = {}) {
   const deadline = Date.now() + timeoutMs;
+  const createdAfterMs = Number(options.createdAfterMs || 0);
   let lastError = null;
   while (Date.now() < deadline) {
     const [activeJob, lastJob] = await Promise.all([
@@ -475,9 +478,14 @@ async function waitForLastJob(page, windowId, timeoutMs) {
         return null;
       })
     ]);
-    if (lastJob?.preview?.pageSampling && Array.isArray(lastJob.inventory?.pageSamples)) {
+    if (isUiSamplingJob(lastJob, createdAfterMs)) {
       return lastJob;
     }
+    const storedJob = await findStoredLastSamplingJob(page, { createdAfterMs }).catch((error) => {
+      lastError = error;
+      return null;
+    });
+    if (storedJob) return storedJob;
     if (activeJob?.status === "error") {
       throw new Error(`UI sampling job failed: ${activeJob.error || activeJob.message || "unknown error"}`);
     }
@@ -491,13 +499,25 @@ async function waitForLastJob(page, windowId, timeoutMs) {
 }
 
 async function samplingUiDebug(page, windowId) {
-  return page.evaluate(async (sourceWindowId) => {
+  return page.evaluate(async ({ sourceWindowId, lastJobBaseKey }) => {
     const activeJobResponse = await chrome.runtime
       .sendMessage({ type: "tabs:getActiveJob", windowId: sourceWindowId })
       .catch(() => null);
     const lastJobResponse = await chrome.runtime
       .sendMessage({ type: "tabs:getLastJob", windowId: sourceWindowId })
       .catch(() => null);
+    const allStorage = await chrome.storage.local.get(null).catch(() => ({}));
+    const storedLastJobs = Object.entries(allStorage)
+      .filter(([key]) => key === lastJobBaseKey || key.startsWith(`${lastJobBaseKey}:`))
+      .map(([key, job]) => ({
+        key,
+        operationId: job?.operationId || "",
+        createdAt: job?.createdAt || "",
+        hasPreview: Boolean(job?.preview),
+        pageSampling: job?.preview?.pageSampling || null,
+        pageSamples: Array.isArray(job?.inventory?.pageSamples) ? job.inventory.pageSamples.length : null,
+        validationOk: job?.validation?.ok
+      }));
     return {
       status: document.querySelector("#statusText")?.textContent || "",
       progress: document.querySelector("#progressLabel")?.textContent || "",
@@ -512,13 +532,45 @@ async function samplingUiDebug(page, windowId) {
             validationOk: lastJobResponse.result.validation?.ok
           }
         : null,
+      storedLastJobs,
       ackSampling: document.querySelector("#ackSampling")?.checked,
       pageContextMode: document.querySelector("#pageContextMode")?.value,
       hostPermissionRequestMode: document.querySelector("#hostPermissionRequestMode")?.value,
       organizeMode: document.querySelector("#organizeMode")?.value,
       originCache: window.__semanticTabAgentPageSamplingOrigins || null
     };
-  }, windowId);
+  }, { sourceWindowId: windowId, lastJobBaseKey: STORAGE_KEYS.lastJob });
+}
+
+async function findStoredLastSamplingJob(page, { createdAfterMs = 0 } = {}) {
+  const entries = await page.evaluate(async (lastJobBaseKey) => {
+    const all = await chrome.storage.local.get(null);
+    return Object.entries(all)
+      .filter(([key]) => key === lastJobBaseKey || key.startsWith(`${lastJobBaseKey}:`))
+      .map(([key, job]) => ({
+        key,
+        createdAt: job?.createdAt || "",
+        hasPreview: Boolean(job?.preview),
+        pageSampling: job?.preview?.pageSampling || null,
+        pageSamples: Array.isArray(job?.inventory?.pageSamples) ? job.inventory.pageSamples.length : null,
+        validationOk: job?.validation?.ok,
+        job
+      }));
+  }, STORAGE_KEYS.lastJob);
+  return entries
+    .filter((entry) => isUiSamplingJob(entry.job, createdAfterMs))
+    .sort((left, right) => jobCreatedAtMs(right.job) - jobCreatedAtMs(left.job))[0]?.job || null;
+}
+
+function isUiSamplingJob(job, createdAfterMs = 0) {
+  if (!job?.preview?.pageSampling || !Array.isArray(job.inventory?.pageSamples)) return false;
+  if (createdAfterMs > 0 && jobCreatedAtMs(job) < createdAfterMs) return false;
+  return true;
+}
+
+function jobCreatedAtMs(job) {
+  const createdAtMs = Date.parse(job?.createdAt || "");
+  return Number.isFinite(createdAtMs) ? createdAtMs : 0;
 }
 
 async function writeStressSummary(error = null) {
