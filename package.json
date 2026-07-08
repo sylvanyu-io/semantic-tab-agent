@@ -5,6 +5,7 @@
   "type": "module",
   "description": "AI tab organizer for Chrome with private work recaps from local tab activity.",
   "scripts": {
+    "build": "npm run build:extension",
     "test": "node --test tests/*.test.mjs worker/test/*.test.mjs",
     "test:worker": "node --test worker/test/*.test.mjs",
     "test:ui": "playwright test tests/ui-smoke.spec.mjs",

@@ -11,6 +11,7 @@ test("public release scripts include real extension stress and live gateway gate
   const manifest = JSON.parse(await readFile("package.json", "utf8"));
   const scripts = manifest.scripts || {};
 
+  assert.equal(scripts.build, "npm run build:extension");
   assert.match(scripts["release:check:full"], /npm run release:check/);
   assert.match(scripts["release:check:full"], /npm run stress:extension/);
 
