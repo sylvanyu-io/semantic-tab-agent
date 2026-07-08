@@ -427,7 +427,7 @@ function extractProviderErrorMessage(data) {
 function sanitizeGatewayErrorDetail(message) {
   const text = String(message || "").trim();
   if (!text) return "";
-  return redactSensitiveText(text);
+  return redactSensitiveText(text, { redactUrls: true });
 }
 
 function extractGatewayRequestId(response, data) {

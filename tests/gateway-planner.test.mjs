@@ -2020,9 +2020,10 @@ test("AI gateway planner redacts custom provider error details before surfacing 
     (error) => {
       const message = String(error?.message || "");
       assert.match(message, /自定义 AI 网关这次没有完成请求（400）。/);
-      assert.match(message, /https:\/\/private\.example\.com\/\.\.\./);
+      assert.match(message, /\[redacted-url\]/);
       assert.match(message, /Bearer \[redacted\]/);
       assert.equal(message.includes(providerKey), false);
+      assert.equal(message.includes("private.example.com"), false);
       assert.equal(message.includes(tokenizedUrl), false);
       assert.equal(message.includes(["token", "abc123"].join("=")), false);
       assert.equal(message.includes(["", "secret", "project"].join("/")), false);
