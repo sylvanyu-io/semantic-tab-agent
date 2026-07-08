@@ -200,8 +200,8 @@ Latest patch release and live-gateway evidence:
 
 Post-release hardening verification:
 
-- `2026-07-09` Asia/Shanghai: full local release gate passed after the store
-  permission boundary was tightened.
+- `2026-07-09` Asia/Shanghai: `npm run release:check:full` passed on `main`
+  after the store permission boundary and stress harness were tightened.
 - `npm run release:check`: passed end to end, including clean build output,
   icon generation, Node/Worker tests, Playwright UI smoke tests, secret scans,
   dev/store packaging, and release artifact audit.
@@ -213,7 +213,7 @@ Post-release hardening verification:
 - `npm run audit:release-artifacts`: passed and confirmed the store manifest
   has no optional extension permissions while keeping optional host permissions
   for explicitly configured custom AI API origins.
-- `npm test`: `339/339` Node and Worker tests passed.
+- `npm test`: `340/340` Node and Worker tests passed.
 - `npm run test:ui`: `51/51` Playwright UI smoke tests passed, covering recap
   progress/cancellation, organize and recap parallel generation, page-summary
   permission controls, custom provider model/ping errors, store content-access
