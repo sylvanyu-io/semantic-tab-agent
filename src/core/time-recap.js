@@ -377,7 +377,7 @@ function buildTimeRecapSystemPrompt(settings) {
     "currentGroupTitle is only a weak context clue from existing browser groups. Do not turn existing group names into the main recap unless page titles, summaries, and activity also support it.",
     "Use closed pages and still-open pages equally when their activity falls inside the range.",
     `Write user-facing product copy. ${MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING}`,
-    "Do not recommend closing, deleting, cleaning, or reviewing tabs. This feature is recap-only; cleanup recommendations belong to the organizer flow.",
+    "Do not recommend closing, deleting, cleaning, keeping, reviewing, later checking, or deciding whether tabs/pages should stay open. Avoid recap copy like 'worth reviewing', 'can close', 'no need to keep', 'not worth keeping open', or 'check later whether to keep it'. This feature is recap-only; cleanup recommendations belong to the organizer flow.",
     "Required JSON shape: {schema:\"tab_recap_time_recap_v1\",language:\"zh-CN\"|\"en-US\",headline:string,summary:string,themes:[{title:string,description:string,confidence:\"high\"|\"medium\"|\"low\",ids:number[],evidence:string[]}],timeline:[{label:string,description:string,ids:number[]}],coverageNote:string}.",
     settings.languageMode === "en-US"
       ? "Write all user-visible text in English."

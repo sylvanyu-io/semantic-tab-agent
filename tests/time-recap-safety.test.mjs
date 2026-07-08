@@ -62,18 +62,44 @@ test("recap safety strips conversational tab cleanup copy", () => {
   assert.equal(cleaned.includes("No need to keep"), false);
 });
 
+test("recap safety strips keep-open and later-review wording", () => {
+  const cleaned = stripCleanupRecommendationsFromRecapText(
+    [
+      "主要在研究回顾布局。",
+      "这个页面未必需要一直挂着。",
+      "这些旧页回头判断是不是还要保留。",
+      "后面可以收掉这几个标签页。",
+      "That page is not worth keeping open.",
+      "Check later whether to keep these tabs.",
+      "Work focused on timeline layout."
+    ].join(" ")
+  );
+
+  assert.equal(cleaned.includes("主要在研究回顾布局"), true);
+  assert.equal(cleaned.includes("Work focused on timeline layout"), true);
+  assert.equal(cleaned.includes("未必需要一直挂着"), false);
+  assert.equal(cleaned.includes("是不是还要保留"), false);
+  assert.equal(cleaned.includes("收掉这几个标签页"), false);
+  assert.equal(cleaned.includes("worth keeping open"), false);
+  assert.equal(cleaned.includes("whether to keep"), false);
+});
+
 test("recap safety keeps cleanup words when they are work topics", () => {
   const cleaned = stripCleanupRecommendationsFromRecapText(
     [
       "上午删掉缓存策略 bug 的错误分支。",
       "下午讨论保留字段设计和归档策略。",
+      "晚上让本地服务继续挂着跑稳定性监控。",
       "Evening work covered drop-down interaction polish.",
-      "We fixed discard-state recovery in the local queue."
+      "We fixed discard-state recovery in the local queue.",
+      "The worker stayed open while alerts were tested."
     ].join(" ")
   );
 
   assert.equal(cleaned.includes("删掉缓存策略 bug"), true);
   assert.equal(cleaned.includes("保留字段设计"), true);
+  assert.equal(cleaned.includes("本地服务继续挂着"), true);
   assert.equal(cleaned.includes("drop-down interaction"), true);
   assert.equal(cleaned.includes("discard-state recovery"), true);
+  assert.equal(cleaned.includes("worker stayed open"), true);
 });

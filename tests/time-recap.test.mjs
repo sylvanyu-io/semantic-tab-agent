@@ -451,11 +451,12 @@ test("time recap strips cleanup recommendations from recap body fields", async (
                 schema: "tab_recap_time_recap_v1",
                 language: "zh-CN",
                 headline: "这一周主要在做扩展发布",
-                summary: "主要围绕 TabRecap 发布检查推进。这个旧标签页可以关闭。已结合打开/关闭状态和活动记录。",
+                summary:
+                  "主要围绕 TabRecap 发布检查推进。这个旧标签页可以关闭。这个页面未必需要一直挂着。已结合打开/关闭状态和活动记录。",
                 themes: [
                   {
                     title: "发布检查",
-                    description: "权限、发布和回顾体验是主线。YachtWorld 页面是否保留可以回头判断。",
+                    description: "权限、发布和回顾体验是主线。YachtWorld 页面是否保留可以回头判断。后面可以收掉这几个标签页。",
                     confidence: "high",
                     ids: [1],
                     evidence: ["发布检查", "建议关闭旧页面"]
@@ -464,7 +465,7 @@ test("time recap strips cleanup recommendations from recap body fields", async (
                 timeline: [
                   {
                     label: "周末",
-                    description: "集中做发布验证。Review whether to keep stale tabs.",
+                    description: "集中做发布验证。Review whether to keep stale tabs. Check later whether to keep these tabs.",
                     ids: [1]
                   }
                 ],
@@ -499,7 +500,7 @@ test("time recap strips cleanup recommendations from recap body fields", async (
   assert.match(result.recap.summary, /打开\/关闭状态/);
   assert.match(result.recap.themes[0].description, /权限、发布和回顾体验/);
   assert.match(result.recap.timeline[0].description, /集中做发布验证/);
-  assert.doesNotMatch(visibleText, /可以关闭|是否保留|建议关闭|Review whether|stale tabs/);
+  assert.doesNotMatch(visibleText, /可以关闭|未必需要一直挂着|是否保留|收掉这几个标签页|建议关闭|Review whether|stale tabs|whether to keep/);
 });
 
 test("time recap does not replace filtered cleanup follow-ups with local continuation items", async () => {
