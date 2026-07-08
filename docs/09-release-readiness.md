@@ -200,8 +200,11 @@ Latest patch release and live-gateway evidence:
 
 Post-release hardening verification:
 
-- `2026-07-09` Asia/Shanghai: local verification passed on `main` at
-  `2bedadf` after the store permission boundary was tightened.
+- `2026-07-09` Asia/Shanghai: full local release gate passed after the store
+  permission boundary was tightened.
+- `npm run release:check`: passed end to end, including clean build output,
+  icon generation, Node/Worker tests, Playwright UI smoke tests, secret scans,
+  dev/store packaging, and release artifact audit.
 - `node --test --test-reporter=dot tests/release-scripts.test.mjs`: passed.
 - `node --test --test-reporter=dot tests/manifest.test.mjs
   tests/release-scripts.test.mjs`: passed.
