@@ -107,14 +107,14 @@ export async function reconcileTabLifecycle(chromeApi, options = {}) {
       inferredOpened,
       inferredClosed
     });
-    return getLifecycleStatsFromLog(log, now);
+    return getLifecycleStatsFromLog(log, now, options);
   });
 }
 
 export async function getTabLifecycleStats(chromeApi, options = {}) {
   const now = normalizeNow(options.now);
   const pruned = await loadPrunedTabLifecycleLog(chromeApi, now);
-  return getLifecycleStatsFromLog(pruned, now);
+  return getLifecycleStatsFromLog(pruned, now, options);
 }
 
 export async function getTabActivationFlowContext(chromeApi, tabs = [], options = {}) {
@@ -371,8 +371,8 @@ function isFreshSession(session, now) {
   return Number.isFinite(last) && now - last <= SESSION_TTL_MS;
 }
 
-function getLifecycleStatsFromLog(log, now) {
-  const sessions = Object.values(log.sessions);
+function getLifecycleStatsFromLog(log, now, options = {}) {
+  const sessions = Object.values(log.sessions).filter((session) => options.includeIncognitoTabs || !session.incognito);
   const openSessions = sessions.filter((session) => !session.closedAt);
   const closedSessions = sessions.filter((session) => session.closedAt);
   const inferredClosed = closedSessions.filter((session) => session.closeReason === "missing_after_reconcile").length;

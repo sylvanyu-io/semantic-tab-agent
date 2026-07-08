@@ -79,13 +79,15 @@ export async function getActivityOverview(chromeApi, options = {}) {
   const rangeMs = normalizeRangeMs(options.rangeMs);
   const cache = await loadPrunedActivityCache(chromeApi, now);
   const currentTabs = await collectCurrentNormalTabs(chromeApi, options);
-  const lifecycle = await getTabLifecycleStats(chromeApi, { now });
+  const lifecycle = await getTabLifecycleStats(chromeApi, { now, includeIncognitoTabs: options.includeIncognitoTabs });
   const lifecycleByTabId = new Map((lifecycle.olderOpenTabs || []).map((tab) => [tab.tabId, tab]));
   const since = now - rangeMs;
-  const entries = Object.values(cache.entries)
+  const visibleEntries = Object.values(cache.entries).filter((entry) => options.includeIncognitoTabs || !isIncognitoActivityEntry(entry));
+  const visibleEntriesByKey = Object.fromEntries(visibleEntries.map((entry) => [entry.key, entry]));
+  const entries = visibleEntries
     .filter((entry) => activityTimeForRange(entry) >= since)
     .sort((left, right) => Date.parse(right.lastSeenAt || "") - Date.parse(left.lastSeenAt || ""));
-  const openTabEntries = matchOpenTabsToActivity(currentTabs, cache.entries, now, lifecycleByTabId);
+  const openTabEntries = matchOpenTabsToActivity(currentTabs, visibleEntriesByKey, now, lifecycleByTabId);
   const staleTabs = openTabEntries
     .filter((item) => item.ageMs >= OLD_TAB_AGE_MS || item.idleMs >= OLD_TAB_IDLE_MS)
     .sort((left, right) => right.ageMs - left.ageMs || right.idleMs - left.idleMs)
@@ -96,8 +98,8 @@ export async function getActivityOverview(chromeApi, options = {}) {
     since: new Date(since).toISOString(),
     generatedAt: new Date(now).toISOString(),
     cache: {
-      entries: Object.keys(cache.entries).length,
-      sampledEntries: Object.values(cache.entries).filter((entry) => entry.sample).length
+      entries: visibleEntries.length,
+      sampledEntries: visibleEntries.filter((entry) => entry.sample).length
     },
     openTabs: {
       total: currentTabs.length,
@@ -109,6 +111,10 @@ export async function getActivityOverview(chromeApi, options = {}) {
     recap: buildLocalRecap(entries, rangeMs),
     staleTabs
   };
+}
+
+function isIncognitoActivityEntry(entry) {
+  return Boolean(entry?.lastKnownState?.incognito || entry?.incognito);
 }
 
 export async function loadPrunedActivityCache(chromeApi, now = Date.now()) {

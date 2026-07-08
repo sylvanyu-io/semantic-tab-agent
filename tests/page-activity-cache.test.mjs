@@ -94,6 +94,62 @@ test("activity overview returns local recap and old-tab candidates without closi
   assert.equal((await chrome.tabs.get(10)).title, "Old AI paper");
 });
 
+test("activity overview hides saved private activity when incognito is excluded", async () => {
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const privateTab = {
+    id: 12,
+    windowId: 2,
+    index: 0,
+    title: "Private investor research",
+    url: "https://private.example/research",
+    active: true,
+    incognito: true
+  };
+  const publicTab = {
+    id: 13,
+    windowId: 1,
+    index: 0,
+    title: "Public project plan",
+    url: "https://public.example/plan",
+    active: true
+  };
+  const publicSameUrlAsPrivate = {
+    id: 14,
+    windowId: 1,
+    index: 1,
+    title: "Public tab with reused private URL",
+    url: "https://private.example/research"
+  };
+  const chrome = createFakeChrome({
+    windows: [
+      { id: 1, focused: true, tabs: [publicTab, publicSameUrlAsPrivate] },
+      { id: 2, focused: false, incognito: true, tabs: [privateTab] }
+    ]
+  });
+
+  await rememberOpenTabActivity(chrome, privateTab, null, { now, includeIncognitoTabs: true });
+  await rememberOpenTabActivity(chrome, publicTab, null, { now: now + 1000 });
+  await rememberTabLifecycle(chrome, "tab_activated", privateTab, { now, includeIncognitoTabs: true });
+  await rememberTabLifecycle(chrome, "tab_activated", publicTab, { now: now + 1000 });
+
+  const excluded = await getActivityOverview(chrome, { rangeMs: 24 * 60 * 60 * 1000, now: now + 2000 });
+  const included = await getActivityOverview(chrome, {
+    rangeMs: 24 * 60 * 60 * 1000,
+    now: now + 2000,
+    includeIncognitoTabs: true
+  });
+
+  assert.equal(excluded.cache.entries, 1);
+  assert.equal(excluded.openTabs.total, 2);
+  assert.equal(excluded.openTabs.tracked, 1);
+  assert.equal(excluded.recap.recentPages.some((page) => page.title === "Private investor research"), false);
+  assert.equal(excluded.lifecycle.olderOpenTabs.some((tab) => tab.tabId === 12), false);
+  assert.equal(included.cache.entries, 2);
+  assert.equal(included.openTabs.total, 3);
+  assert.equal(included.recap.recentPages.some((page) => page.title === "Private investor research"), true);
+  assert.equal(included.lifecycle.olderOpenTabs.some((tab) => tab.tabId === 12), true);
+});
+
 test("batch activity remember writes storage once and keeps recently active old pages in range", async () => {
   const chrome = createFakeChrome();
   const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
