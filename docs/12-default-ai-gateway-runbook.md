@@ -412,6 +412,14 @@ If monitor state storage is missing, the scheduled job also returns before
 `/readyz` or `/llm-readyz`. Without state storage it cannot suppress duplicate
 outage emails or send a correct recovery email.
 
+Request correlation:
+
+- every Worker response includes `x-tab-recap-request-id`;
+- default gateway requests use the side-panel operation id, so extension errors,
+  Worker tail logs, and local origin logs can be matched;
+- the side panel preserves this request id in localized gateway error copy,
+  including custom provider errors, while redacting raw upstream bodies.
+
 After every Worker deploy or secret change, verify the live monitor config:
 
 ```bash

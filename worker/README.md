@@ -179,7 +179,8 @@ usage before email delivery is configured.
 Each chat request now carries an `x-tab-recap-request-id` response header. The
 extension sends the side-panel operation id as this header for default gateway
 traffic, so a user-visible error can be matched with Worker logs and local
-origin logs.
+origin logs. The side panel keeps this request id in localized gateway error
+copy, including custom provider errors, while still hiding raw upstream details.
 
 When the upstream path fails, the Worker converts raw upstream failures into
 redacted TabRecap JSON errors instead of relaying text or HTML bodies to the
