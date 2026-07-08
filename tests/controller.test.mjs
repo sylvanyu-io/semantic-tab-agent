@@ -1782,6 +1782,91 @@ test("running analyses are isolated per source window", async () => {
   }
 });
 
+test("all-window analysis is blocked while a window analysis is running", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Window one docs", url: "https://example.com/window-one", active: true }]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [{ id: 20, title: "Window two docs", url: "https://example.com/window-two", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const settings = { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" };
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+
+  try {
+    const first = await startAnalyzeTabs(chrome, settings, { windowId: 1 });
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === first.operationId && job.phase === "planning");
+
+    await assert.rejects(
+      () => startAnalyzeTabs(chrome, { ...settings, organizeMode: ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW }, { windowId: 2 }),
+      /已有整理任务正在运行/
+    );
+    assert.equal((await getActiveJob(chrome, 1)).status, "running");
+    assert.equal(await getActiveJob(chrome, 2), null);
+
+    await cancelActiveJob(chrome, 1);
+    assert.equal((await getActiveJob(chrome, 1)).status, "canceled");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("window analysis is blocked while an all-window analysis is running", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Window one docs", url: "https://example.com/window-one", active: true }]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [{ id: 20, title: "Window two docs", url: "https://example.com/window-two", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    organizeMode: ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW,
+    plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+    gatewayApiKey: "gateway-test-key"
+  };
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+
+  try {
+    const allWindows = await startAnalyzeTabs(chrome, settings, { windowId: 1 });
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === allWindows.operationId && job.phase === "planning");
+
+    await assert.rejects(
+      () => startAnalyzeTabs(chrome, { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" }, { windowId: 2 }),
+      /已有整理任务正在运行/
+    );
+    assert.equal((await getActiveJob(chrome, 1)).status, "running");
+    assert.equal(await getActiveJob(chrome, 2), null);
+
+    await cancelActiveJob(chrome, 1);
+    assert.equal((await getActiveJob(chrome, 1)).status, "canceled");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("startAnalyzeTabs returns immediately while the background job writes final preview", async () => {
   const chrome = createFakeChrome({
     windows: [

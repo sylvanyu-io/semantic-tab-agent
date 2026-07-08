@@ -29,6 +29,7 @@ import { validatePlan } from "./plan-validator.js";
 const activeAnalyses = new Map();
 const activeTimeRecaps = new Map();
 let browserMutationQueue = Promise.resolve();
+const GLOBAL_ANALYSIS_SCOPE = "all_windows";
 const ACTIVE_JOB_TERMINAL_STATUSES = new Set(["complete", "canceled", "error"]);
 const APPLY_REBASE_MAX_CHANGED_TABS = 25;
 const APPLY_REBASE_MAX_CHANGED_RATIO = 0.2;
@@ -570,10 +571,13 @@ export async function startAnalyzeTabs(chromeApi, rawSettings, invocation = {}, 
 
 async function createActiveAnalysis(chromeApi, rawSettings, invocation = {}) {
   const windowId = await resolveStateWindowId(chromeApi, invocation.windowId);
-  await assertNoRunningAnalysis(chromeApi, windowId);
+  const settings = normalizeSettings(rawSettings);
+  await assertNoRunningAnalysis(chromeApi, windowId, settings);
   const operationId = createOperationId();
   const abortController = new AbortController();
-  activeAnalyses.set(normalizeWindowScope(windowId), { operationId, abortController });
+  const scopes = analysisScopesForRun(settings, windowId);
+  const activeAnalysis = { operationId, abortController, scopes };
+  for (const scope of scopes) activeAnalyses.set(scope, activeAnalysis);
   await writeActiveJob(chromeApi, {
     operationId,
     status: "running",
@@ -582,7 +586,7 @@ async function createActiveAnalysis(chromeApi, rawSettings, invocation = {}) {
     message: "正在准备整理",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    settings: redactSettingsForJob(normalizeSettings(rawSettings)),
+    settings: redactSettingsForJob(settings),
     invocation: { ...invocation, windowId }
   }, windowId);
 
@@ -681,7 +685,7 @@ async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId
     });
     throw new Error(message);
   } finally {
-    activeAnalyses.delete(normalizeWindowScope(resolvedWindowId));
+    clearActiveAnalysis(operationId);
   }
 }
 
@@ -1545,10 +1549,31 @@ function safeOriginPattern(rawUrl) {
   }
 }
 
-async function assertNoRunningAnalysis(chromeApi, windowId = null) {
+async function assertNoRunningAnalysis(chromeApi, windowId = null, settings = DEFAULT_SETTINGS) {
+  const normalized = normalizeSettings(settings);
+  if (activeAnalyses.has(GLOBAL_ANALYSIS_SCOPE)) {
+    throw new Error("已有整理任务正在运行，请先取消或等待它完成。");
+  }
+  if (normalized.organizeMode === ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW && activeAnalyses.size > 0) {
+    throw new Error("已有整理任务正在运行，请先取消或等待它完成。");
+  }
   const job = await getActiveJob(chromeApi, windowId);
   if (job && !ACTIVE_JOB_TERMINAL_STATUSES.has(job.status)) {
     throw new Error("已有整理任务正在运行，请先取消或等待它完成。");
+  }
+}
+
+function analysisScopesForRun(settings, windowId) {
+  const scopes = [normalizeWindowScope(windowId)];
+  if (settings.organizeMode === ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW) {
+    scopes.push(GLOBAL_ANALYSIS_SCOPE);
+  }
+  return scopes;
+}
+
+function clearActiveAnalysis(operationId) {
+  for (const [scope, activeAnalysis] of activeAnalyses.entries()) {
+    if (activeAnalysis?.operationId === operationId) activeAnalyses.delete(scope);
   }
 }
 
