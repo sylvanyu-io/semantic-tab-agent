@@ -176,6 +176,8 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
     hostname: tab.hostname || session.hostname,
     sanitizedUrl: tab.sanitizedUrl || session.sanitizedUrl,
     urlKey: tab.urlKey || session.urlKey,
+    urlKind: tab.urlKind || session.urlKind,
+    sampleable: Boolean(tab.sampleable),
     lastObservedAt: new Date(now).toISOString(),
     active: nextActive,
     pinned: Boolean(tab.pinned),
@@ -234,6 +236,8 @@ function createSession(tab, now, inferred) {
     hostname: tab.hostname,
     sanitizedUrl: tab.sanitizedUrl,
     urlKey: tab.urlKey,
+    urlKind: tab.urlKind,
+    sampleable: Boolean(tab.sampleable),
     openedAt: nowIso,
     firstObservedAt: nowIso,
     lastObservedAt: nowIso,
@@ -274,16 +278,19 @@ async function collectCurrentLifecycleTabs(chromeApi, options = {}) {
 function normalizeLifecycleTab(tab) {
   if (!tab || !Number.isInteger(tab.id) || !Number.isInteger(tab.windowId)) return null;
   const rawUrl = getTabUrl(tab);
-  if (!rawUrl || !canSampleUrl(rawUrl)) return null;
+  if (!rawUrl) return null;
   const urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL);
+  const sampleable = canSampleUrl(rawUrl);
   return {
     id: tab.id,
     windowId: tab.windowId,
     index: normalizeNumber(tab.index),
-    title: String(tab.title || "").slice(0, 180),
+    title: sampleable ? String(tab.title || "").slice(0, 180) : "",
     hostname: urlInfo.hostname || "",
     sanitizedUrl: urlInfo.sanitizedUrl || "",
-    urlKey: lifecycleUrlKey(rawUrl),
+    urlKey: lifecycleUrlKey(rawUrl, urlInfo),
+    urlKind: urlInfo.urlKind || "unknown",
+    sampleable,
     active: Boolean(tab.active),
     pinned: Boolean(tab.pinned),
     discarded: Boolean(tab.discarded),
@@ -726,9 +733,12 @@ function isAfter(candidate, current) {
   return Number.isFinite(candidateTime) && (!Number.isFinite(currentTime) || candidateTime > currentTime);
 }
 
-function lifecycleUrlKey(rawUrl) {
+function lifecycleUrlKey(rawUrl, urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL)) {
   try {
     const url = new URL(rawUrl);
+    if (!canSampleUrl(rawUrl)) {
+      return `unsupported_${urlInfo.urlKind || url.protocol.replace(":", "") || "unknown"}`;
+    }
     url.hash = "";
     url.search = "";
     return `u_${stableHash(`${url.protocol}//${url.hostname}${url.pathname.replace(/\/+$/, "") || "/"}`)}`;

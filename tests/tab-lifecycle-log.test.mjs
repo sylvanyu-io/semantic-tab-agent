@@ -439,6 +439,42 @@ test("tab lifecycle keeps activation flow separated by idle gaps and windows", a
   assert.equal(context.evidence.some((entry) => entry.ids.includes(2) && entry.ids.includes(3)), false);
 });
 
+test("tab lifecycle uses unsupported URL activations as private flow boundaries", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const tabs = [
+    { id: 1, windowId: 1, index: 0, title: "Research anchor", url: "https://a.example/", active: true },
+    { id: 2, windowId: 1, index: 1, title: "Extensions - Secret Local Build", url: "chrome://extensions", active: false },
+    { id: 3, windowId: 1, index: 2, title: "Follow-up page", url: "https://b.example/", active: false }
+  ];
+
+  await rememberTabsLifecycle(chrome, tabs, { now });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[0], active: true }, { now: now + 1000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[1], active: true }, { now: now + 6000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[2], active: true }, { now: now + 12_000 });
+
+  const storedBoundary = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).find((session) => session.tabId === 2);
+  assert.equal(storedBoundary.sampleable, false);
+  assert.equal(storedBoundary.urlKind, "chrome");
+  assert.equal(storedBoundary.title, "");
+  assert.equal(storedBoundary.hostname, "");
+  assert.equal(storedBoundary.sanitizedUrl, "");
+  assert.equal(JSON.stringify(storedBoundary).includes("chrome://extensions"), false);
+  assert.equal(JSON.stringify(storedBoundary).includes("Secret Local Build"), false);
+
+  const context = await getTabActivationFlowContext(chrome, tabs.map((tab) => ({ tabId: tab.id })));
+
+  assert.deepEqual(context.runs.map((run) => run.ids), [[1, 2, 3]]);
+  assert.deepEqual(
+    context.transitions.map((transition) => [transition.fromId, transition.toId]).sort(),
+    [
+      [1, 2],
+      [2, 3]
+    ]
+  );
+  assert.equal(context.transitions.some((transition) => transition.fromId === 1 && transition.toId === 3), false);
+});
+
 test("tab lifecycle caps activation flow output for large histories", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");

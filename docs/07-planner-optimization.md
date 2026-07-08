@@ -205,6 +205,13 @@ Inventory collection therefore builds local activation flow from eligible plus
 excluded visible tabs. The planner payload still emits only planner-scope rows,
 but pinned or otherwise excluded tabs can break a run before the AI sees it.
 
+Non-web and internal browser pages follow the same barrier rule. The lifecycle
+log keeps them only as private activation-flow boundaries by storing
+`sampleable=false`, a coarse `urlKind`, and the tab ID. It drops the title,
+hostname, full URL, path, and query. This prevents a sequence such as
+`A -> chrome://extensions -> B` from becoming false direct evidence for `A -> B`
+while avoiding sensitive local URL or title retention.
+
 ## Next Implementation Steps
 
 1. Continue refactoring `gateway-planner.js` into explicit planner stages:
