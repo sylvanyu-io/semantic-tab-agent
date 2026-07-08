@@ -17,10 +17,10 @@ export function redactSensitiveText(value, options = {}) {
     .replace(/\bAIza[0-9A-Za-z_-]{35}\b/g, "[redacted-key]")
     .replace(/\bAKIA[0-9A-Z]{16}\b/g, "[redacted-key]")
     .replace(
-      /((?:["']?)(?:api[_-]?key|private[_-]?key|session[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password)(?:["']?)\s*[:=]\s*)(["']?)[^"',\s;&<>}]+(\2)/gi,
+      /((?:["']?)(?:x[_-]?api[_-]?key|api[_-]?key|client[_-]?secret|cf[_-]?access[_-]?client[_-]?secret|webhook[_-]?secret|signing[_-]?secret|private[_-]?key|session[_-]?key|personal[_-]?access[_-]?token|access[_-]?token|refresh[_-]?token|id[_-]?token|token|secret|password)(?:["']?)\s*[:=]\s*)(["']?)[^"',\s;&<>}]+(\2)/gi,
       "$1$2[redacted]$3"
     )
-    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|private[_-]?key|session[_-]?key|token|secret|password|key)=)[^&\s"')<>]+/gi, "$1[redacted]")
+    .replace(/([?&](?:x[_-]?api[_-]?key|api[_-]?key|client[_-]?secret|cf[_-]?access[_-]?client[_-]?secret|webhook[_-]?secret|signing[_-]?secret|private[_-]?key|session[_-]?key|personal[_-]?access[_-]?token|access_token|refresh_token|id_token|token|secret|password|key)=)[^&\s"')<>]+/gi, "$1[redacted]")
     .replace(/https?:\/\/[^\s"')<>]+/gi, (rawUrl) => {
       if (options.redactUrls) return options.fallback || "[redacted-url]";
       return redactSensitiveUrl(rawUrl, options);

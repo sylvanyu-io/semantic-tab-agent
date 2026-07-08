@@ -95,7 +95,10 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
     "worker-api-field-secret",
     "worker-private-key-secret",
     "worker-session-key-secret",
-    "worker-access-token-secret"
+    "worker-access-token-secret",
+    "worker-x-api-key-secret",
+    "worker-client-secret",
+    "worker-cf-access-client-secret"
   ];
   const cloudKeys = [
     ["re", "A".repeat(22)].join("_"),
@@ -120,7 +123,10 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
             `api_key=${structuredSecrets[2]}`,
             `private_key=${structuredSecrets[3]}`,
             `"session-key":"${structuredSecrets[4]}"`,
-            `"accessToken":"${structuredSecrets[5]}"`
+            `"accessToken":"${structuredSecrets[5]}"`,
+            `X-API-Key: ${structuredSecrets[6]}`,
+            `client_secret=${structuredSecrets[7]}`,
+            `cf-access-client-secret=${structuredSecrets[8]}`
           ].join("\n")
         );
       }

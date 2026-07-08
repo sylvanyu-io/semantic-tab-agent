@@ -67,6 +67,12 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
     sessionKey: "session-key-secret",
     accessToken: "access-token-secret",
     refreshToken: "refresh-token-secret",
+    xApiKey: "x-api-key-secret",
+    clientSecret: "client-secret-value",
+    cfAccessClientSecret: "cf-access-client-secret-value",
+    webhookSecret: "webhook-secret-value",
+    signingSecret: "signing-secret-value",
+    personalAccessToken: "personal-access-token-value",
     password: "hunter2-secret"
   };
   const input = [
@@ -79,6 +85,12 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
     `"session-key":"${secrets.sessionKey}"`,
     `'accessToken': '${secrets.accessToken}'`,
     `refresh-token:${secrets.refreshToken}`,
+    `X-API-Key: ${secrets.xApiKey}`,
+    `client_secret=${secrets.clientSecret}`,
+    `cf-access-client-secret=${secrets.cfAccessClientSecret}`,
+    `"webhook_secret":"${secrets.webhookSecret}"`,
+    `signing-secret:${secrets.signingSecret}`,
+    `personal_access_token=${secrets.personalAccessToken}`,
     `password: ${secrets.password}`
   ].join("\n");
   const output = redactSensitiveText(input);
@@ -95,6 +107,12 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
   assert.match(output, /"session-key":"\[redacted\]"/);
   assert.match(output, /'accessToken': '\[redacted\]'/);
   assert.match(output, /refresh-token:\[redacted\]/);
+  assert.match(output, /X-API-Key: \[redacted\]/);
+  assert.match(output, /client_secret=\[redacted\]/);
+  assert.match(output, /cf-access-client-secret=\[redacted\]/);
+  assert.match(output, /"webhook_secret":"\[redacted\]"/);
+  assert.match(output, /signing-secret:\[redacted\]/);
+  assert.match(output, /personal_access_token=\[redacted\]/);
   assert.match(output, /password: \[redacted\]/);
 });
 
