@@ -9,7 +9,7 @@ does not record API keys, tokens, or passwords.
 
 ## What This Gateway Is
 
-TabRecap ships without a user-visible API key. The default free AI service is a
+TabRecap ships without a user-visible API key. The default AI service is a
 Cloudflare Worker in front of a local Mac-hosted OpenAI-compatible gateway.
 
 The current request chain is:
