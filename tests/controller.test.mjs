@@ -158,6 +158,56 @@ test("clearing local memory removes activity records without closing tabs or pre
   assert.equal((await chrome.tabs.query({})).length, 1);
 });
 
+test("clearing local memory is blocked while generation is running", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Current docs", url: "https://example.com/current", active: true }]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      preserved: {
+        key: "preserved",
+        title: "Preserved local clue",
+        hostname: "example.com",
+        firstSeenAt: "2026-06-25T00:00:00.000Z",
+        lastSeenAt: "2026-06-25T00:00:00.000Z",
+        seenCount: 1
+      }
+    }
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+
+  try {
+    const started = await startAnalyzeTabs(
+      chrome,
+      { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
+      { windowId: 1 }
+    );
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === started.operationId && job.phase === "planning");
+
+    await assert.rejects(
+      () => handleRuntimeMessage(chrome, { type: "activity:clearLocalMemory" }),
+      /正在生成中，先停止后再清空本机记录/
+    );
+    assert.equal(Boolean(chrome.__state.storage[STORAGE_KEYS.pageActivityCache]?.entries?.preserved), true);
+
+    await cancelActiveJob(chrome, 1);
+    assert.equal((await getActiveJob(chrome, 1)).status, "canceled");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("diagnostics snapshot summarizes local state without sensitive page or provider data", async () => {
   const chrome = createFakeChrome({
     windows: [

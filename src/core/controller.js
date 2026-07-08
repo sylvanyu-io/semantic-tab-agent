@@ -155,6 +155,9 @@ export async function handleRuntimeMessage(chromeApi, message) {
 }
 
 async function clearLocalActivityMemory(chromeApi) {
+  if (activeAnalyses.size || activeTimeRecaps.size) {
+    throw new Error("正在生成中，先停止后再清空本机记录。");
+  }
   const before = await chromeApi.storage.local.get(LOCAL_MEMORY_KEYS);
   const removedKeys = LOCAL_MEMORY_KEYS.filter((key) => before[key] !== undefined);
   await removeLocal(chromeApi, LOCAL_MEMORY_KEYS);

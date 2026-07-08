@@ -54,6 +54,7 @@ const UI_COPY = Object.freeze({
     "status.customGatewayUnreachable": "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。",
     "status.customGatewayConnectionTimeout": "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
     "status.localMemoryCleared": "本机记录已清空",
+    "status.localMemoryBusy": "正在生成中，先停止后再清空本机记录。",
     "status.settingsExported": "设置已导出，不包含自定义密钥。",
     "status.settingsImported": "设置已导入。自定义密钥需要重新填写。",
     "status.settingsImportInvalid": "设置文件不可用，请选择 TabRecap 导出的 JSON。",
@@ -325,6 +326,7 @@ const UI_COPY = Object.freeze({
     "status.customGatewayUnreachable": "The custom API is not reachable right now. Check the URL, model name, key, or upstream service and try again.",
     "status.customGatewayConnectionTimeout": "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again.",
     "status.localMemoryCleared": "Local records cleared",
+    "status.localMemoryBusy": "A generation is running. Stop it before clearing local records.",
     "status.settingsExported": "Settings exported without custom keys.",
     "status.settingsImported": "Settings imported. Re-enter any custom API key.",
     "status.settingsImportInvalid": "This settings file is not usable. Choose a JSON exported by TabRecap.",
@@ -1566,6 +1568,10 @@ async function handleGatewayTestClick() {
 }
 
 async function handleClearLocalMemoryClick() {
+  if (anyActionBusy()) {
+    setStatusKey("status.localMemoryBusy", {}, true);
+    return;
+  }
   if (!confirm(t("confirm.clearLocalMemory"))) return;
   nodes.clearLocalMemoryBtn.disabled = true;
   try {
@@ -1577,7 +1583,7 @@ async function handleClearLocalMemoryClick() {
   } catch (error) {
     setErrorStatus(error, friendlyErrorMessage(error));
   } finally {
-    nodes.clearLocalMemoryBtn.disabled = false;
+    nodes.clearLocalMemoryBtn.disabled = anyActionBusy();
   }
 }
 
@@ -2036,7 +2042,14 @@ function friendlyErrorMessage(error) {
   if (/AI gateway planner returned invalid JSON|Unexpected token|is not valid JSON|invalid JSON/i.test(message)) {
     return t("status.gatewayInvalidOutput");
   }
+  if (/正在生成中，先停止后再清空本机记录|generation is running|clearing local records/i.test(message)) {
+    return t("status.localMemoryBusy");
+  }
   return message;
+}
+
+function anyActionBusy() {
+  return Object.values(actionStateByMode).some((state) => state?.busy);
 }
 
 function isTimeRecapFallbackResult(result = {}) {
@@ -2777,6 +2790,9 @@ function renderCurrentActionBusyState() {
   nodes.cancelBtn.disabled = Boolean(state.cancelDisabled);
   nodes.actions.dataset.busy = isBusy ? "true" : "false";
   nodes.progressBar.hidden = !isBusy;
+  if (nodes.clearLocalMemoryBtn) {
+    nodes.clearLocalMemoryBtn.disabled = anyActionBusy();
+  }
   showProgress(isBusy ? state.progress || 8 : 0);
   if (isBusy && state.label) {
     setProgressLabel(state.label);
