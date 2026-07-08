@@ -56,6 +56,43 @@ test("service worker lifecycle listeners honor the include-incognito setting", a
   }
 });
 
+test("service worker does not record unmatched tab removals when private tabs are excluded", async () => {
+  const listeners = {};
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        incognito: true,
+        tabs: [
+          {
+            id: 10,
+            title: "Private research thread",
+            url: "https://private.example/research",
+            active: true,
+            incognito: true
+          }
+        ]
+      }
+    ]
+  });
+  installServiceWorkerEventMocks(chrome, listeners);
+
+  globalThis.chrome = chrome;
+  try {
+    await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    assert.equal(typeof listeners.tabRemoved, "function");
+
+    listeners.tabRemoved(10, { windowId: 1, isWindowClosing: false });
+    await waitForCondition(() => chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog], "Timed out waiting for close handling.");
+
+    assert.equal(lifecycleEvents(chrome).some((event) => event.type === "tab_closed_unmatched"), false);
+    assert.equal(lifecycleEvents(chrome).some((event) => event.tabId === 10), false);
+  } finally {
+    delete globalThis.chrome;
+  }
+});
+
 test("service worker records focused-window returns for lifecycle evidence", async () => {
   const listeners = {};
   const chrome = createFakeChrome({

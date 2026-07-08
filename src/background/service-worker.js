@@ -75,7 +75,7 @@ chrome.tabs.onCreated?.addListener((tab) => {
 chrome.tabs.onRemoved?.addListener((tabId, removeInfo) => {
   clearTimeout(summaryCaptureTimers.get(tabId));
   summaryCaptureTimers.delete(tabId);
-  recordTabClosed(chrome, tabId, removeInfo).catch((error) => logBackgroundError("tab_removed", error));
+  recordTabClosedWithSettings(tabId, removeInfo).catch((error) => logBackgroundError("tab_removed", error));
 });
 
 chrome.tabs.onUpdated?.addListener((tabId, changeInfo, tab) => {
@@ -178,6 +178,13 @@ async function captureSummaryForTab(tabId) {
 async function rememberTabLifecycleWithSettings(type, tab) {
   const settings = await getSettings(chrome);
   return rememberTabLifecycle(chrome, type, tab, { includeIncognitoTabs: settings.includeIncognitoTabs });
+}
+
+async function recordTabClosedWithSettings(tabId, removeInfo) {
+  const settings = await getSettings(chrome);
+  return recordTabClosed(chrome, tabId, removeInfo, {
+    includeUnmatchedClosedTabs: settings.includeIncognitoTabs
+  });
 }
 
 async function reconcileTabLifecycleWithSettings() {

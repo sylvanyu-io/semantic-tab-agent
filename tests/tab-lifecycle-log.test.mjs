@@ -109,6 +109,24 @@ test("tab lifecycle reconciliation infers missed opens and closes", async () => 
   assert.equal(log.events.some((event) => event.type === "tab_closed_inferred"), true);
 });
 
+test("tab lifecycle can skip unmatched closes when the caller lacks tab privacy context", async () => {
+  const chrome = createFakeChrome();
+  const closed = await recordTabClosed(
+    chrome,
+    99,
+    { windowId: 7, isWindowClosing: false },
+    {
+      now: Date.parse("2026-06-25T00:00:00.000Z"),
+      includeUnmatchedClosedTabs: false
+    }
+  );
+
+  const log = chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog];
+  assert.equal(closed, null);
+  assert.deepEqual(log.events, []);
+  assert.deepEqual(log.sessions, {});
+});
+
 test("tab lifecycle writes are queued so concurrent events do not overwrite each other", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");

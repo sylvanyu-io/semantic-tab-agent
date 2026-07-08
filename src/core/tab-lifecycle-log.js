@@ -51,6 +51,7 @@ export async function recordTabClosed(chromeApi, tabId, removeInfo = {}, options
     const sessionId = log.tabIndex[String(tabId)];
     const session = sessionId ? log.sessions[sessionId] : null;
     if (!session || session.closedAt) {
+      if (options.includeUnmatchedClosedTabs === false) return null;
       appendLifecycleEvent(log, {
         type: "tab_closed_unmatched",
         tabId,
