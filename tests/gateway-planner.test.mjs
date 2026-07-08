@@ -2047,6 +2047,76 @@ test("AI gateway planner accepts common non-infrastructure string error payloads
   );
 });
 
+test("AI gateway planner keeps request ids on custom provider error details", async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 400,
+    headers: new Map([["x-tab-recap-request-id", "req_custom_generic"]]),
+    async json() {
+      return { error: "bad prompt shape" };
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+          gatewayBaseUrl: "http://localhost:8317/v1",
+          gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+          gatewayCustomModel: "deepseek-v4",
+          gatewayApiKey: "test-key"
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /自定义 AI 网关这次没有完成请求（400）。bad prompt shape/);
+      assert.match(message, /请求号 req_custom_generic/);
+      return true;
+    }
+  );
+});
+
+test("AI gateway planner keeps localized request ids on custom provider access errors", async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 401,
+    headers: new Map([["x-tab-recap-request-id", "req_custom_auth"]]),
+    async json() {
+      return { error: { message: "invalid key" } };
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+          gatewayBaseUrl: "https://api.example.test/v1",
+          gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+          gatewayCustomModel: "glm-5.2",
+          gatewayApiKey: "test-key",
+          languageMode: "en-US"
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /The AI service rejected access/);
+      assert.match(message, /\(request id req_custom_auth\)/);
+      assert.doesNotMatch(message, /请求号/);
+      return true;
+    }
+  );
+});
+
 test("AI gateway planner redacts custom provider error details before surfacing them", async () => {
   const providerKey = ["sk", "private-provider-token-1234567890"].join("-");
   const tokenizedUrl = "https://private.example.com/secret/project?token=abc123";

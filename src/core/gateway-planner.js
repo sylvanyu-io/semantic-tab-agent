@@ -389,11 +389,11 @@ export function gatewayErrorMessage(response, data, settings) {
   const isCustomProvider = isCustomGatewayProvider(settings);
   if (response.status === 401 || response.status === 403) {
     return isCustomProvider
-      ? localizedText(
+      ? `${localizedText(
           settings.languageMode,
           "AI 服务拒绝访问。请检查自定义网关地址和密钥。",
           "The AI service rejected access. Check the custom gateway URL and key."
-        )
+        )}${suffix}`
       : `${localizedText(
           settings.languageMode,
           "默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。",
@@ -445,12 +445,12 @@ export function gatewayErrorMessage(response, data, settings) {
           settings.languageMode,
           `自定义 AI 网关这次没有完成请求（${response.status}）。`,
           `The custom AI gateway did not complete this request (${response.status}). `
-        )}${providerMessage}`
-      : localizedText(
+        )}${providerMessage}${suffix}`
+      : `${localizedText(
           settings.languageMode,
           `自定义 AI 网关这次没有完成请求（${response.status}）。请检查网关服务后重试。`,
           `The custom AI gateway did not complete this request (${response.status}). Check the gateway service and try again.`
-        );
+        )}${suffix}`;
   }
   return providerMessage
     ? `${localizedText(
