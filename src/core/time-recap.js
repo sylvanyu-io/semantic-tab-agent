@@ -99,7 +99,7 @@ function safeTimeRecapFallbackError(error, settings) {
   if (!message) return genericTimeRecapFallbackError(settings);
 
   if (/AI gateway time recap timed out/i.test(message)) {
-    return message;
+    return genericTimeRecapFallbackError(settings);
   }
   if (
     /默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务拒绝访问|The default AI service|The custom API|The AI service/i.test(message) ||

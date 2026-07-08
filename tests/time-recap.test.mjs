@@ -740,7 +740,8 @@ test("time recap runtime message honors explicit timeout and falls back locally"
 
     assert.equal(requested, true);
     assert.equal(result.source, "local_fallback");
-    assert.match(result.error, /timed out/);
+    assert.equal(result.error, "AI 暂时不可用，先展示本机线索。");
+    assert.doesNotMatch(JSON.stringify(result), /AI gateway time recap timed out|timed out/);
     assert.doesNotMatch(result.recap.coverageNote, /AI 增强|AI 回顾暂时不可用|timed out/);
     assert.match(result.recap.coverageNote, /本机页面线索/);
     assert.equal(Date.now() - startedAt < 1500, true);
