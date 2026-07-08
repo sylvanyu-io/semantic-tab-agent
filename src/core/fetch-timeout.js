@@ -1,3 +1,5 @@
+import { redactSensitiveText } from "../shared/redaction.js";
+
 export async function fetchJsonWithTimeout(
   fetchImpl,
   url,
@@ -79,7 +81,7 @@ async function readJsonResponse(response, label) {
 }
 
 function compactResponseText(text) {
-  return String(text || "")
+  return redactSensitiveText(text)
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 300);
