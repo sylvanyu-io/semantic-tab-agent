@@ -2418,7 +2418,7 @@ test("custom provider can use the default model when the model field is blank", 
       gatewayModel: "gpt-5.4",
       gatewayCustomModel: "",
       gatewayAuxiliaryModel: "same_as_primary",
-      gatewayCustomAuxiliaryModel: "",
+      gatewayCustomAuxiliaryModel: "glm-5.2",
       gatewayThinkingIntensity: "high",
       gatewayApiKey: "",
       customPrompt: ""
@@ -2459,6 +2459,7 @@ test("custom provider can use the default model when the model field is blank", 
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayModel)).toBe("gpt-5.4");
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomModel)).toBe("");
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayAuxiliaryModel)).toBe("same_as_primary");
+  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomAuxiliaryModel)).toBe("glm-5.2");
 });
 
 test("current-window generation without sourceWindowId uses the focused normal window", async ({ page }) => {

@@ -1143,7 +1143,7 @@ function readSettings(options = {}) {
   const gatewayBaseUrl = usesCustomGateway ? fields.gatewayBaseUrl.value : "";
   const gatewayCustomModel = usesCustomGateway ? fields.gatewayCustomModel.value : "";
   const usesCustomGatewayModel = usesCustomGateway && Boolean(gatewayCustomModel.trim());
-  const gatewayCustomAuxiliaryModel = usesCustomGatewayModel ? fields.gatewayCustomAuxiliaryModel.value : "";
+  const gatewayCustomAuxiliaryModel = usesCustomGateway ? fields.gatewayCustomAuxiliaryModel.value : "";
   const gatewayModel =
     usesCustomGateway
       ? usesCustomGatewayModel

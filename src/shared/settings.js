@@ -196,8 +196,6 @@ export function normalizeSettings(input = {}) {
     merged.gatewayAuxiliaryModel = "same_as_primary";
     if (shouldPreferManualGatewayModel(merged)) {
       merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
-    } else {
-      merged.gatewayCustomAuxiliaryModel = "";
     }
   } else {
     if (merged.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE) {
@@ -310,8 +308,11 @@ export function isCustomGatewayProvider(settings = DEFAULT_SETTINGS) {
 }
 
 export function resolveGatewayAuxiliaryModel(settings = DEFAULT_SETTINGS) {
+  if (isCustomGatewayProvider(settings) && settings.gatewayCustomAuxiliaryModel) {
+    return settings.gatewayCustomAuxiliaryModel;
+  }
   if (usesManualGatewayModel(settings)) {
-    return settings.gatewayCustomAuxiliaryModel || resolveGatewayModel(settings);
+    return resolveGatewayModel(settings);
   }
   if (settings.gatewayAuxiliaryModel === "same_as_primary") {
     return resolveGatewayModel(settings);

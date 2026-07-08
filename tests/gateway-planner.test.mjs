@@ -1239,6 +1239,37 @@ test("AI gateway connection test sends a minimal custom API ping", async () => {
   });
 });
 
+test("AI gateway connection test keeps custom auxiliary model with default primary model", async () => {
+  const pingedModels = [];
+  const result = await testGatewayConnection(
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+      gatewayBaseUrl: "https://proxy.example.test/v1",
+      gatewayModel: "gpt-5.4",
+      gatewayCustomModel: "",
+      gatewayCustomAuxiliaryModel: "glm-5.2"
+    },
+    async (_url, options) => {
+      const body = JSON.parse(options.body);
+      pingedModels.push(body.model);
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { choices: [{ message: { content: "ok" } }] };
+        }
+      };
+    },
+    { timeoutMs: 1000 }
+  );
+
+  assert.deepEqual(pingedModels, ["gpt-5.4", "glm-5.2"]);
+  assert.equal(result.model, "gpt-5.4");
+  assert.equal(result.auxiliaryModel, "glm-5.2");
+});
+
 test("AI gateway payload omits excluded tab titles", async () => {
   const sensitiveInventory = {
     ...inventory,
