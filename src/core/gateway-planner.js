@@ -14,6 +14,7 @@ import {
 } from "../shared/settings.js";
 import { languageInstruction, localizedText, targetWindowTitle } from "../shared/language.js";
 import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
+import { redactSensitiveText } from "../shared/redaction.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import { ACTION_PLAN_JSON_SCHEMA } from "./plan-schema.js";
 import { CHROME_GROUP_COLORS } from "./plan-validator.js";
@@ -392,20 +393,7 @@ function extractProviderErrorMessage(data) {
 function sanitizeGatewayErrorDetail(message) {
   const text = String(message || "").trim();
   if (!text) return "";
-  return text
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
-    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
-    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
-    .replace(/https?:\/\/[^\s"')]+/gi, redactGatewayErrorUrl);
-}
-
-function redactGatewayErrorUrl(rawUrl) {
-  try {
-    const url = new URL(rawUrl);
-    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
-  } catch {
-    return rawUrl;
-  }
+  return redactSensitiveText(text);
 }
 
 function extractGatewayRequestId(response, data) {

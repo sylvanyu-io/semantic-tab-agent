@@ -2,6 +2,7 @@ import { getSettings, handleRuntimeMessage } from "../core/controller.js";
 import { rememberOpenTabActivity, rememberOpenTabsActivity } from "../core/page-activity-cache.js";
 import { capturePageSummaryIfAllowed } from "../core/page-summary-cache.js";
 import { reconcileTabLifecycle, recordTabClosed, rememberTabLifecycle } from "../core/tab-lifecycle-log.js";
+import { redactSensitiveText } from "../shared/redaction.js";
 
 const summaryCaptureTimers = new Map();
 const SUMMARY_SWEEP_ALARM = "tabRecap.summarySweep";
@@ -203,19 +204,5 @@ function sanitizeBackgroundErrorMessage(error) {
 }
 
 function redactBackgroundErrorString(value) {
-  return String(value || "")
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
-    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
-    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
-    .replace(/https?:\/\/[^\s"')<>]+/gi, redactBackgroundUrl)
-    .slice(0, 500);
-}
-
-function redactBackgroundUrl(rawUrl) {
-  try {
-    const url = new URL(rawUrl);
-    return `${url.protocol}//${url.hostname}/...`;
-  } catch {
-    return "[redacted-url]";
-  }
+  return redactSensitiveText(value).slice(0, 500);
 }

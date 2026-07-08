@@ -8,6 +8,7 @@ import {
 } from "../shared/settings.js";
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
+import { redactSensitiveText } from "../shared/redaction.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 
@@ -2711,21 +2712,7 @@ function isSensitiveDetailKey(key) {
 }
 
 function redactDetailString(value) {
-  const text = String(value || "");
-  return text
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
-    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
-    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
-    .replace(/https?:\/\/[^\s"')]+/gi, redactUrlForDetails);
-}
-
-function redactUrlForDetails(rawUrl) {
-  try {
-    const url = new URL(rawUrl);
-    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
-  } catch {
-    return rawUrl;
-  }
+  return redactSensitiveText(value);
 }
 
 function setBusy(isBusy, label = "", options = {}) {

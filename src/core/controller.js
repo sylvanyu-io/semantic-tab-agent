@@ -9,6 +9,7 @@ import {
 } from "../shared/settings.js";
 import { localizedText } from "../shared/language.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
+import { redactSensitiveText } from "../shared/redaction.js";
 import { applyValidatedPlan, createRollbackSnapshot, undoFromRollback } from "./chrome-executor.js";
 import { getActivityOverview, rememberOpenTabsActivity } from "./page-activity-cache.js";
 import { cachedPageSamplesForTabs, rememberPageSummary } from "./page-summary-cache.js";
@@ -1631,20 +1632,7 @@ function sanitizeActiveJob(job) {
 }
 
 function redactActiveJobText(value) {
-  return String(value || "")
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
-    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
-    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
-    .replace(/https?:\/\/[^\s"')<>]+/gi, redactActiveJobUrl);
-}
-
-function redactActiveJobUrl(rawUrl) {
-  try {
-    const url = new URL(rawUrl);
-    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
-  } catch {
-    return "[redacted-url]";
-  }
+  return redactSensitiveText(value);
 }
 
 function throwIfCanceled(signal) {
