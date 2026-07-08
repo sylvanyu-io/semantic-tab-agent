@@ -11,14 +11,14 @@ const LIFECYCLE_RECONCILE_PERIOD_MINUTES = 15;
 const SUMMARY_CAPTURE_DELAY_MS = 1200;
 
 configureSidePanel();
-syncLifecycleReconcileAlarm().catch((error) => console.debug(error));
+syncLifecycleReconcileAlarm().catch((error) => logBackgroundError("lifecycle_reconcile_alarm_sync", error));
 scheduleLifecycleReconcile();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleRuntimeMessage(chrome, message, sender)
     .then(async (result) => {
       if (message?.type === "settings:save") {
-        await syncSummarySweepAlarm().catch((error) => console.debug(error));
+        await syncSummarySweepAlarm().catch((error) => logBackgroundError("summary_sweep_alarm_sync", error));
         if (result?.continuousPageSummaries && contentAccessFeatureAvailable()) {
           scheduleOpenTabSummarySweep();
         }
@@ -26,8 +26,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: true, result });
     })
     .catch((error) => {
-      console.warn(error);
-      sendResponse({ ok: false, error: error?.message || String(error) });
+      const safeError = sanitizeBackgroundErrorMessage(error);
+      logBackgroundError("runtime_message", error);
+      sendResponse({ ok: false, error: safeError });
     });
 
   return true;
@@ -35,17 +36,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.runtime.onInstalled?.addListener(() => {
   configureSidePanel();
-  syncLifecycleReconcileAlarm().catch((error) => console.debug(error));
+  syncLifecycleReconcileAlarm().catch((error) => logBackgroundError("lifecycle_reconcile_alarm_sync", error));
   scheduleLifecycleReconcile();
-  syncSummarySweepAlarm().catch((error) => console.debug(error));
+  syncSummarySweepAlarm().catch((error) => logBackgroundError("summary_sweep_alarm_sync", error));
   scheduleOpenTabSummarySweep();
 });
 
 chrome.runtime.onStartup?.addListener(() => {
   configureSidePanel();
-  syncLifecycleReconcileAlarm().catch((error) => console.debug(error));
+  syncLifecycleReconcileAlarm().catch((error) => logBackgroundError("lifecycle_reconcile_alarm_sync", error));
   scheduleLifecycleReconcile();
-  syncSummarySweepAlarm().catch((error) => console.debug(error));
+  syncSummarySweepAlarm().catch((error) => logBackgroundError("summary_sweep_alarm_sync", error));
   scheduleOpenTabSummarySweep();
 });
 
@@ -62,23 +63,23 @@ chrome.tabs.onActivated?.addListener(({ tabId }) => {
   chrome.tabs
     .get(tabId)
     .then((tab) => rememberTabLifecycleWithSettings("tab_activated", tab))
-    .catch((error) => console.debug(error));
+    .catch((error) => logBackgroundError("tab_activated", error));
   scheduleSummaryCapture(tabId);
 });
 
 chrome.tabs.onCreated?.addListener((tab) => {
-  rememberTabLifecycleWithSettings("tab_created", tab).catch((error) => console.debug(error));
+  rememberTabLifecycleWithSettings("tab_created", tab).catch((error) => logBackgroundError("tab_created", error));
 });
 
 chrome.tabs.onRemoved?.addListener((tabId, removeInfo) => {
   clearTimeout(summaryCaptureTimers.get(tabId));
   summaryCaptureTimers.delete(tabId);
-  recordTabClosed(chrome, tabId, removeInfo).catch((error) => console.debug(error));
+  recordTabClosed(chrome, tabId, removeInfo).catch((error) => logBackgroundError("tab_removed", error));
 });
 
 chrome.tabs.onUpdated?.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === "complete" || changeInfo.title) {
-    rememberTabLifecycleWithSettings("tab_updated", tab).catch((error) => console.debug(error));
+    rememberTabLifecycleWithSettings("tab_updated", tab).catch((error) => logBackgroundError("tab_updated", error));
   }
   if (changeInfo.status === "complete") {
     scheduleSummaryCapture(tabId);
@@ -89,14 +90,14 @@ chrome.windows.onFocusChanged?.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) return;
   chrome.tabs.query({ active: true, windowId }).then(([tab]) => {
     if (tab?.id) {
-      rememberTabLifecycleWithSettings("window_focused", tab).catch((error) => console.debug(error));
+      rememberTabLifecycleWithSettings("window_focused", tab).catch((error) => logBackgroundError("window_focused", error));
       scheduleSummaryCapture(tab.id);
     }
-  }).catch((error) => console.debug(error));
+  }).catch((error) => logBackgroundError("window_focus_query", error));
 });
 
 function configureSidePanel() {
-  chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch((error) => console.debug(error));
+  chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch((error) => logBackgroundError("side_panel_configure", error));
 }
 
 function scheduleSummaryCapture(tabId) {
@@ -107,7 +108,7 @@ function scheduleSummaryCapture(tabId) {
     tabId,
     setTimeout(() => {
       summaryCaptureTimers.delete(tabId);
-      captureSummaryForTab(tabId).catch((error) => console.debug(error));
+      captureSummaryForTab(tabId).catch((error) => logBackgroundError("summary_capture", error));
     }, SUMMARY_CAPTURE_DELAY_MS)
   );
 }
@@ -135,14 +136,14 @@ async function syncLifecycleReconcileAlarm() {
 
 function scheduleLifecycleReconcile() {
   setTimeout(() => {
-    reconcileTabLifecycleWithSettings().catch((error) => console.debug(error));
+    reconcileTabLifecycleWithSettings().catch((error) => logBackgroundError("lifecycle_reconcile", error));
   }, 0);
 }
 
 function scheduleOpenTabSummarySweep() {
   if (!contentAccessFeatureAvailable()) return;
   setTimeout(() => {
-    sweepOpenTabsForSummaries().catch((error) => console.debug(error));
+    sweepOpenTabsForSummaries().catch((error) => logBackgroundError("summary_sweep", error));
   }, SUMMARY_CAPTURE_DELAY_MS);
 }
 
@@ -153,11 +154,11 @@ async function sweepOpenTabsForSummaries() {
   const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }).catch(() => []);
   const tabs = windows.flatMap((window) => window.tabs || []);
   await rememberOpenTabsActivity(chrome, tabs, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch((error) =>
-    console.debug(error)
+    logBackgroundError("open_tabs_activity", error)
   );
   for (const tab of tabs) {
     if (!tab?.id) continue;
-    await capturePageSummaryIfAllowed(chrome, tab, settings).catch((error) => console.debug(error));
+    await capturePageSummaryIfAllowed(chrome, tab, settings).catch((error) => logBackgroundError("summary_sweep_tab", error));
   }
 }
 
@@ -168,7 +169,7 @@ async function captureSummaryForTab(tabId) {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab) return;
   await rememberOpenTabActivity(chrome, tab, null, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch((error) =>
-    console.debug(error)
+    logBackgroundError("open_tab_activity", error)
   );
   await capturePageSummaryIfAllowed(chrome, tab, settings);
 }
@@ -190,4 +191,31 @@ function contentAccessFeatureAvailable() {
     (manifest.optional_permissions || []).includes("scripting") &&
       (manifest.optional_host_permissions || []).some((origin) => origin === "https://*/*" || origin === "http://*/*")
   );
+}
+
+function logBackgroundError(source, error) {
+  const message = sanitizeBackgroundErrorMessage(error);
+  console.debug(JSON.stringify({ event: "tab_recap_background_error", source, message }));
+}
+
+function sanitizeBackgroundErrorMessage(error) {
+  return redactBackgroundErrorString(error?.message || error || "Background operation failed.");
+}
+
+function redactBackgroundErrorString(value) {
+  return String(value || "")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
+    .replace(/https?:\/\/[^\s"')<>]+/gi, redactBackgroundUrl)
+    .slice(0, 500);
+}
+
+function redactBackgroundUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.hostname}/...`;
+  } catch {
+    return "[redacted-url]";
+  }
 }

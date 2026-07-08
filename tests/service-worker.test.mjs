@@ -186,6 +186,53 @@ test("service worker disables background summaries when the manifest has no cont
   }
 });
 
+test("service worker redacts runtime errors before logging or responding", async () => {
+  const listeners = {};
+  const debugLogs = [];
+  const originalDebug = console.debug;
+  const chrome = createFakeChrome();
+  installServiceWorkerEventMocks(chrome, listeners);
+  console.debug = (...args) => {
+    debugLogs.push(args.map((arg) => String(arg)).join(" "));
+  };
+
+  globalThis.chrome = chrome;
+  try {
+    await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    const fakeProviderKey = ["sk", "private", "secret", "token", "1234567890"].join("-");
+    const response = await new Promise((resolve) => {
+      listeners.runtimeMessage(
+        {
+          type: [
+            "unknown-message",
+            "https://private.example.com/secret/project?token=abc123",
+            fakeProviderKey
+          ].join(" ")
+        },
+        {},
+        resolve
+      );
+    });
+
+    const serializedLogs = debugLogs.join("\n");
+    assert.equal(response.ok, false);
+    assert.equal(response.error.includes("https://private.example.com/..."), true);
+    assert.equal(response.error.includes("[redacted-key]"), true);
+    assert.equal(response.error.includes(fakeProviderKey), false);
+    assert.equal(response.error.includes("token=abc123"), false);
+    assert.equal(response.error.includes("/secret/project"), false);
+    assert.equal(serializedLogs.includes("tab_recap_background_error"), true);
+    assert.equal(serializedLogs.includes("https://private.example.com/..."), true);
+    assert.equal(serializedLogs.includes("[redacted-key]"), true);
+    assert.equal(serializedLogs.includes(fakeProviderKey), false);
+    assert.equal(serializedLogs.includes("token=abc123"), false);
+    assert.equal(serializedLogs.includes("/secret/project"), false);
+  } finally {
+    console.debug = originalDebug;
+    delete globalThis.chrome;
+  }
+});
+
 function installServiceWorkerEventMocks(chrome, listeners) {
   chrome.runtime = chrome.runtime || {};
   chrome.runtime.onMessage = { addListener: (callback) => { listeners.runtimeMessage = callback; } };
