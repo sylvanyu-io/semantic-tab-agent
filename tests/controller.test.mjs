@@ -1752,6 +1752,41 @@ test("active analysis exposes progress and can be canceled", async () => {
   }
 });
 
+test("gateway analysis reports a terminal error when the AI request times out", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Gateway planner docs", url: "https://example.com/docs", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) =>
+    new Promise((resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+
+  try {
+    await assert.rejects(
+      () =>
+        analyzeTabs(
+          chrome,
+          { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
+          { windowId: 1, timeoutMs: 25 }
+        ),
+      /AI gateway planner timed out/
+    );
+    const activeJob = await getActiveJob(chrome);
+    assert.equal(activeJob.status, "error");
+    assert.equal(activeJob.phase, "error");
+    assert.match(activeJob.message, /AI gateway planner timed out/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("active analysis terminal errors are redacted before storage", async () => {
   const chrome = createFakeChrome({
     windows: [

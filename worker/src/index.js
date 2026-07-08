@@ -29,6 +29,7 @@ const DEFAULT_LIMITS = Object.freeze({
   globalDailyRequests: 3000,
   upstreamRetryAttempts: 2,
   upstreamRetryDelayMs: 1200,
+  upstreamChatTimeoutMs: 300_000,
   upstreamReadyTimeoutMs: 8000,
   llmReadyTimeoutMs: 45000,
   llmReadyMaxTokens: 2
@@ -206,6 +207,11 @@ function readLimits(env) {
       positiveInteger(env.UPSTREAM_RETRY_DELAY_MS, DEFAULT_LIMITS.upstreamRetryDelayMs),
       100,
       10_000
+    ),
+    upstreamChatTimeoutMs: clampInteger(
+      positiveInteger(env.UPSTREAM_CHAT_TIMEOUT_MS, DEFAULT_LIMITS.upstreamChatTimeoutMs),
+      10,
+      900_000
     ),
     upstreamReadyTimeoutMs: clampInteger(
       positiveInteger(env.UPSTREAM_READY_TIMEOUT_MS, DEFAULT_LIMITS.upstreamReadyTimeoutMs),
@@ -488,7 +494,13 @@ async function fetchUpstreamWithRetries(fetchImpl, upstream, bodyText, request, 
   let lastFailure = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const response = await fetchImpl(upstream.url, upstreamRequest(bodyText, upstream, request.signal, requestId));
+      const response = await fetchWithTimeout(
+        fetchImpl,
+        upstream.url,
+        upstreamRequest(bodyText, upstream, null, requestId),
+        limits.upstreamChatTimeoutMs,
+        request.signal
+      );
       if (!isRetryableUpstreamStatus(response.status)) {
         return { response, attempts: attempt };
       }
@@ -498,7 +510,7 @@ async function fetchUpstreamWithRetries(fetchImpl, upstream, bodyText, request, 
       if (request.signal?.aborted) {
         throw error;
       }
-      lastFailure = classifyUpstreamFailure({ error, attempt, attempts });
+      lastFailure = classifyUpstreamFailure({ error, timeout: error?.name === "AbortError", attempt, attempts });
     }
 
     if (attempt < attempts) {
@@ -532,9 +544,17 @@ function isRetryableUpstreamStatus(status) {
   return [408, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 530].includes(Number(status));
 }
 
-function classifyUpstreamFailure({ status = 0, body = "", error = null } = {}) {
+function classifyUpstreamFailure({ status = 0, body = "", error = null, timeout = false } = {}) {
   const text = compactResponseText(body || error?.message || "");
   const upstreamCode = cloudflareErrorCode(text);
+  if (timeout) {
+    return {
+      code: "origin_chat_timeout",
+      message: "The local TabRecap AI origin did not finish the request in time.",
+      upstreamStatus: 0,
+      upstreamCode: ""
+    };
+  }
   if (upstreamCode === "1033") {
     return {
       code: "origin_tunnel_unavailable",
@@ -713,8 +733,9 @@ async function checkLlmReadiness(env, options = {}) {
     const response = await fetchWithTimeout(
       fetchImpl,
       upstream.url,
-      upstreamRequest(bodyText, upstream, options.signal, options.requestId || ""),
-      limits.llmReadyTimeoutMs
+      upstreamRequest(bodyText, upstream, null, options.requestId || ""),
+      limits.llmReadyTimeoutMs,
+      options.signal
     );
     const text = await response.text().catch(() => "");
     const latencyMs = Date.now() - startedAt;
@@ -873,14 +894,17 @@ function monitorNotificationEvent(previousState, summary, now, env) {
 
 function nextMonitorState(previousState, summary, event, now) {
   const nowIso = now.toISOString();
+  const previousFirstFailureAt = previousState?.firstFailureAt || previousState?.lastFailureAt || "";
   return {
     status: summary.status,
     lastStatusAt: nowIso,
     lastOkAt: summary.ok ? nowIso : previousState?.lastOkAt || "",
-    lastFailureAt: summary.ok ? previousState?.lastFailureAt || "" : previousState?.lastFailureAt || nowIso,
+    firstFailureAt: summary.ok ? "" : previousFirstFailureAt || nowIso,
+    lastFailureAt: summary.ok ? previousState?.lastFailureAt || "" : nowIso,
     lastAlertAt: event.type === "none" ? previousState?.lastAlertAt || "" : nowIso,
     lastEvent: event.type,
-    lastSummary: summary
+    lastSummary: summary,
+    lastEmail: previousState?.lastEmail || null
   };
 }
 
@@ -891,6 +915,7 @@ function summarizeMonitorState(state) {
       status: "unknown",
       lastStatusAt: "",
       lastOkAt: "",
+      firstFailureAt: "",
       lastFailureAt: "",
       lastAlertAt: "",
       lastEvent: "none",
@@ -904,6 +929,7 @@ function summarizeMonitorState(state) {
     status: safeMonitorStatus(state.status),
     lastStatusAt: safeIsoString(state.lastStatusAt),
     lastOkAt: safeIsoString(state.lastOkAt),
+    firstFailureAt: safeIsoString(state.firstFailureAt),
     lastFailureAt: safeIsoString(state.lastFailureAt),
     lastAlertAt: safeIsoString(state.lastAlertAt),
     lastEvent: safeMonitorEvent(state.lastEvent),
@@ -922,6 +948,7 @@ function monitorStatusConfig(env, hasStateStore) {
     llmReadyModel: String(env.LLM_READY_MODEL || DEFAULT_LLM_READY_MODEL).trim() || DEFAULT_LLM_READY_MODEL,
     llmReadyReasoningEffort:
       String(env.LLM_READY_REASONING_EFFORT || DEFAULT_LLM_READY_REASONING_EFFORT).trim() || DEFAULT_LLM_READY_REASONING_EFFORT,
+    upstreamChatTimeoutMs: readLimits(env).upstreamChatTimeoutMs,
     llmReadyMaxTokens: readLimits(env).llmReadyMaxTokens,
     monitorReminderHours: positiveInteger(env.MONITOR_REMINDER_HOURS, DEFAULT_MONITOR_REMINDER_HOURS),
     schedule: "*/30 * * * *"
@@ -1056,7 +1083,7 @@ function monitorEmailText(event, summary, checks, now) {
     "",
     "Interpretation:",
     "- readyz checks Worker -> Cloudflare Tunnel -> local API-only proxy health.",
-    "- llm-readyz sends a tiny real gpt-5.4-mini / low / max_tokens=2 request.",
+    `- llm-readyz sends a tiny real ${checks.llm?.model || DEFAULT_LLM_READY_MODEL} / low / max_tokens=2 request.`,
     "",
     "Runbook:",
     "1. Check https://cliproxy.sylvanyu.io/readyz",
@@ -1111,10 +1138,21 @@ function upstreamHealthHeaders(upstream) {
   return headers;
 }
 
-function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
+function fetchWithTimeout(fetchImpl, url, options, timeoutMs, externalSignal = null) {
   const controller = new AbortController();
+  const abortFromExternal = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) {
+    controller.abort(externalSignal.reason);
+  } else if (externalSignal?.addEventListener) {
+    externalSignal.addEventListener("abort", abortFromExternal, { once: true });
+  }
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetchImpl(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+  return fetchImpl(url, { ...options, signal: controller.signal }).finally(() => {
+    clearTimeout(timer);
+    if (externalSignal?.removeEventListener) {
+      externalSignal.removeEventListener("abort", abortFromExternal);
+    }
+  });
 }
 
 async function relayUpstreamResponse(response, request, requestId = "", attempts = 1) {

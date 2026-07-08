@@ -288,7 +288,7 @@ test("scheduled monitor does not spend LLM tokens before state storage is config
 });
 
 test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds later", async () => {
-  const env = monitorEnv({ MONITOR_REMINDER_HOURS: "6" });
+  const env = monitorEnv({ MONITOR_REMINDER_HOURS: "6", MONITOR_TOKEN: "secret" });
   const calls = monitorFetch({ llmStatus: 503, llmBody: "upstream temporarily unavailable" });
 
   const first = await runScheduledMonitor(env, {
@@ -311,6 +311,17 @@ test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds
   assert.equal(calls.emails.length, 2);
   assert.match(calls.emails[0].subject, /down: llm-readyz/);
   assert.match(calls.emails[1].subject, /still down/);
+
+  const response = await handle(
+    new Request("https://cliproxy.example/monitor/status", {
+      headers: { "x-monitor-token": "secret" }
+    }),
+    env
+  );
+  const body = await response.json();
+  assert.equal(body.monitor.lastEmail.ok, true);
+  assert.equal(body.monitor.firstFailureAt, "2026-07-02T00:00:00.000Z");
+  assert.equal(body.monitor.lastFailureAt, "2026-07-02T06:30:00.000Z");
 });
 
 test("scheduled monitor retries alert mail when the email API fails", async () => {
@@ -623,6 +634,32 @@ test("worker converts persistent local tunnel failures into product JSON errors"
   assert.equal(body.error.requestId, "op_down");
   assert.equal(body.error.upstreamStatus, 530);
   assert.equal(body.error.upstreamCode, "1033");
+});
+
+test("worker converts stalled upstream chat requests into product JSON timeout errors", async () => {
+  const localHandle = createWorkerHandler({
+    fetchImpl: async (_url, options) =>
+      new Promise((resolve, reject) => {
+        options.signal.addEventListener("abort", () => {
+          const error = new Error("aborted");
+          error.name = "AbortError";
+          reject(error);
+        });
+      })
+  });
+
+  const response = await localHandle(chatRequest(undefined, { "x-tab-recap-request-id": "op_timeout" }), {
+    ...envWithKv(),
+    UPSTREAM_CHAT_TIMEOUT_MS: "25",
+    UPSTREAM_RETRY_ATTEMPTS: "1"
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.error.code, "origin_chat_timeout");
+  assert.equal(body.error.requestId, "op_timeout");
+  assert.equal(body.error.attempts, 1);
+  assert.equal(body.error.upstreamStatus, 0);
 });
 
 test("worker converts non-json upstream auth failures into redacted product JSON errors", async () => {

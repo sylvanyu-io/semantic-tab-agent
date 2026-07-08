@@ -22,7 +22,8 @@ import { normalizePlanForSettings } from "./plan-normalizer.js";
 import { buildPreview } from "./preview.js";
 import { STORAGE_KEYS, getLocal, removeLocal, setLocal } from "./storage.js";
 import { collectTabInventory } from "./tab-inventory.js";
-import { TIME_RECAP_GATEWAY_TIMEOUT_MS, generateTimeRecap } from "./time-recap.js";
+import { ORGANIZE_GATEWAY_TIMEOUT_MS, TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
+import { generateTimeRecap } from "./time-recap.js";
 import { buildEvidenceSnapshot } from "./evidence-snapshot.js";
 import { validatePlan } from "./plan-validator.js";
 
@@ -634,11 +635,15 @@ async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId
       : null;
     throwIfCanceled(abortController.signal);
 
+    const requestedTimeoutMs = Number(invocation.timeoutMs);
     const planOptions = {
       signal: abortController.signal,
       onProgress: reportProgress,
       activityOverview,
-      operationId
+      operationId,
+      timeoutMs: Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
+        ? requestedTimeoutMs
+        : ORGANIZE_GATEWAY_TIMEOUT_MS
     };
     if (settings.plannerProvider === PLANNER_PROVIDERS.GATEWAY) {
       planOptions.installId = await getOrCreateInstallId(chromeApi);
