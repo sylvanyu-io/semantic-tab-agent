@@ -553,6 +553,9 @@ const UI_COPY = Object.freeze({
     "aiWait.recapping": ["Reading the timeline", "Merging local activity", "Aligning page summaries", "Finding key phases", "Keeping review manual"]
   }
 });
+const UI_COPY_TEXT_VALUES = new Set(
+  Object.values(UI_COPY).flatMap((table) => Object.values(table).filter((value) => typeof value === "string"))
+);
 
 const fields = {
   organizeMode: document.querySelector("#organizeMode"),
@@ -2674,7 +2677,15 @@ function errorPanelContent(error) {
 }
 
 function visibleErrorMessage(error) {
-  return friendlyErrorMessage(error) || t("status.previousFailed");
+  const rawMessage = String(error?.message || error || "").trim();
+  const message = friendlyErrorMessage(error);
+  if (!message) return t("status.previousFailed");
+  if (message !== rawMessage || isKnownProductMessage(message)) return message;
+  return t("status.previousFailed");
+}
+
+function isKnownProductMessage(message = "") {
+  return UI_COPY_TEXT_VALUES.has(message) || isProductSafeGatewayMessage(message);
 }
 
 async function clearAnalysisState() {
