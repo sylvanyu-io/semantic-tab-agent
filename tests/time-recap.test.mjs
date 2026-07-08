@@ -749,6 +749,43 @@ test("time recap runtime message honors explicit timeout and falls back locally"
   }
 });
 
+test("time recap fallback redacts raw gateway errors before returning state", async () => {
+  const chrome = seededRecapChrome();
+  const bearerToken = "live-secret-token";
+  const apiKey = "topsecret";
+  const queryToken = "abc123";
+  const fakeSkKey = `sk-${"live1234567890abcdef"}`;
+  const privateUrl = `https://cliproxy-origin.sylvanyu.io/v1/chat/completions?api_${"key"}=${apiKey}&token=${queryToken}`;
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      fetchImpl: async () => {
+        throw new Error(
+          `upstream panic Bearer ${bearerToken} ${fakeSkKey} at ${privateUrl}`
+        );
+      }
+    }
+  );
+  const serialized = JSON.stringify(result);
+
+  assert.equal(result.source, "local_fallback");
+  assert.equal(result.error, "AI 暂时不可用，先展示本机线索。");
+  assert.equal(serialized.includes(bearerToken), false);
+  assert.equal(serialized.includes(fakeSkKey), false);
+  assert.equal(serialized.includes("cliproxy-origin.sylvanyu.io/v1/chat/completions"), false);
+  assert.equal(serialized.includes(`api_${"key"}=${apiKey}`), false);
+  assert.equal(serialized.includes(`token=${queryToken}`), false);
+});
+
 test("time recap runtime message can be canceled while AI is running", async () => {
   const chrome = seededRecapChrome();
   const originalFetch = globalThis.fetch;

@@ -83,13 +83,56 @@ export async function generateTimeRecap(chromeApi, rawSettings = {}, options = {
     }
     return {
       source: "local_fallback",
-      error: error?.message || String(error),
+      error: safeTimeRecapFallbackError(error, settings),
       recap: {
         ...localRecap,
         coverageNote: localRecap.coverageNote
       },
       input
     };
+  }
+}
+
+function safeTimeRecapFallbackError(error, settings) {
+  const message = sanitizeTimeRecapErrorDetail(error?.message || error || "");
+  if (!message) return genericTimeRecapFallbackError(settings);
+
+  if (/AI gateway time recap timed out/i.test(message)) {
+    return message;
+  }
+  if (
+    /默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务拒绝访问|The default AI service|The custom API|The AI service/i.test(message) ||
+    /model.*not available|not available.*model|unsupported.*model|model.*unsupported|model_not_allowed|planner_model_not_allowed|recap_model_not_allowed|不支持.*模型/i.test(message)
+  ) {
+    return message;
+  }
+
+  return genericTimeRecapFallbackError(settings);
+}
+
+function genericTimeRecapFallbackError(settings) {
+  return localizedText(
+    settings.languageMode,
+    "AI 暂时不可用，先展示本机线索。",
+    "AI is temporarily unavailable; showing local signals first."
+  );
+}
+
+function sanitizeTimeRecapErrorDetail(message) {
+  return String(message || "")
+    .trim()
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
+    .replace(/https?:\/\/[^\s"')]+/gi, redactTimeRecapErrorUrl);
+}
+
+function redactTimeRecapErrorUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
+  } catch {
+    return rawUrl;
   }
 }
 
