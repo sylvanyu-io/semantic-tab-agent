@@ -190,10 +190,11 @@ Latest patch release and live-gateway evidence:
   `dist/tab-recap-0.2.6.zip` and `dist/tab-recap-0.2.6-store.zip`.
 - GitHub Actions push CI passed on the same commit:
   `https://github.com/sylvanyu-io/tab-recap/actions/runs/28881789229`.
-- Built-in AI gateway smoke passed after the local origin recovery:
-  `/healthz=200`, `/readyz=200`, `/monitor/status=ok`, `lastStatusAt`
-  `2026-07-07T16:00:36.000Z`, and a real `gpt-5.4` high-reasoning chat request
-  returned a valid plan in 57.5 seconds.
+- Built-in AI gateway smoke passed after the local origin recovery. Latest
+  recorded live evidence is in
+  [Default AI gateway runbook](12-default-ai-gateway-runbook.md): local main,
+  API-only proxy, public origin, Worker `/readyz`, monitor status, and a real
+  `gpt-5.4` high-reasoning chat request all passed on 2026-07-09.
 - `v0.2.6` release assets uploaded:
   `tab-recap-0.2.6.zip` and `tab-recap-0.2.6-store.zip`.
 
