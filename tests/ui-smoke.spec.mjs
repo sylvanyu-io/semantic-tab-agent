@@ -320,6 +320,73 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.getByRole("button", { name: "撤销" })).toBeVisible();
 });
 
+test("settings import refreshes custom provider fields without restoring keys", async ({ page }) => {
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByText("更多选项").click();
+  await expect(page.locator("#gatewayProviderMode")).toHaveValue("builtin");
+  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
+
+  const payload = {
+    app: "TabRecap",
+    schemaVersion: 1,
+    settings: {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "media_type",
+      groupingGranularity: "detailed",
+      plannerProvider: "gateway",
+      gatewayProviderMode: "custom",
+      rememberProviderKeys: true,
+      gatewayBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
+      gatewayModel: "custom",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "glm-5.2",
+      gatewayCustomAuxiliaryModel: "deepseek-v4",
+      gatewayThinkingIntensity: "medium",
+      gatewayApiKey: "secret-key-that-must-not-import",
+      customPrompt: "按研究方向拆分"
+    }
+  };
+
+  await page.locator("#settingsImportFile").setInputFiles({
+    name: "tabrecap-settings.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(payload))
+  });
+
+  await expect(page.locator("#settingsTransferStatus")).toHaveText("设置已导入。自定义密钥需要重新填写。");
+  await expect(page.locator("#statusText")).toHaveText("设置已导入。自定义密钥需要重新填写。");
+  await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
+  await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
+  await expect(page.locator("#gatewayBaseUrl")).toHaveValue("https://open.bigmodel.cn/api/paas/v4");
+  await expect(page.locator("#gatewayModel")).toBeHidden();
+  await expect(page.locator("#gatewayCustomModelField")).toBeVisible();
+  await expect(page.locator("#gatewayCustomModel")).toHaveValue("glm-5.2");
+  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toBeVisible();
+  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toHaveValue("deepseek-v4");
+  await expect(page.locator("#gatewayApiKey")).toBeVisible();
+  await expect(page.locator("#gatewayApiKey")).toHaveValue("");
+  await expect(page.locator("#rememberProviderKeys")).not.toBeChecked();
+  await expect(page.locator("#promptPreset")).toHaveValue("media_type");
+  await expect(page.locator("#groupingGranularity")).toHaveValue("detailed");
+  await expect(page.locator("#customPrompt")).toHaveValue("按研究方向拆分");
+});
+
 test("time recap mode renders a first-class recap surface", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 
