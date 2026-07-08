@@ -1270,6 +1270,65 @@ test("AI gateway connection test keeps custom auxiliary model with default prima
   assert.equal(result.auxiliaryModel, "glm-5.2");
 });
 
+test("AI gateway connection test hides raw network failures and secrets", async () => {
+  const privateKey = ["sk", "private", "connection", "test", "key", "1234567890"].join("-");
+  const privateUrl = "https://proxy.example.test/v1/chat/completions?token=abc123";
+
+  await assert.rejects(
+    () =>
+      testGatewayConnection(
+        {
+          ...DEFAULT_SETTINGS,
+          languageMode: "zh-CN",
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+          gatewayBaseUrl: "https://proxy.example.test/v1",
+          gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+          gatewayCustomModel: "glm-5.2",
+          gatewayApiKey: privateKey
+        },
+        async () => {
+          throw new Error(`fetch failed for ${privateUrl} with Bearer ${privateKey}`);
+        },
+        { timeoutMs: 1000 }
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.equal(message, "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。");
+      assert.equal(message.includes(privateKey), false);
+      assert.equal(message.includes(privateUrl), false);
+      assert.equal(message.includes("Bearer"), false);
+      return true;
+    }
+  );
+});
+
+test("AI gateway connection test maps custom API timeout to product copy", async () => {
+  await assert.rejects(
+    () =>
+      testGatewayConnection(
+        {
+          ...DEFAULT_SETTINGS,
+          languageMode: "zh-CN",
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+          gatewayBaseUrl: "https://proxy.example.test/v1",
+          gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+          gatewayCustomModel: "deepseek-v4"
+        },
+        async () => new Promise(() => {}),
+        { timeoutMs: 5 }
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.equal(message, "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
+      assert.equal(message.includes("AI gateway connection test timed out"), false);
+      assert.equal(message.includes("timed out after"), false);
+      return true;
+    }
+  );
+});
+
 test("AI gateway payload omits excluded tab titles", async () => {
   const sensitiveInventory = {
     ...inventory,

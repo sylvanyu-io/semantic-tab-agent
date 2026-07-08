@@ -320,18 +320,24 @@ export async function testGatewayConnection(rawSettings = {}, fetchImpl = global
       messages: [{ role: "user", content: "Reply with ok." }],
       max_tokens: 8
     };
-    const { response, data } = await fetchJsonWithTimeout(
-      fetchImpl,
-      gatewayChatCompletionsUrl(settings),
-      {
-        method: "POST",
-        headers: gatewayHeaders(settings, { requestId: options.requestId || "" }),
-        body: JSON.stringify(body)
-      },
-      "AI gateway connection test",
-      options.timeoutMs ?? 15_000,
-      options.signal
-    );
+    let response;
+    let data;
+    try {
+      ({ response, data } = await fetchJsonWithTimeout(
+        fetchImpl,
+        gatewayChatCompletionsUrl(settings),
+        {
+          method: "POST",
+          headers: gatewayHeaders(settings, { requestId: options.requestId || "" }),
+          body: JSON.stringify(body)
+        },
+        "AI gateway connection test",
+        options.timeoutMs ?? 15_000,
+        options.signal
+      ));
+    } catch (error) {
+      throw new Error(gatewayConnectionErrorMessage(error, settings));
+    }
     lastStatus = response.status;
     if (!response.ok) {
       throw new Error(gatewayErrorMessage(response, data, settings));
@@ -344,6 +350,34 @@ export async function testGatewayConnection(rawSettings = {}, fetchImpl = global
     auxiliaryModel,
     baseUrl: effectiveGatewayBaseUrl(settings)
   };
+}
+
+function gatewayConnectionErrorMessage(error, settings) {
+  const message = sanitizeGatewayErrorDetail(error?.message || error || "");
+  const isCustomProvider = isCustomGatewayProvider(settings);
+  if (/was canceled|aborted|cancel/i.test(message)) {
+    return localizedText(settings.languageMode, "连接测试已取消。", "Connection test was canceled.");
+  }
+  if (/timed out/i.test(message)) {
+    return isCustomProvider
+      ? localizedText(
+          settings.languageMode,
+          "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
+          "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again."
+        )
+      : localizedText(
+          settings.languageMode,
+          "默认 AI 服务连接超时。请稍后重试。",
+          "The default AI service connection timed out. Try again later."
+        );
+  }
+  return isCustomProvider
+    ? localizedText(
+        settings.languageMode,
+        "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。",
+        "The custom API is not reachable right now. Check the URL, model name, key, or upstream service and try again."
+      )
+    : localizedText(settings.languageMode, "默认 AI 服务暂时不可用。请稍后重试。", "The default AI service is temporarily unavailable. Try again later.");
 }
 
 export function gatewayErrorMessage(response, data, settings) {
