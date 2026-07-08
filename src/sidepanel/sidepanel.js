@@ -2030,6 +2030,7 @@ function friendlyErrorMessage(error) {
   if (/No rollback snapshot is available/i.test(message)) return t("status.noRollback");
   if (/Cannot apply an invalid plan/i.test(message)) return t("status.invalidPlan");
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
+  if (/AI 增强未完成|AI enhancement did not finish/i.test(message)) return t("status.recapAiUnavailable");
   if (/AI gateway time recap timed out/i.test(message)) return t("status.recapAiUnavailable");
   if (/AI gateway .* timed out/i.test(message)) return t("status.gatewayTimeout");
   if (

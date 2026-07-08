@@ -115,8 +115,8 @@ function safeTimeRecapFallbackError(error, settings) {
 function genericTimeRecapFallbackError(settings) {
   return localizedText(
     settings.languageMode,
-    "AI 暂时不可用，先展示本机线索。",
-    "AI is temporarily unavailable; showing local signals first."
+    "AI 增强未完成，已先生成本机回顾。",
+    "AI enhancement did not finish; local recap is ready."
   );
 }
 
