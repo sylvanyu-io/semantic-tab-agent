@@ -2020,6 +2020,68 @@ test("custom provider model errors use custom API copy", async ({ page }) => {
   await expect(page.locator("#statusText")).toHaveText("The custom API does not support this model. Check the model name or run Test connection first.");
 });
 
+test("custom provider ping errors stay product-safe in the side panel", async ({ page }) => {
+  const privateKey = ["sk", "private", "sidepanel", "ping", "key", "1234567890"].join("-");
+  const privateUrl = "https://private-gateway.example.test/v1/chat/completions?token=abc123";
+  await page.addInitScript(({ privateKey, privateUrl }) => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      gatewayProviderMode: "custom",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "https://private-gateway.example.test/v1",
+      gatewayModel: "custom",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "glm-5.2",
+      gatewayCustomAuxiliaryModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: privateKey,
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "gateway:testConnection") {
+            return {
+              ok: false,
+              error: `自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。 fetch failed for ${privateUrl} with Bearer ${privateKey}`
+            };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  }, { privateKey, privateUrl });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByText("更多选项").click();
+  await page.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.locator("#statusText")).toHaveText("自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。");
+  await expect(page.locator("#statusText")).not.toContainText("Bearer");
+  await expect(page.locator("#statusText")).not.toContainText("private-gateway.example.test");
+  await expect(page.locator("#statusText")).not.toContainText(privateKey);
+});
+
 test("error diagnostic details redact secrets and tokenized urls", async ({ page }) => {
   await page.addInitScript(() => {
     const providerKey = ["sk", "private-secret-token-1234567890"].join("-");

@@ -51,6 +51,8 @@ const UI_COPY = Object.freeze({
     "status.gatewayTestUrlMissing": "请先填写自定义 API 地址。",
     "status.gatewayTesting": "正在测试自定义 API",
     "status.gatewayTestOk": "自定义 API 可用：{model}",
+    "status.customGatewayUnreachable": "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。",
+    "status.customGatewayConnectionTimeout": "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
     "status.localMemoryCleared": "本机记录已清空",
     "status.settingsExported": "设置已导出，不包含自定义密钥。",
     "status.settingsImported": "设置已导入。自定义密钥需要重新填写。",
@@ -320,6 +322,8 @@ const UI_COPY = Object.freeze({
     "status.gatewayTestUrlMissing": "Enter a custom API URL first.",
     "status.gatewayTesting": "Testing custom API",
     "status.gatewayTestOk": "Custom API connected: {model}",
+    "status.customGatewayUnreachable": "The custom API is not reachable right now. Check the URL, model name, key, or upstream service and try again.",
+    "status.customGatewayConnectionTimeout": "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again.",
     "status.localMemoryCleared": "Local records cleared",
     "status.settingsExported": "Settings exported without custom keys.",
     "status.settingsImported": "Settings imported. Re-enter any custom API key.",
@@ -1997,6 +2001,12 @@ function friendlyErrorMessage(error) {
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
   if (/AI gateway time recap timed out/i.test(message)) return t("status.recapAiUnavailable");
   if (/AI gateway .* timed out/i.test(message)) return t("status.gatewayTimeout");
+  if (/自定义 API 连接超时|The custom API connection timed out/i.test(message)) {
+    return t("status.customGatewayConnectionTimeout");
+  }
+  if (/自定义 API 暂时连不上|The custom API is not reachable/i.test(message)) {
+    return t("status.customGatewayUnreachable");
+  }
   if (
     /(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API).*?(?:不支持.*模型|model.*(?:not available|unsupported)|model_not_allowed)|(?:model_not_allowed|planner_model_not_allowed|recap_model_not_allowed).*?(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API)/i.test(
       message
@@ -2681,12 +2691,16 @@ function visibleErrorMessage(error) {
   const rawMessage = String(error?.message || error || "").trim();
   const message = friendlyErrorMessage(error);
   if (!message) return t("status.previousFailed");
-  if (message !== rawMessage || isKnownProductMessage(message)) return message;
+  if (message !== rawMessage || isKnownProductMessage(message)) return redactVisibleErrorMessage(message);
   return t("status.previousFailed");
 }
 
 function isKnownProductMessage(message = "") {
   return UI_COPY_TEXT_VALUES.has(message) || isProductSafeGatewayMessage(message);
+}
+
+function redactVisibleErrorMessage(message = "") {
+  return redactSensitiveText(message).replace(/https?:\/\/[^\s"')<>]+/gi, "[redacted-url]");
 }
 
 async function clearAnalysisState() {
