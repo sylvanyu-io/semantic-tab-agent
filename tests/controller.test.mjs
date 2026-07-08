@@ -2067,6 +2067,66 @@ test("time recap and tab organization can run at the same time", async () => {
   }
 });
 
+test("time recap cancellation is isolated per source window", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Window one recap", url: "https://example.com/window-one", active: true }]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [{ id: 20, title: "Window two recap", url: "https://example.com/window-two", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      const request = { aborted: false };
+      requests.push(request);
+      options.signal?.addEventListener("abort", () => {
+        request.aborted = true;
+        reject(new Error("fetch aborted"));
+      });
+    });
+
+  try {
+    const settings = { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" };
+    const firstRecap = handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      settings,
+      languageMode: "zh-CN",
+      range: { preset: "24h" },
+      windowId: 1
+    });
+    const secondRecap = handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      settings,
+      languageMode: "zh-CN",
+      range: { preset: "24h" },
+      windowId: 2
+    });
+    await waitForRequests(requests, 2);
+
+    const firstCancel = await handleRuntimeMessage(chrome, { type: "activity:cancelTimeRecap", windowId: 1 });
+    assert.equal(firstCancel.canceled, true);
+    await assert.rejects(firstRecap, /已停止生成回顾/);
+    assert.equal(requests[0].aborted, true);
+    assert.equal(requests[1].aborted, false);
+
+    const secondCancel = await handleRuntimeMessage(chrome, { type: "activity:cancelTimeRecap", windowId: 2 });
+    assert.equal(secondCancel.canceled, true);
+    await assert.rejects(secondRecap, /已停止生成回顾/);
+    assert.equal(requests[1].aborted, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("startAnalyzeTabs returns immediately while the background job writes final preview", async () => {
   const chrome = createFakeChrome({
     windows: [
@@ -2354,4 +2414,13 @@ async function waitForWindowActiveJob(chrome, windowId, predicate) {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   assert.fail(`Timed out waiting for active analysis job in window ${windowId}.`);
+}
+
+async function waitForRequests(requests, count) {
+  const deadline = Date.now() + 1000;
+  while (Date.now() < deadline) {
+    if (requests.length >= count) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.fail(`Timed out waiting for ${count} request(s).`);
 }
