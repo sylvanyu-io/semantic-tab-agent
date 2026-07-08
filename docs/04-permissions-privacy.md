@@ -129,6 +129,10 @@ Add tests for:
 - denied optional host permission falls back to metadata-only;
 - custom prompt cannot change page sampling permissions.
 
+Current automated coverage includes the custom-prompt permission boundary: a
+prompt that asks to read every page body still leaves page sampling off unless
+the product setting and permission path explicitly enable it.
+
 ## Sources
 
 - Chrome Tabs API permission behavior: https://developer.chrome.com/docs/extensions/reference/api/tabs
