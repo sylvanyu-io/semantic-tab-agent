@@ -1038,6 +1038,38 @@ test("time recap fallback fully redacts URLs inside known product errors", async
   assert.equal(serialized.includes(providerKey), false);
 });
 
+test("time recap fallback preserves product gateway request ids", async () => {
+  const chrome = seededRecapChrome();
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "origin_tunnel_unavailable",
+              message: "The local TabRecap AI origin is offline or its Cloudflare Tunnel has no healthy connection.",
+              requestId: "recap_visible_123"
+            }
+          }),
+          { status: 503, headers: { "content-type": "application/json" } }
+        )
+    }
+  );
+
+  assert.equal(result.source, "local_fallback");
+  assert.match(result.error, /默认 AI 服务的本地源站暂时离线/);
+  assert.match(result.error, /请求号 recap_visible_123/);
+  assert.doesNotMatch(JSON.stringify(result), /Cloudflare Tunnel has no healthy connection/);
+});
+
 test("time recap runtime message can be canceled while AI is running", async () => {
   const chrome = seededRecapChrome();
   const originalFetch = globalThis.fetch;
