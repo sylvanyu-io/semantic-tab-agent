@@ -198,6 +198,24 @@ Latest patch release and live-gateway evidence:
 - `v0.2.6` release assets uploaded:
   `tab-recap-0.2.6.zip` and `tab-recap-0.2.6-store.zip`.
 
+Post-release hardening verification:
+
+- `2026-07-09` Asia/Shanghai: local verification passed on `main` at
+  `2bedadf` after the store permission boundary was tightened.
+- `node --test --test-reporter=dot tests/release-scripts.test.mjs`: passed.
+- `node --test --test-reporter=dot tests/manifest.test.mjs
+  tests/release-scripts.test.mjs`: passed.
+- `npm run build:extension:store`: produced
+  `dist/tab-recap-0.2.6-store.zip`.
+- `npm run audit:release-artifacts`: passed and confirmed the store manifest
+  has no optional extension permissions while keeping optional host permissions
+  for explicitly configured custom AI API origins.
+- `npm test`: `339/339` Node and Worker tests passed.
+- `npm run test:ui`: `51/51` Playwright UI smoke tests passed, covering recap
+  progress/cancellation, organize and recap parallel generation, page-summary
+  permission controls, custom provider model/ping errors, store content-access
+  hiding, and stale generation cancellation behavior.
+
 Recommended before public listing:
 
 - Keep the local-memory clearing control visible before recap history becomes a
