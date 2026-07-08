@@ -1678,7 +1678,7 @@ test("AI gateway planner deduplicates compact review refs", async () => {
   ]);
 });
 
-test("AI gateway planner can call a custom free gateway with the default model and no API key", async () => {
+test("AI gateway planner can call a no-key custom gateway with the default model", async () => {
   const fetchImpl = async (url, options) => {
     assert.equal(url, "http://localhost:8317/v1/chat/completions");
     assert.equal(options.headers.authorization, undefined);
@@ -1728,7 +1728,7 @@ test("AI gateway planner can call a custom free gateway with the default model a
   assert.equal(plan.reviewTabs.length, 2);
 });
 
-test("AI gateway planner uses the default free gateway without exposing authorization", async () => {
+test("AI gateway planner uses the default gateway without exposing authorization", async () => {
   const fetchImpl = async (url, options) => {
     assert.equal(url, "https://cliproxy.sylvanyu.io/v1/chat/completions");
     assert.equal(options.headers.authorization, undefined);
@@ -1774,7 +1774,7 @@ test("AI gateway planner uses the default free gateway without exposing authoriz
   assert.equal(plan.reviewTabs.length, 2);
 });
 
-test("AI gateway planner ignores stale user keys for the built-in free gateway", async () => {
+test("AI gateway planner ignores stale user keys for the built-in gateway", async () => {
   const fetchImpl = async (_url, options) => {
     assert.equal(options.headers.authorization, undefined);
     assert.equal(options.headers["x-tab-recap-install-id"], "install-test");
@@ -1904,6 +1904,8 @@ test("AI gateway planner maps built-in model allowlist failures to model copy", 
       return JSON.stringify({
         error: {
           code: "model_not_allowed",
+          // Legacy Worker wording can remain in stored jobs or older responses;
+          // product UI must still map it to current default-service copy.
           message: "This model is not available on the free gateway."
         }
       });

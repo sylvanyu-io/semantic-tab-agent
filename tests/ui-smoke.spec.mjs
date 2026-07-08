@@ -1684,6 +1684,8 @@ test("time recap fallback surfaces friendly model errors without raw gateway cop
               ok: true,
               result: {
                 source: "local_fallback",
+                // Legacy Worker wording can remain in older fallback payloads;
+                // the visible recap panel must map it to current product copy.
                 error: "This model is not available on the free gateway.",
                 input: { pages: [], coverage: { includedPages: 12, sampledEntries: 4 } },
                 recap: {
@@ -2165,6 +2167,8 @@ test("side panel restores a background planning error after reopening", async ({
       status: "error",
       phase: "error",
       progress: 100,
+      // Legacy Worker wording can remain in restored jobs; visible copy should
+      // still use the current default AI service wording.
       message: "This model is not available on the free gateway.",
       error: "This model is not available on the free gateway.",
       createdAt: new Date().toISOString(),
