@@ -40,6 +40,42 @@ test("redacts common cloud and developer token shapes covered by release scannin
   assert.equal(output.match(/\[redacted-key\]/g)?.length, keys.length);
 });
 
+test("redacts structured auth headers, cookies, and secret fields", () => {
+  const secrets = {
+    authorization: "auth-header-secret-123456",
+    cookie: "cookie-session-secret",
+    setCookie: "set-cookie-secret",
+    apiKey: "plain-api-secret",
+    jsonApiKey: "json-api-secret",
+    accessToken: "access-token-secret",
+    refreshToken: "refresh-token-secret",
+    password: "hunter2-secret"
+  };
+  const input = [
+    `Authorization: Bearer ${secrets.authorization}`,
+    `Cookie: session=${secrets.cookie}; theme=dark`,
+    `Set-Cookie: sid=${secrets.setCookie}; HttpOnly`,
+    `api_key=${secrets.apiKey}`,
+    `"apiKey":"${secrets.jsonApiKey}"`,
+    `'accessToken': '${secrets.accessToken}'`,
+    `refresh-token:${secrets.refreshToken}`,
+    `password: ${secrets.password}`
+  ].join("\n");
+  const output = redactSensitiveText(input);
+
+  for (const secret of Object.values(secrets)) {
+    assert.equal(output.includes(secret), false);
+  }
+  assert.match(output, /Authorization: \[redacted\]/);
+  assert.match(output, /Cookie: \[redacted\]/);
+  assert.match(output, /Set-Cookie: \[redacted\]/);
+  assert.match(output, /api_key=\[redacted\]/);
+  assert.match(output, /"apiKey":"\[redacted\]"/);
+  assert.match(output, /'accessToken': '\[redacted\]'/);
+  assert.match(output, /refresh-token:\[redacted\]/);
+  assert.match(output, /password: \[redacted\]/);
+});
+
 test("redacts malformed URL matches to a stable placeholder", () => {
   assert.equal(redactSensitiveUrl("https://", { fallback: "[url]" }), "[url]");
 });

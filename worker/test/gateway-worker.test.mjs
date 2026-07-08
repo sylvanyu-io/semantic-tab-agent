@@ -86,6 +86,12 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   const providerKey = ["sk", "worker", "readyz", "secret", "1234567890"].join("-");
   const bearer = "gateway-monitor-secret-1234567890";
   const tokenizedUrl = "https://raw-llm.example/private/health?token=abc123&api_key=def456";
+  const structuredSecrets = [
+    "worker-auth-secret-123456",
+    "worker-cookie-secret",
+    "worker-api-field-secret",
+    "worker-access-token-secret"
+  ];
   const cloudKeys = [
     ["re", "A".repeat(22)].join("_"),
     ["ghp", "B".repeat(36)].join("_"),
@@ -96,7 +102,15 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   const localHandle = createWorkerHandler({
     fetchImpl: async (url) => {
       if (String(url).endsWith("/chat/completions")) {
-        throw new Error(`failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, ${cloudKeys.join(", ")}`);
+        throw new Error(
+          [
+            `failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, ${cloudKeys.join(", ")}`,
+            `Authorization: Bearer ${structuredSecrets[0]}`,
+            `Cookie: sid=${structuredSecrets[1]}`,
+            `api_key=${structuredSecrets[2]}`,
+            `"accessToken":"${structuredSecrets[3]}"`
+          ].join("\n")
+        );
       }
       return new Response("ok", { status: 200 });
     }
@@ -118,6 +132,9 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   assert.equal(serialized.includes("token=abc123"), false);
   assert.equal(serialized.includes("api_key=def456"), false);
   assert.equal(serialized.includes("/private/health"), false);
+  for (const secret of structuredSecrets) {
+    assert.equal(serialized.includes(secret), false);
+  }
   for (const key of cloudKeys) {
     assert.equal(serialized.includes(key), false);
   }
