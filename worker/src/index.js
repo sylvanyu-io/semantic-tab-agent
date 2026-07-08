@@ -248,7 +248,7 @@ async function readBodyText(request, byteLimit) {
 function validateChatRequest(body, env, limits) {
   const modelAllowlist = allowedModels(env);
   if (!modelAllowlist.includes(body?.model)) {
-    return { ok: false, code: "model_not_allowed", message: "This model is not available on the free gateway." };
+    return { ok: false, code: "model_not_allowed", message: "This model is not available on the default AI service." };
   }
   const fieldValidation = validateTopLevelFields(body);
   if (!fieldValidation.ok) return fieldValidation;
@@ -540,7 +540,7 @@ async function checkRateLimits(request, env, limits) {
       return {
         ok: false,
         code: `${kind}_rate_limited`,
-        message: "The free gateway is temporarily rate limited. Please try later or use a custom gateway.",
+        message: "The default AI service is temporarily rate limited. Please try later or use a custom AI gateway.",
         headers: { "retry-after": String(Math.min(ttlSeconds, 3600)) }
       };
     }

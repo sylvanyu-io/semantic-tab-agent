@@ -429,7 +429,10 @@ test("worker validates models and token caps before forwarding", async () => {
   const env = envWithKv();
   const badModel = await handle(chatRequest({ model: "random-model" }), env);
   assert.equal(badModel.status, 400);
-  assert.equal((await badModel.json()).error.code, "model_not_allowed");
+  const badModelError = (await badModel.json()).error;
+  assert.equal(badModelError.code, "model_not_allowed");
+  assert.equal(badModelError.message.includes("free gateway"), false);
+  assert.match(badModelError.message, /default AI service/);
 
   const progressCopyModel = await handle(chatRequest(validProgressCopyBody()), env);
   assert.equal(progressCopyModel.status, 200);
@@ -448,7 +451,9 @@ test("worker validates models and token caps before forwarding", async () => {
 
   const imageModel = await handle(chatRequest({ model: "gpt-image-2" }), env);
   assert.equal(imageModel.status, 400);
-  assert.equal((await imageModel.json()).error.code, "model_not_allowed");
+  const imageModelError = (await imageModel.json()).error;
+  assert.equal(imageModelError.code, "model_not_allowed");
+  assert.equal(imageModelError.message.includes("free gateway"), false);
 
   const tooManyTokens = await handle(chatRequest({ max_tokens: 9000 }), env);
   assert.equal(tooManyTokens.status, 400);
@@ -802,7 +807,11 @@ test("worker accepts legacy Tab Tidy gateway quota headers", async () => {
 test("page-summary quota failures do not consume the general install quota", async () => {
   const env = envWithKv({ INSTALL_DAILY_REQUESTS: "2", INSTALL_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
   assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), env)).status, 200);
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), env)).status, 429);
+  const limited = await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), env);
+  assert.equal(limited.status, 429);
+  const limitedError = (await limited.json()).error;
+  assert.equal(limitedError.message.includes("free gateway"), false);
+  assert.match(limitedError.message, /default AI service/);
   assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), env)).status, 200);
 });
 

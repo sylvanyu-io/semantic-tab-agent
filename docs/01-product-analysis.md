@@ -310,7 +310,7 @@ MVP should not implement:
 ## Open Decisions
 
 - Browser target: Chrome first, then maybe Edge/Arc/Firefox.
-- LLM provider: local/free gateway first, optional custom gateway, or Chrome built-in AI later.
+- LLM provider: TabRecap default gateway first, optional custom gateway, or Chrome built-in AI later.
 - Default mode: current window, with consolidate-to-one-window as a visible switch.
 - Privacy default: send full URL, sanitized URL, or title-only.
 - Whether the product should be a deterministic tool with an AI planner, or a conversational agent that can ask follow-up questions.
