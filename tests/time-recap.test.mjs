@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { handleRuntimeMessage } from "../src/core/controller.js";
-import { buildTimeRecapInput, generateTimeRecap, normalizeTimeRecapRange } from "../src/core/time-recap.js";
+import { buildLocalTimeRecap, buildTimeRecapInput, generateTimeRecap, normalizeTimeRecapRange } from "../src/core/time-recap.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import { DEFAULT_SETTINGS, PLANNER_PROVIDERS, URL_PRIVACY_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
@@ -26,6 +26,78 @@ test("time recap input combines local activity, summaries, lifecycle, and curren
   assert.equal(serialized.includes("Readable forum discussion about browser extensions"), true);
   assert.equal(input.coverage.currentOpenTabs, 3);
   assert.equal(input.coverage.includedPages >= 3, true);
+});
+
+test("time recap input accumulates repeated page sessions and estimated dwell time", async () => {
+  const chrome = createFakeChrome();
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      firstPass: {
+        id: "firstPass",
+        tabId: 10,
+        windowId: 1,
+        title: "上海帆船课程资料",
+        hostname: "sailing.example",
+        sanitizedUrl: "https://sailing.example/course",
+        urlKey: "sharedSailingCourse",
+        openedAt: "2026-06-27T01:00:00.000Z",
+        firstObservedAt: "2026-06-27T01:00:00.000Z",
+        lastObservedAt: "2026-06-27T01:20:00.000Z",
+        closedAt: "2026-06-27T01:25:00.000Z",
+        activeCount: 2
+      },
+      secondPass: {
+        id: "secondPass",
+        tabId: 11,
+        windowId: 1,
+        title: "上海帆船课程资料",
+        hostname: "sailing.example",
+        sanitizedUrl: "https://sailing.example/course",
+        urlKey: "sharedSailingCourse",
+        openedAt: "2026-06-27T02:00:00.000Z",
+        firstObservedAt: "2026-06-27T02:00:00.000Z",
+        lastObservedAt: "2026-06-27T02:10:00.000Z",
+        closedAt: "2026-06-27T02:15:00.000Z",
+        activeCount: 3
+      },
+      unrelated: {
+        id: "unrelated",
+        tabId: 12,
+        windowId: 1,
+        title: "天气查询",
+        hostname: "weather.example",
+        sanitizedUrl: "https://weather.example/today",
+        urlKey: "weather",
+        openedAt: "2026-06-27T01:20:00.000Z",
+        firstObservedAt: "2026-06-27T01:20:00.000Z",
+        lastObservedAt: "2026-06-27T02:20:00.000Z",
+        closedAt: "2026-06-27T02:25:00.000Z",
+        activeCount: 1
+      }
+    },
+    events: [
+      { seq: 1, type: "tab_activated", sessionId: "firstPass", tabId: 10, windowId: 1, at: "2026-06-27T01:00:00.000Z" },
+      { seq: 2, type: "tab_activated", sessionId: "unrelated", tabId: 12, windowId: 1, at: "2026-06-27T01:20:00.000Z" },
+      { seq: 3, type: "tab_activated", sessionId: "secondPass", tabId: 11, windowId: 1, at: "2026-06-27T02:00:00.000Z" },
+      { seq: 4, type: "tab_activated", sessionId: "unrelated", tabId: 12, windowId: 1, at: "2026-06-27T02:10:00.000Z" }
+    ]
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "today" }, now: NOW }
+  );
+  const sailingPage = input.pages.find((page) => page.title === "上海帆船课程资料");
+  const localRecap = buildLocalTimeRecap(input, { ...DEFAULT_SETTINGS, languageMode: "zh-CN" });
+
+  assert.ok(sailingPage);
+  assert.equal(sailingPage.activeCount, 5);
+  assert.equal(sailingPage.activeSeconds, 30 * 60);
+  assert.equal(input.pageFields.includes("activeSeconds"), true);
+  assert.match(localRecap.summary, /估算停留时长/);
+  assert.equal(localRecap.timeline.some((item) => /估算停留约/.test(item.description)), true);
 });
 
 test("time recap input suppresses historical URL details in title-only mode", async () => {

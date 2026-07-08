@@ -181,6 +181,7 @@ type TimeRecapPage = {
   closedAt?: string;
   seenCount?: number;
   activeCount?: number;
+  activeSeconds?: number;
   currentGroupTitle?: string;
   discarded?: boolean;
   pinned?: boolean;
@@ -195,6 +196,16 @@ type TimeRecapPage = {
   };
 };
 ```
+
+Behavior signal handling:
+
+- Multiple lifecycle sessions for the same normalized page are merged before
+  recap generation.
+- `activeCount` is cumulative across those sessions so "returned to this page"
+  remains visible after a page is closed and reopened.
+- `activeSeconds` is an estimate derived from same-window activation events and
+  capped per continuous segment. It is evidence for the model and local fallback
+  copy, not a precise analytics timer.
 
 Add a strict output schema:
 

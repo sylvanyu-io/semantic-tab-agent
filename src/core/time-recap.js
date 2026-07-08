@@ -23,6 +23,8 @@ const DEFAULT_RANGE_MS = 7 * DAY_MS;
 const MAX_RANGE_MS = 90 * DAY_MS;
 const MAX_RECAP_PAGES = 360;
 const REVIEW_AGE_MS = 14 * DAY_MS;
+const RECAP_ACTIVE_EVENT_TYPES = new Set(["tab_activated", "window_focused"]);
+const RECAP_MAX_DWELL_MS = 60 * 60 * 1000;
 
 export { TIME_RECAP_GATEWAY_TIMEOUT_MS };
 
@@ -111,6 +113,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
   const summaryEntries = filterEntryMapByPrivacy(rawSummaryEntries, settings, (entry) => isIncognitoSummaryEntry(entry, incognitoSummaryKeys));
   const lifecycleSessions = settings.includeIncognitoTabs ? rawLifecycleSessions : rawLifecycleSessions.filter((session) => !session.incognito);
   const lifecycleEvents = filterLifecycleEventsByPrivacy(normalizeEvents(lifecycleLog), settings, lifecycleSessions);
+  const activeSecondsBySessionId = buildActiveSecondsBySessionId(lifecycleEvents, lifecycleSessions, range);
 
   for (const entry of Object.values(activityEntries)) {
     if (!entryOverlapsRange(entry, range)) continue;
@@ -154,6 +157,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       lastActivatedAt: session.lastActivatedAt || "",
       closedAt: session.closedAt || "",
       activeCount: Number(session.activeCount || 0),
+      activeSeconds: activeSecondsBySessionId.get(lifecycleSessionId(session)) || 0,
       open: !session.closedAt,
       pinned: Boolean(session.pinned),
       discarded: Boolean(session.discarded),
@@ -201,6 +205,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
     closedAt: page.closedAt || "",
     seenCount: Math.max(0, Number(page.seenCount || 0)),
     activeCount: Math.max(0, Number(page.activeCount || 0)),
+    activeSeconds: Math.max(0, Math.round(Number(page.activeSeconds || 0))),
     currentGroupTitle: String(page.currentGroupTitle || "").slice(0, 80),
     discarded: Boolean(page.discarded),
     pinned: Boolean(page.pinned),
@@ -238,6 +243,7 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       "closedAt",
       "seenCount",
       "activeCount",
+      "activeSeconds",
       "currentGroupTitle",
       "discarded",
       "pinned",
@@ -484,7 +490,8 @@ function mergePage(existing, patch) {
     firstSeenAt: earliestIso(existing.firstSeenAt, patch.firstSeenAt),
     lastSeenAt: latestIso(existing.lastSeenAt, patch.lastSeenAt),
     seenCount: Math.max(Number(existing.seenCount || 0), Number(patch.seenCount || 0)),
-    activeCount: Math.max(Number(existing.activeCount || 0), Number(patch.activeCount || 0)),
+    activeCount: Math.min(999999, Number(existing.activeCount || 0) + Number(patch.activeCount || 0)),
+    activeSeconds: Math.min(90 * DAY_MS / 1000, Number(existing.activeSeconds || 0) + Number(patch.activeSeconds || 0)),
     summary: patch.summary || existing.summary || null,
     open: Boolean(existing.open || patch.open)
   };
@@ -515,6 +522,7 @@ function pageScore(page, range) {
   if (page.summary) score += 32;
   if (page.currentGroupTitle) score += 3;
   if (page.activeCount) score += Math.min(24, page.activeCount * 4);
+  if (page.activeSeconds) score += Math.min(28, page.activeSeconds / 300);
   if (page.seenCount) score += Math.min(18, page.seenCount * 3);
   if (page.discarded) score -= 6;
   score += Math.max(0, 40 - lastSeenAge / (6 * 60 * 60 * 1000));
@@ -551,8 +559,8 @@ function localHeadline(themes, input, settings) {
 function localSummary(themes, pages, input, settings) {
   return localizedText(
     settings.languageMode,
-    `已梳理 ${pages.length} 个本地页面线索，结合最近活跃、打开次数、保留时长、是否仍打开、现有分组和 ${input.coverage.sampledEntries} 个页面摘要来还原这段时间的工作脉络。`,
-    `Reviewed ${pages.length} local page signals, combining recent activity, open counts, tab age, open/closed state, existing groups, and ${input.coverage.sampledEntries} page summaries to reconstruct the work pattern.`
+    `已梳理 ${pages.length} 个本地页面线索，结合最近活跃、打开次数、估算停留时长、保留时长、是否仍打开、现有分组和 ${input.coverage.sampledEntries} 个页面摘要来还原这段时间的工作脉络。`,
+    `Reviewed ${pages.length} local page signals, combining recent activity, open counts, estimated dwell time, tab age, open/closed state, existing groups, and ${input.coverage.sampledEntries} page summaries to reconstruct the work pattern.`
   );
 }
 
@@ -576,22 +584,80 @@ function localTimeline(pages, input, settings) {
 
 function timelineDescription(dayPages, settings) {
   const activePages = dayPages.filter((page) => page.activeCount > 0).length;
+  const activeMinutes = Math.round(dayPages.reduce((sum, page) => sum + Number(page.activeSeconds || 0), 0) / 60);
   const summarized = dayPages.filter((page) => page.summary).length;
   const closed = dayPages.filter((page) => page.closedAt).length;
   const topics = localThemeBuckets(dayPages).slice(0, 3).map((bucket) => bucket.title).filter(Boolean);
   return localizedText(
     settings.languageMode,
-    `${dayPages.length} 个页面留下活动线索${activePages ? `，其中 ${activePages} 个被切回查看` : ""}${summarized ? `，${summarized} 个带页面摘要` : ""}${closed ? `，${closed} 个后来已关闭` : ""}。主要涉及 ${topics.join("、") || "几个分散方向"}。`,
-    `${dayPages.length} pages left activity signals${activePages ? `, ${activePages} were revisited` : ""}${summarized ? `, ${summarized} have page summaries` : ""}${closed ? `, ${closed} were later closed` : ""}. Main clues: ${topics.join(", ") || "several separate threads"}.`
+    `${dayPages.length} 个页面留下活动线索${activePages ? `，其中 ${activePages} 个被切回查看` : ""}${activeMinutes ? `，估算停留约 ${activeMinutes} 分钟` : ""}${summarized ? `，${summarized} 个带页面摘要` : ""}${closed ? `，${closed} 个后来已关闭` : ""}。主要涉及 ${topics.join("、") || "几个分散方向"}。`,
+    `${dayPages.length} pages left activity signals${activePages ? `, ${activePages} were revisited` : ""}${activeMinutes ? `, with about ${activeMinutes} minutes of estimated dwell time` : ""}${summarized ? `, ${summarized} have page summaries` : ""}${closed ? `, ${closed} were later closed` : ""}. Main clues: ${topics.join(", ") || "several separate threads"}.`
   );
 }
 
 function coverageNote(input, settings) {
   return localizedText(
     settings.languageMode,
-    `已结合 ${input.coverage.includedPages} 个本机页面线索、${input.coverage.sampledEntries} 个页面摘要、打开/关闭状态和活动记录。`,
-    `Used ${input.coverage.includedPages} local page signals, ${input.coverage.sampledEntries} page summaries, open/closed state, and activity records.`
+    `已结合 ${input.coverage.includedPages} 个本机页面线索、${input.coverage.sampledEntries} 个页面摘要、打开/关闭状态、切回次数和估算停留时长。`,
+    `Used ${input.coverage.includedPages} local page signals, ${input.coverage.sampledEntries} page summaries, open/closed state, revisit counts, and estimated dwell time.`
   );
+}
+
+function buildActiveSecondsBySessionId(events, sessions, range) {
+  const from = Date.parse(range.from);
+  const to = Date.parse(range.to);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return new Map();
+  const sessionsById = new Map(
+    (sessions || [])
+      .map((session) => [lifecycleSessionId(session), session])
+      .filter(([id]) => id)
+  );
+  const byWindow = new Map();
+  for (const event of events || []) {
+    if (!RECAP_ACTIVE_EVENT_TYPES.has(event?.type)) continue;
+    const id = lifecycleEventSessionId(event);
+    const session = sessionsById.get(id);
+    if (!session) continue;
+    const at = Date.parse(event.at || "");
+    if (!Number.isFinite(at) || at > to) continue;
+    const windowId = Number.isInteger(event.windowId) ? event.windowId : session.windowId;
+    if (!Number.isInteger(windowId)) continue;
+    if (!byWindow.has(windowId)) byWindow.set(windowId, []);
+    byWindow.get(windowId).push({
+      sessionId: id,
+      at,
+      seq: Number(event.seq || 0)
+    });
+  }
+
+  const secondsBySessionId = new Map();
+  for (const eventsInWindow of byWindow.values()) {
+    const ordered = eventsInWindow
+      .sort((left, right) => left.at - right.at || left.seq - right.seq)
+      .filter((event, index, list) => index === 0 || event.sessionId !== list[index - 1].sessionId);
+    for (let index = 0; index < ordered.length; index += 1) {
+      const event = ordered[index];
+      const session = sessionsById.get(event.sessionId);
+      const next = ordered[index + 1];
+      const fallbackEnd = Date.parse(session?.closedAt || session?.lastObservedAt || range.to || "");
+      const rawEnd = next ? next.at : fallbackEnd;
+      if (!Number.isFinite(rawEnd) || rawEnd <= event.at) continue;
+      const start = Math.max(event.at, from);
+      const end = Math.min(rawEnd, event.at + RECAP_MAX_DWELL_MS, to);
+      if (end <= start) continue;
+      const seconds = Math.max(1, Math.round((end - start) / 1000));
+      secondsBySessionId.set(event.sessionId, (secondsBySessionId.get(event.sessionId) || 0) + seconds);
+    }
+  }
+  return secondsBySessionId;
+}
+
+function lifecycleSessionId(session) {
+  return String(session?.id || session?.sessionId || "");
+}
+
+function lifecycleEventSessionId(event) {
+  return String(event?.sessionId || "");
 }
 
 function normalizeEntryMap(cache) {
