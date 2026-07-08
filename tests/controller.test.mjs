@@ -208,6 +208,49 @@ test("clearing local memory is blocked while generation is running", async () =>
   }
 });
 
+test("clearing local memory is blocked by persisted running jobs", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Current docs", url: "https://example.com/current", active: true }]
+      }
+    ]
+  });
+  chrome.__state.storage[`${STORAGE_KEYS.activeJob}:1`] = {
+    operationId: "job_after_worker_restart",
+    status: "running",
+    phase: "planning",
+    progress: 55,
+    message: "正在请求 AI 规划"
+  };
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      preserved: {
+        key: "preserved",
+        title: "Preserved local clue",
+        hostname: "example.com",
+        firstSeenAt: "2026-06-25T00:00:00.000Z",
+        lastSeenAt: "2026-06-25T00:00:00.000Z",
+        seenCount: 1
+      }
+    }
+  };
+
+  await assert.rejects(
+    () => handleRuntimeMessage(chrome, { type: "activity:clearLocalMemory" }),
+    /正在生成中，先停止后再清空本机记录/
+  );
+  assert.equal(Boolean(chrome.__state.storage[STORAGE_KEYS.pageActivityCache]?.entries?.preserved), true);
+
+  await cancelActiveJob(chrome, 1);
+  const result = await handleRuntimeMessage(chrome, { type: "activity:clearLocalMemory" });
+  assert.equal(result.cleared, true);
+  assert.equal(chrome.__state.storage[STORAGE_KEYS.pageActivityCache], undefined);
+});
+
 test("diagnostics snapshot summarizes local state without sensitive page or provider data", async () => {
   const chrome = createFakeChrome({
     windows: [

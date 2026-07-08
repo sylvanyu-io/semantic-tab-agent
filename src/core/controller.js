@@ -156,17 +156,25 @@ export async function handleRuntimeMessage(chromeApi, message) {
 }
 
 async function clearLocalActivityMemory(chromeApi) {
-  if (activeAnalyses.size || activeTimeRecaps.size) {
+  const storage = await chromeApi.storage.local.get(null);
+  if (activeAnalyses.size || activeTimeRecaps.size || hasPersistedRunningAnalysis(storage)) {
     throw new Error("正在生成中，先停止后再清空本机记录。");
   }
-  const before = await chromeApi.storage.local.get(LOCAL_MEMORY_KEYS);
-  const removedKeys = LOCAL_MEMORY_KEYS.filter((key) => before[key] !== undefined);
+  const removedKeys = LOCAL_MEMORY_KEYS.filter((key) => storage[key] !== undefined);
   await removeLocal(chromeApi, LOCAL_MEMORY_KEYS);
   return {
     cleared: true,
     removedKeys,
     removedCount: removedKeys.length
   };
+}
+
+function hasPersistedRunningAnalysis(storage = {}) {
+  return Object.entries(storage || {}).some(([key, job]) => isActiveJobStorageKey(key) && job && !ACTIVE_JOB_TERMINAL_STATUSES.has(job.status));
+}
+
+function isActiveJobStorageKey(key) {
+  return key === STORAGE_KEYS.activeJob || String(key || "").startsWith(`${STORAGE_KEYS.activeJob}:`);
 }
 
 async function getDiagnosticsSnapshot(chromeApi) {
