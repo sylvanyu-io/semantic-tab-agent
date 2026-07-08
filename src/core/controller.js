@@ -1632,7 +1632,7 @@ function sanitizeActiveJob(job) {
 }
 
 function redactActiveJobText(value) {
-  return redactSensitiveText(value);
+  return redactSensitiveText(value, { redactUrls: true });
 }
 
 function throwIfCanceled(signal) {

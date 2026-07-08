@@ -1729,9 +1729,10 @@ test("active analysis terminal errors are redacted before storage", async () => 
     const serialized = JSON.stringify(failedJob);
     assert.equal(serialized.includes(providerKey), false);
     assert.equal(serialized.includes("token=abc123"), false);
+    assert.equal(serialized.includes("private.example.com"), false);
     assert.equal(serialized.includes("/secret/project"), false);
     assert.equal(serialized.includes("Bearer [redacted]"), true);
-    assert.equal(serialized.includes("https://private.example.com/..."), true);
+    assert.equal(serialized.includes("[redacted-url]"), true);
   } finally {
     globalThis.fetch = originalFetch;
   }
