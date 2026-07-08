@@ -90,6 +90,8 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
     "worker-auth-secret-123456",
     "worker-cookie-secret",
     "worker-api-field-secret",
+    "worker-private-key-secret",
+    "worker-session-key-secret",
     "worker-access-token-secret"
   ];
   const cloudKeys = [
@@ -108,7 +110,9 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
             `Authorization: Bearer ${structuredSecrets[0]}`,
             `Cookie: sid=${structuredSecrets[1]}`,
             `api_key=${structuredSecrets[2]}`,
-            `"accessToken":"${structuredSecrets[3]}"`
+            `private_key=${structuredSecrets[3]}`,
+            `"session-key":"${structuredSecrets[4]}"`,
+            `"accessToken":"${structuredSecrets[5]}"`
           ].join("\n")
         );
       }
@@ -337,6 +341,8 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
   const providerKey = ["sk", "worker", "email", "secret", "1234567890"].join("-");
   const bearer = "monitor-email-secret-1234567890";
   const tokenizedUrl = "https://raw-llm.example/private/status?token=abc123&secret=def456";
+  const privateKey = "monitor-private-key-secret";
+  const sessionKey = "monitor-session-key-secret";
   const emails = [];
   const fetchImpl = async (url, options = {}) => {
     const textUrl = String(url);
@@ -346,7 +352,7 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
     }
     if (textUrl.endsWith("/healthz")) return new Response("ok", { status: 200 });
     if (textUrl.endsWith("/chat/completions")) {
-      throw new Error(`failed ${tokenizedUrl} with Bearer ${bearer} and ${providerKey}`);
+      throw new Error(`failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, private_key=${privateKey}, session_key=${sessionKey}`);
     }
     return new Response("not found", { status: 404 });
   };
@@ -365,6 +371,8 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
     assert.equal(serialized.includes(bearer), false);
     assert.equal(serialized.includes("token=abc123"), false);
     assert.equal(serialized.includes("secret=def456"), false);
+    assert.equal(serialized.includes(privateKey), false);
+    assert.equal(serialized.includes(sessionKey), false);
     assert.equal(serialized.includes("/private/status"), false);
   }
   assert.equal(serializedEmail.includes("[redacted-key]"), true);

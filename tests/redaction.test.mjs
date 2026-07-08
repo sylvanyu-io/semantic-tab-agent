@@ -47,6 +47,8 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
     setCookie: "set-cookie-secret",
     apiKey: "plain-api-secret",
     jsonApiKey: "json-api-secret",
+    privateKey: "private-key-secret",
+    sessionKey: "session-key-secret",
     accessToken: "access-token-secret",
     refreshToken: "refresh-token-secret",
     password: "hunter2-secret"
@@ -57,6 +59,8 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
     `Set-Cookie: sid=${secrets.setCookie}; HttpOnly`,
     `api_key=${secrets.apiKey}`,
     `"apiKey":"${secrets.jsonApiKey}"`,
+    `private_key=${secrets.privateKey}`,
+    `"session-key":"${secrets.sessionKey}"`,
     `'accessToken': '${secrets.accessToken}'`,
     `refresh-token:${secrets.refreshToken}`,
     `password: ${secrets.password}`
@@ -71,6 +75,8 @@ test("redacts structured auth headers, cookies, and secret fields", () => {
   assert.match(output, /Set-Cookie: \[redacted\]/);
   assert.match(output, /api_key=\[redacted\]/);
   assert.match(output, /"apiKey":"\[redacted\]"/);
+  assert.match(output, /private_key=\[redacted\]/);
+  assert.match(output, /"session-key":"\[redacted\]"/);
   assert.match(output, /'accessToken': '\[redacted\]'/);
   assert.match(output, /refresh-token:\[redacted\]/);
   assert.match(output, /password: \[redacted\]/);
