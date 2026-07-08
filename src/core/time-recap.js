@@ -144,7 +144,12 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
   const summaryEntries = filterEntryMapByPrivacy(rawSummaryEntries, settings, (entry) => isIncognitoSummaryEntry(entry, incognitoSummaryKeys));
   const lifecycleSessions = settings.includeIncognitoTabs ? rawLifecycleSessions : rawLifecycleSessions.filter((session) => !session.incognito);
   const lifecycleEvents = filterLifecycleEventsByPrivacy(normalizeEvents(lifecycleLog), settings, lifecycleSessions);
-  const activeSecondsBySessionId = buildActiveSecondsBySessionId(lifecycleEvents, lifecycleSessions, range);
+  const currentActiveTabIds = new Set(
+    currentTabs
+      .filter((tab) => tab.active && Number.isInteger(tab.tabId))
+      .map((tab) => tab.tabId)
+  );
+  const activeSecondsBySessionId = buildActiveSecondsBySessionId(lifecycleEvents, lifecycleSessions, range, { currentActiveTabIds });
 
   for (const entry of Object.values(activityEntries)) {
     if (!entryOverlapsRange(entry, range)) continue;
@@ -198,6 +203,9 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
 
   for (const tab of currentTabs) {
     const key = pageCacheKey(tab.rawUrl) || `tab_${tab.tabId}`;
+    const hasInRangeRow = rows.has(key);
+    const nowInRange = timeInRange(now, range);
+    if (!nowInRange && !hasInRangeRow) continue;
     upsertPage(rows, key, {
       tabId: tab.tabId,
       windowId: tab.windowId,
@@ -205,9 +213,10 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       title: tab.title,
       hostname: tab.hostname,
       sanitizedUrl: tab.sanitizedUrl,
-      lastSeenAt: new Date(now).toISOString(),
+      lastSeenAt: nowInRange ? new Date(now).toISOString() : "",
       open: true,
       currentGroupTitle: tab.currentGroupTitle || "",
+      active: Boolean(tab.active),
       discarded: Boolean(tab.discarded),
       pinned: Boolean(tab.pinned),
       audible: Boolean(tab.audible),
@@ -489,6 +498,7 @@ async function collectCurrentTabs(chromeApi, settings) {
         hostname: urlInfo.hostname || urlInfo.urlKind || "",
         sanitizedUrl: urlInfo.sanitizedUrl || "",
         currentGroupTitle: group?.title || "",
+        active: Boolean(tab.active),
         discarded: Boolean(tab.discarded),
         pinned: Boolean(tab.pinned),
         audible: Boolean(tab.audible),
@@ -639,10 +649,11 @@ function coverageNote(input, settings) {
   );
 }
 
-function buildActiveSecondsBySessionId(events, sessions, range) {
+function buildActiveSecondsBySessionId(events, sessions, range, options = {}) {
   const from = Date.parse(range.from);
   const to = Date.parse(range.to);
   if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return new Map();
+  const currentActiveTabIds = options.currentActiveTabIds instanceof Set ? options.currentActiveTabIds : new Set();
   const sessionsById = new Map(
     (sessions || [])
       .map((session) => [lifecycleSessionId(session), session])
@@ -675,7 +686,8 @@ function buildActiveSecondsBySessionId(events, sessions, range) {
       const event = ordered[index];
       const session = sessionsById.get(event.sessionId);
       const next = ordered[index + 1];
-      const fallbackEndValue = session?.closedAt ? session.closedAt : range.to || session?.lastObservedAt || "";
+      const isCurrentlyActive = Number.isInteger(session?.tabId) && currentActiveTabIds.has(session.tabId);
+      const fallbackEndValue = session?.closedAt || (isCurrentlyActive ? range.to : session?.lastObservedAt) || "";
       const fallbackEnd = Date.parse(fallbackEndValue);
       const rawEnd = next ? next.at : fallbackEnd;
       if (!Number.isFinite(rawEnd) || rawEnd <= event.at) continue;
@@ -756,9 +768,13 @@ function anyTimeInRange(values, range) {
   const from = Date.parse(range.from);
   const to = Date.parse(range.to);
   return values.some((value) => {
-    const time = Date.parse(value || "");
+    const time = typeof value === "number" ? value : Date.parse(value || "");
     return Number.isFinite(time) && time >= from && time <= to;
   });
+}
+
+function timeInRange(value, range) {
+  return anyTimeInRange([value], range);
 }
 
 function intervalOverlaps(startValue, endValue, range) {

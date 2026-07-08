@@ -1,4 +1,5 @@
 import { EXISTING_GROUP_MODES, ORGANIZE_MODES, normalizeSettings } from "../shared/settings.js";
+import { pageSummaryCacheKey } from "./page-summary-cache.js";
 import { getTabActivationFlowContext } from "./tab-lifecycle-log.js";
 import { canSampleUrl, getTabUrl, sanitizeTabUrl } from "./url-sanitizer.js";
 
@@ -123,6 +124,7 @@ function buildTabDescriptor(tab, window, groupsById, settings, sequenceIndex) {
     groupCollapsed: Boolean(group?.collapsed),
     favIconUrl: tab.favIconUrl || "",
     sampleable: canSampleUrl(rawUrl),
+    pageSummaryKey: pageSummaryCacheKey(rawUrl),
     ...urlInfo
   };
 }

@@ -277,6 +277,117 @@ test("time recap dwell estimates extend currently open active sessions to the re
   assert.equal(page.activeSeconds, 60 * 60);
 });
 
+test("time recap dwell does not extend inactive open sessions to the recap time", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          {
+            id: 30,
+            windowId: 1,
+            index: 0,
+            title: "旧调研页",
+            url: "https://research.example/old-thread",
+            active: false
+          },
+          {
+            id: 31,
+            windowId: 1,
+            index: 1,
+            title: "当前正在看",
+            url: "https://research.example/current-thread",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      oldThread: {
+        id: "oldThread",
+        tabId: 30,
+        windowId: 1,
+        title: "旧调研页",
+        hostname: "research.example",
+        sanitizedUrl: "https://research.example/old-thread",
+        openedAt: "2026-06-26T05:00:00.000Z",
+        firstObservedAt: "2026-06-26T05:00:00.000Z",
+        lastObservedAt: "2026-06-26T05:00:00.000Z",
+        activeCount: 1
+      }
+    },
+    events: [
+      { seq: 1, type: "tab_activated", sessionId: "oldThread", tabId: 30, windowId: 1, at: "2026-06-26T05:00:00.000Z" }
+    ]
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "today" }, now: NOW }
+  );
+  const page = input.pages.find((item) => item.title === "旧调研页");
+
+  assert.ok(page);
+  assert.equal(page.open, true);
+  assert.equal(page.activeSeconds, 0);
+});
+
+test("time recap custom past ranges do not include unrelated current open tabs", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          {
+            id: 90,
+            windowId: 1,
+            index: 0,
+            title: "今天刚打开的页面",
+            url: "https://today.example/new-page",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      historical: {
+        key: "historical",
+        title: "上周调研记录",
+        hostname: "archive.example",
+        sanitizedUrl: "https://archive.example/old-research",
+        firstSeenAt: "2026-06-18T01:00:00.000Z",
+        lastSeenAt: "2026-06-18T02:00:00.000Z",
+        seenCount: 2
+      }
+    }
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    {
+      range: {
+        preset: "custom",
+        from: "2026-06-18T00:00:00.000Z",
+        to: "2026-06-18T23:59:59.999Z"
+      },
+      now: NOW
+    }
+  );
+
+  assert.equal(input.pages.some((page) => page.title === "上周调研记录"), true);
+  assert.equal(input.pages.some((page) => page.title === "今天刚打开的页面"), false);
+});
+
 test("time recap input suppresses historical URL details in title-only mode", async () => {
   const chrome = seededRecapChrome();
 

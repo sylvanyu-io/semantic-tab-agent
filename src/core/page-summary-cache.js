@@ -2,13 +2,12 @@ import {
   HOST_PERMISSION_REQUEST_MODES,
   PAGE_CONTEXT_MODES,
   PAGE_SAMPLING_CONSENT_MODES,
-  URL_PRIVACY_MODES,
   normalizeSettings
 } from "../shared/settings.js";
 import { rememberOpenTabActivity } from "./page-activity-cache.js";
 import { requestPageSample } from "./page-sampler.js";
 import { STORAGE_KEYS, getLocal, setLocal } from "./storage.js";
-import { canSampleUrl, getTabUrl, sanitizeTabUrl } from "./url-sanitizer.js";
+import { canSampleUrl, getTabUrl } from "./url-sanitizer.js";
 
 const CACHE_VERSION = 1;
 const CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
@@ -31,7 +30,7 @@ export async function cachedPageSamplesForTabs(chromeApi, tabDescriptors = [], o
 }
 
 function cachedSampleFromCache(cache, tabDescriptor, options = {}, now = Date.now()) {
-  const key = pageSummaryCacheKey(tabDescriptor.sanitizedUrl || tabDescriptor.fullUrl || "");
+  const key = tabDescriptor.pageSummaryKey || pageSummaryCacheKey(tabDescriptor.fullUrl || tabDescriptor.sanitizedUrl || "");
   if (!key) return null;
 
   const entry = cache.entries[key];
@@ -89,7 +88,7 @@ export async function rememberPageSummary(chromeApi, tab, sampleResult, options 
   if (sampleResult?.status !== "ok" || !sampleResult.sample) return null;
   if (tab?.incognito && !options.includeIncognitoTabs) return null;
   const rawUrl = getTabUrl(tab);
-  const key = pageSummaryCacheKey(cacheComparableUrl(rawUrl));
+  const key = pageSummaryCacheKey(rawUrl);
   if (!key) return null;
 
   return queueSummaryCacheOperation(async () => {
@@ -188,7 +187,7 @@ function isSafeBackgroundTab(tab, settings = {}) {
   return canSampleUrl(getTabUrl(tab));
 }
 
-function pageSummaryCacheKey(rawUrl) {
+export function pageSummaryCacheKey(rawUrl) {
   try {
     const url = new URL(rawUrl);
     if (!["https:", "http:"].includes(url.protocol)) return "";
@@ -199,10 +198,6 @@ function pageSummaryCacheKey(rawUrl) {
   } catch {
     return "";
   }
-}
-
-function cacheComparableUrl(rawUrl) {
-  return sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL).sanitizedUrl || rawUrl;
 }
 
 function hostPermissionPattern(rawUrl) {

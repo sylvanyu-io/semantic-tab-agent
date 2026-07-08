@@ -154,7 +154,11 @@ function mutateLifecycleLog(chromeApi, now, mutate) {
 function upsertOpenSession(log, tab, type, now, options = {}) {
   const tabIndexKey = String(tab.id);
   const existingSessionId = log.tabIndex[tabIndexKey];
-  const existing = existingSessionId ? log.sessions[existingSessionId] : null;
+  let existing = existingSessionId ? log.sessions[existingSessionId] : null;
+  if (existing && !existing.closedAt && sessionNavigated(existing, tab)) {
+    closeSession(log, existing, now, "navigated");
+    existing = null;
+  }
   const session = existing && !existing.closedAt ? existing : createSession(tab, now, Boolean(options.inferred));
   if (!existing || existing.closedAt) {
     log.sessions[session.id] = session;
@@ -196,6 +200,10 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
     inferred: Boolean(options.inferred)
   });
   return session;
+}
+
+function sessionNavigated(session, tab) {
+  return Boolean(session?.urlKey && tab?.urlKey && session.urlKey !== tab.urlKey);
 }
 
 function shouldRecordActivationEntry(session, previousActive, nextActive, type, now) {

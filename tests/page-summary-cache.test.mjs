@@ -1,18 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cachedPageSampleForTab, capturePageSummaryIfAllowed, loadPrunedPageSummaryCache, rememberPageSummary } from "../src/core/page-summary-cache.js";
+import { cachedPageSampleForTab, capturePageSummaryIfAllowed, loadPrunedPageSummaryCache, pageSummaryCacheKey, rememberPageSummary } from "../src/core/page-summary-cache.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import { DEFAULT_SETTINGS, PAGE_CONTEXT_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
 
-test("page summary cache matches sanitized URL fingerprints without storing full URLs", async () => {
+test("page summary cache matches opaque URL fingerprints without storing full URLs", async () => {
   const chrome = createFakeChrome();
+  const rawUrl = "https://example.com/project/ABCDEF1234567890?token=secret#section";
   await rememberPageSummary(
     chrome,
     {
       id: 10,
       title: "Private issue",
-      url: "https://example.com/project/ABCDEF1234567890?token=secret#section"
+      url: rawUrl
     },
     {
       status: "ok",
@@ -39,11 +40,51 @@ test("page summary cache matches sanitized URL fingerprints without storing full
     tabId: 10,
     windowId: 1,
     sanitizedUrl: "https://example.com/project",
-    fullUrl: ""
+    pageSummaryKey: pageSummaryCacheKey(rawUrl)
   });
   assert.equal(cached.status, "ok");
   assert.equal(cached.sample.visibleText, "Visible text");
   assert.equal(cached.sample.contentKind, "discussion");
+});
+
+test("page summary cache keeps distinct tokenized paths separate without storing tokens", async () => {
+  const chrome = createFakeChrome();
+  const firstUrl = "https://example.com/project/AAA111111111111111111111111111111111111?token=first";
+  const secondUrl = "https://example.com/project/BBB222222222222222222222222222222222222?token=second";
+
+  await rememberPageSummary(
+    chrome,
+    { id: 10, title: "First private issue", url: firstUrl },
+    { status: "ok", sample: { title: "First private issue", visibleText: "First private summary" } }
+  );
+  await rememberPageSummary(
+    chrome,
+    { id: 11, title: "Second private issue", url: secondUrl },
+    { status: "ok", sample: { title: "Second private issue", visibleText: "Second private summary" } }
+  );
+
+  const cache = chrome.__state.storage[STORAGE_KEYS.pageSummaryCache];
+  assert.equal(Object.keys(cache.entries).length, 2);
+  assert.equal(JSON.stringify(cache).includes("AAA111111111111111111111111111111111111"), false);
+  assert.equal(JSON.stringify(cache).includes("BBB222222222222222222222222222222222222"), false);
+  assert.equal(JSON.stringify(cache).includes("token=first"), false);
+  assert.equal(JSON.stringify(cache).includes("token=second"), false);
+
+  const firstCached = await cachedPageSampleForTab(chrome, {
+    tabId: 10,
+    windowId: 1,
+    pageSummaryKey: pageSummaryCacheKey(firstUrl),
+    sanitizedUrl: "https://example.com/project"
+  });
+  const secondCached = await cachedPageSampleForTab(chrome, {
+    tabId: 11,
+    windowId: 1,
+    pageSummaryKey: pageSummaryCacheKey(secondUrl),
+    sanitizedUrl: "https://example.com/project"
+  });
+
+  assert.equal(firstCached.sample.visibleText, "First private summary");
+  assert.equal(secondCached.sample.visibleText, "Second private summary");
 });
 
 test("page summary pruning uses the same injected clock as the write", async () => {

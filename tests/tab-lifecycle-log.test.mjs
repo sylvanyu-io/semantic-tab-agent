@@ -36,6 +36,52 @@ test("tab lifecycle log records open activation and close without sensitive URL 
   assert.equal(log.events.map((event) => event.type).includes("tab_closed"), true);
 });
 
+test("tab lifecycle splits same-tab navigation into separate page sessions", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+
+  await rememberTabLifecycle(
+    chrome,
+    "tab_created",
+    {
+      id: 7,
+      windowId: 1,
+      index: 0,
+      title: "Draft issue",
+      url: "https://example.com/project/AAA111111111111111111111111111111111111",
+      active: true
+    },
+    { now }
+  );
+  await rememberTabLifecycle(
+    chrome,
+    "tab_updated",
+    {
+      id: 7,
+      windowId: 1,
+      index: 0,
+      title: "Release issue",
+      url: "https://example.com/project/BBB222222222222222222222222222222222222",
+      active: true
+    },
+    { now: now + 60_000 }
+  );
+
+  const log = chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog];
+  const sessions = Object.values(log.sessions).sort((left, right) => Date.parse(left.openedAt) - Date.parse(right.openedAt));
+
+  assert.equal(sessions.length, 2);
+  assert.equal(sessions[0].title, "Draft issue");
+  assert.equal(sessions[0].closedAt, "2026-06-25T00:01:00.000Z");
+  assert.equal(sessions[0].closeReason, "navigated");
+  assert.equal(sessions[1].title, "Release issue");
+  assert.equal(sessions[1].closedAt, undefined);
+  assert.equal(log.tabIndex["7"], sessions[1].id);
+  assert.equal(JSON.stringify(log).includes("AAA111111111111111111111111111111111111"), false);
+  assert.equal(JSON.stringify(log).includes("BBB222222222222222222222222222222222222"), false);
+  assert.equal(log.events.some((event) => event.reason === "navigated"), true);
+});
+
 test("tab lifecycle reconciliation infers missed opens and closes", async () => {
   const now = Date.parse("2026-06-25T00:00:00.000Z");
   const chrome = createFakeChrome({
