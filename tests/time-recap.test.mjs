@@ -225,6 +225,58 @@ test("time recap dwell estimates include focused-window returns and cap long tai
   assert.equal(localRecap.timeline.some((item) => /估算停留约/.test(item.description)), true);
 });
 
+test("time recap dwell estimates extend currently open active sessions to the recap time", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          {
+            id: 30,
+            windowId: 1,
+            index: 0,
+            title: "当前调研主线",
+            url: "https://research.example/current-thread",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      currentThread: {
+        id: "currentThread",
+        tabId: 30,
+        windowId: 1,
+        title: "当前调研主线",
+        hostname: "research.example",
+        sanitizedUrl: "https://research.example/current-thread",
+        openedAt: "2026-06-27T05:00:00.000Z",
+        firstObservedAt: "2026-06-27T05:00:00.000Z",
+        lastObservedAt: "2026-06-27T05:00:00.000Z",
+        activeCount: 1
+      }
+    },
+    events: [
+      { seq: 1, type: "tab_activated", sessionId: "currentThread", tabId: 30, windowId: 1, at: "2026-06-27T05:00:00.000Z" }
+    ]
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "today" }, now: NOW }
+  );
+  const page = input.pages.find((item) => item.title === "当前调研主线");
+
+  assert.ok(page);
+  assert.equal(page.open, true);
+  assert.equal(page.activeSeconds, 60 * 60);
+});
+
 test("time recap input suppresses historical URL details in title-only mode", async () => {
   const chrome = seededRecapChrome();
 

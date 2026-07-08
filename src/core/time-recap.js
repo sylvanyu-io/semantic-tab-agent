@@ -675,7 +675,8 @@ function buildActiveSecondsBySessionId(events, sessions, range) {
       const event = ordered[index];
       const session = sessionsById.get(event.sessionId);
       const next = ordered[index + 1];
-      const fallbackEnd = Date.parse(session?.closedAt || session?.lastObservedAt || range.to || "");
+      const fallbackEndValue = session?.closedAt ? session.closedAt : range.to || session?.lastObservedAt || "";
+      const fallbackEnd = Date.parse(fallbackEndValue);
       const rawEnd = next ? next.at : fallbackEnd;
       if (!Number.isFinite(rawEnd) || rawEnd <= event.at) continue;
       const start = Math.max(event.at, from);
