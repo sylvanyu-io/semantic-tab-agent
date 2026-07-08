@@ -31,6 +31,7 @@ const REFINE_DEFAULT_CONCURRENCY = 3;
 const REFINE_MAX_CONCURRENCY = 5;
 const COARSE_MAX_BUCKETS = 24;
 const GATEWAY_MAX_OUTPUT_TOKENS = 8192;
+const GATEWAY_ERROR_DETAIL_MAX_LENGTH = 240;
 const SPLIT_CLEANUP_MIN_TABS = 20;
 const CLEANUP_CANDIDATE_MIN_LIMIT = 20;
 const CLEANUP_CANDIDATE_MAX_LIMIT = 200;
@@ -425,9 +426,15 @@ function extractProviderErrorMessage(data) {
 }
 
 function sanitizeGatewayErrorDetail(message) {
-  const text = String(message || "").trim();
+  const text = String(message || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
-  return redactSensitiveText(text, { redactUrls: true });
+  return truncateGatewayErrorDetail(redactSensitiveText(text, { redactUrls: true }));
+}
+
+function truncateGatewayErrorDetail(text) {
+  const value = String(text || "");
+  if (value.length <= GATEWAY_ERROR_DETAIL_MAX_LENGTH) return value;
+  return `${value.slice(0, GATEWAY_ERROR_DETAIL_MAX_LENGTH - 3).trimEnd()}...`;
 }
 
 function extractGatewayRequestId(response, data) {

@@ -2032,6 +2032,43 @@ test("AI gateway planner redacts custom provider error details before surfacing 
   );
 });
 
+test("AI gateway planner caps custom provider error details before surfacing them", async () => {
+  const providerKey = ["sk", "private-provider-token-1234567890"].join("-");
+  const tokenizedUrl = "https://private.example.com/secret/project?token=abc123";
+  const longHtml = `<html><body>${"upstream stack trace ".repeat(80)}${tokenizedUrl} Bearer ${providerKey}</body></html>`;
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 500,
+    async json() {
+      return { error: { message: longHtml } };
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayBaseUrl: "http://localhost:8317/v1",
+          gatewayApiKey: "test-key"
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /自定义 AI 网关这次没有完成请求（500）。/);
+      assert.equal(message.length < 340, true);
+      assert.match(message, /\.\.\.$/);
+      assert.equal(message.includes(providerKey), false);
+      assert.equal(message.includes(tokenizedUrl), false);
+      assert.equal(message.includes("Bearer [redacted]"), false);
+      return true;
+    }
+  );
+});
+
 test("AI gateway planner honors an explicit timeout", async () => {
   const fetchImpl = async () => new Promise(() => {});
 
