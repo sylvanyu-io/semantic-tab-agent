@@ -334,8 +334,7 @@ async function getEvidenceSnapshotForMessage(chromeApi, message = {}) {
   return buildEvidenceSnapshot(chromeApi, settings, {
     range: message.range || {},
     windowId: message.windowId,
-    strictWindowId: Boolean(message.strictWindowId),
-    includePrivateFields: Boolean(message.includePrivateFields)
+    strictWindowId: Boolean(message.strictWindowId)
   });
 }
 

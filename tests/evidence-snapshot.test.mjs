@@ -49,7 +49,7 @@ test("evidence snapshot private mode carries inspectable local details", async (
   assert.equal(snapshot.privateDetails.recapPages.some((page) => page.summary), true);
 });
 
-test("evidence snapshot runtime message stays redacted unless private fields are requested", async () => {
+test("evidence snapshot runtime message stays redacted even if private fields are requested", async () => {
   const chrome = await seededSnapshotChrome();
 
   const redacted = await handleRuntimeMessage(chrome, {
@@ -63,11 +63,15 @@ test("evidence snapshot runtime message stays redacted unless private fields are
     range: { preset: "7d" },
     includePrivateFields: true
   });
+  const serializedPrivateAttempt = JSON.stringify(privateSnapshot);
 
   assert.equal(redacted.privacy, "redacted_counts");
   assert.equal("privateDetails" in redacted, false);
-  assert.equal(privateSnapshot.privacy, "private_details");
-  assert.equal(privateSnapshot.privateDetails.plannerTabs.length, 3);
+  assert.equal(privateSnapshot.privacy, "redacted_counts");
+  assert.equal("privateDetails" in privateSnapshot, false);
+  assert.equal(serializedPrivateAttempt.includes("Secret Strategy Doc"), false);
+  assert.equal(serializedPrivateAttempt.includes("Private page text"), false);
+  assert.equal(serializedPrivateAttempt.includes("token=SHOULD_NOT_LEAK"), false);
 });
 
 async function seededSnapshotChrome() {
