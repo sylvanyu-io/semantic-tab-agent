@@ -141,6 +141,66 @@ test("tab lifecycle stats persist log compaction for expired sessions and old ev
   assert.equal(log.events[0].seq, 6);
 });
 
+test("tab lifecycle read compaction is queued with later writes", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-07-08T00:00:00.000Z");
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    nextSeq: 3,
+    sessions: {
+      stale: {
+        id: "stale",
+        tabId: 10,
+        windowId: 1,
+        title: "Expired session",
+        lastObservedAt: new Date(now - 91 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      fresh: {
+        id: "fresh",
+        tabId: 11,
+        windowId: 1,
+        title: "Fresh session",
+        openedAt: new Date(now - 60 * 1000).toISOString(),
+        lastObservedAt: new Date(now - 60 * 1000).toISOString()
+      }
+    },
+    tabIndex: { 10: "stale", 11: "fresh" },
+    events: []
+  };
+
+  const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+  let firstLifecycleSetStarted;
+  let releaseFirstLifecycleSet;
+  const firstLifecycleSet = new Promise((resolve) => {
+    firstLifecycleSetStarted = resolve;
+  });
+  chrome.storage.local.set = async (values) => {
+    if (!releaseFirstLifecycleSet && values?.[STORAGE_KEYS.tabLifecycleLog]) {
+      await new Promise((resolve) => {
+        releaseFirstLifecycleSet = resolve;
+        firstLifecycleSetStarted();
+      });
+    }
+    return originalSet(values);
+  };
+
+  const statsPromise = getTabLifecycleStats(chrome, { now });
+  await firstLifecycleSet;
+  const writePromise = rememberTabLifecycle(
+    chrome,
+    "tab_seen",
+    { id: 12, windowId: 1, index: 2, title: "New tab", url: "https://new.example/", active: false },
+    { now: now + 1000 }
+  );
+
+  releaseFirstLifecycleSet();
+  await Promise.all([statsPromise, writePromise]);
+
+  const log = chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog];
+  assert.equal(log.sessions.stale, undefined);
+  assert.equal(Object.values(log.sessions).some((session) => session.tabId === 12), true);
+});
+
 test("tab lifecycle activation count only increments on real re-entry", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");

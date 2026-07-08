@@ -122,14 +122,20 @@ export async function getTabActivationFlowContext(chromeApi, tabs = [], options 
 }
 
 export async function loadPrunedTabLifecycleLog(chromeApi, now = Date.now()) {
-  await lifecycleWriteQueue.catch(() => null);
-  const storedLog = await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null);
-  const log = normalizeLifecycleLog(storedLog);
-  const pruned = pruneLifecycleLog(log, now);
-  if (lifecycleLogCompacted(storedLog, pruned)) {
-    await setLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, pruned);
-  }
-  return pruned;
+  const operation = lifecycleWriteQueue.catch(() => null).then(async () => {
+    const storedLog = await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null);
+    const log = normalizeLifecycleLog(storedLog);
+    const pruned = pruneLifecycleLog(log, now);
+    if (lifecycleLogCompacted(storedLog, pruned)) {
+      await setLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, pruned);
+    }
+    return pruned;
+  });
+  lifecycleWriteQueue = operation.then(
+    () => null,
+    () => null
+  );
+  return operation;
 }
 
 function mutateLifecycleLog(chromeApi, now, mutate) {
