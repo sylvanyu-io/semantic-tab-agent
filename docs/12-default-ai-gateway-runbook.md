@@ -1,6 +1,6 @@
 # Default AI Gateway Runbook
 
-Status: current production path as of 2026-07-09 05:39 CST.
+Status: current production path as of 2026-07-09 07:05 CST.
 
 This document records the public TabRecap AI gateway setup so it can be
 debugged, migrated, or rebuilt later without relying on memory. It intentionally
@@ -213,7 +213,7 @@ Latest local code verification, 2026-07-09 05:56 CST:
 
 ```text
 npm test:
-339/339 passed
+340/340 passed
 
 Full Playwright UI smoke:
 51/51 passed
@@ -254,6 +254,55 @@ monitor llmCode: llm_ready
 monitor email: configured
 planner validation: ok
 ```
+
+Latest live gateway recovery verification, 2026-07-09 07:05 CST:
+
+```text
+manage-cliroxyapi-service.sh status:
+main local 8317: 200
+proxy local 18317: 200
+public origin health: 200
+public origin models: 200
+public main health: 200
+public main ready: 200
+
+manage-cliroxyapi-service.sh smoke:
+HTTP_STATUS: 200
+TOTAL_TIME: 7.16s
+model: gpt-5.4
+
+/llm-readyz:
+ok: true
+code: llm_ready
+model: gpt-5.4-mini
+latencyMs: 2320
+
+/monitor/status after the next Cron run:
+monitor.status: ok
+monitor.lastStatusAt: 2026-07-08T23:00:33.000Z
+monitor.lastEvent: recovered
+monitor.readyzCode: ready
+monitor.llmCode: llm_ready
+monitor.email: configured
+monitor.lastEmail.ok: true
+
+GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway:
+elapsedMs: 54348
+model: gpt-5.4
+thinkingIntensity: high
+healthz: 200
+readyz: 200, upstreamCode=ready
+monitor: ok
+monitor lastStatusAgeMinutes: 3
+planner validation: ok
+```
+
+This verification followed a transient 2026-07-09 06:30 CST monitor outage.
+Cloudflared logs showed edge disconnects and TLS handshake failures around the
+scheduled check. The local stack and tunnel were healthy again after the
+restart at 06:31 CST, current `/readyz`, `/llm-readyz`, and real planner smoke
+passed before the monitor snapshot recovered, and the 07:00 CST Cron wrote the
+expected recovery state plus recovery email status.
 
 If the stack is running from `screen` fallback, current traffic can be healthy,
 but macOS reboot recovery depends on the helper script or re-enabling the
