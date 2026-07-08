@@ -1584,7 +1584,7 @@ async function handleDiagnosticsExportClick() {
     setTransferStatus(t("status.diagnosticsExported"));
     setStatusKey("status.diagnosticsExported");
   } catch (error) {
-    setTransferStatus(friendlyErrorMessage(error), true);
+    setTransferStatus(visibleErrorMessage(error), true);
     setErrorStatus(error, friendlyErrorMessage(error));
   } finally {
     setTransferButtonsDisabled(false);

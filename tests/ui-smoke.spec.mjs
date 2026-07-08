@@ -387,6 +387,72 @@ test("settings import refreshes custom provider fields without restoring keys", 
   await expect(page.locator("#customPrompt")).toHaveValue("按研究方向拆分");
 });
 
+test("diagnostics export failure keeps raw details out of visible status", async ({ page }) => {
+  const privateKey = ["sk", "private", "diagnostics", "key", "1234567890"].join("-");
+  const privateUrl = "https://private.example.com/diagnostics/export?token=abc123";
+  await page.addInitScript(({ privateKey, privateUrl }) => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      gatewayProviderMode: "builtin",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayCustomAuxiliaryModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "diagnostics:getSnapshot") {
+            return {
+              ok: false,
+              error: `diagnostics failed at ${privateUrl} with Bearer ${privateKey}`
+            };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  }, { privateKey, privateUrl });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByText("更多选项").click();
+  await page.getByRole("button", { name: "下载诊断包" }).click();
+  await expect(page.locator("#settingsTransferStatus")).toHaveText("上次生成失败，请重新生成");
+  await expect(page.locator("#statusText")).toHaveText("上次生成失败，请重新生成");
+  await expect(page.locator("#settingsTransferStatus")).not.toContainText("Bearer");
+  await expect(page.locator("#settingsTransferStatus")).not.toContainText("private.example.com");
+  await expect(page.locator("#settingsTransferStatus")).not.toContainText(privateKey);
+  await expect(page.locator("#statusText")).not.toContainText("Bearer");
+  await expect(page.locator("#statusText")).not.toContainText("private.example.com");
+  await expect(page.locator("#statusText")).not.toContainText(privateKey);
+});
+
 test("time recap mode renders a first-class recap surface", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 
