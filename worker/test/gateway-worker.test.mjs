@@ -101,8 +101,12 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
     ["re", "A".repeat(22)].join("_"),
     ["ghp", "B".repeat(36)].join("_"),
     ["github", "pat", "C".repeat(80)].join("_"),
-    `AIza${"D".repeat(35)}`,
-    `AKIA${"E".repeat(16)}`
+    ["glpat", "D".repeat(24)].join("-"),
+    ["gsk", "E".repeat(28)].join("_"),
+    ["hf", "F".repeat(28)].join("_"),
+    ["xai", "G".repeat(28)].join("-"),
+    `AIza${"H".repeat(35)}`,
+    `AKIA${"I".repeat(16)}`
   ];
   const localHandle = createWorkerHandler({
     fetchImpl: async (url) => {

@@ -60,14 +60,22 @@ test("secret scanners cover model, alert email, and common cloud key shapes", ()
   const resendKey = ["re", "alert-token-1234567890"].join("_");
   const githubClassicToken = ["ghp", "A".repeat(36)].join("_");
   const githubFineGrainedToken = ["github", "pat", "B".repeat(80)].join("_");
-  const googleApiKey = `AIza${"C".repeat(35)}`;
-  const awsAccessKeyId = `AKIA${"D".repeat(16)}`;
+  const gitlabPersonalAccessToken = ["glpat", "C".repeat(24)].join("-");
+  const groqApiKey = ["gsk", "D".repeat(28)].join("_");
+  const huggingFaceToken = ["hf", "E".repeat(28)].join("_");
+  const xaiApiKey = ["xai", "F".repeat(28)].join("-");
+  const googleApiKey = `AIza${"G".repeat(35)}`;
+  const awsAccessKeyId = `AKIA${"H".repeat(16)}`;
   const pemPrivateKeyHeader = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
 
   assert.equal(matchesSecretRule("provider_api_key", providerKey), true);
   assert.equal(matchesSecretRule("resend_api_key", resendKey), true);
   assert.equal(matchesSecretRule("github_classic_token", githubClassicToken), true);
   assert.equal(matchesSecretRule("github_fine_grained_token", githubFineGrainedToken), true);
+  assert.equal(matchesSecretRule("gitlab_personal_access_token", gitlabPersonalAccessToken), true);
+  assert.equal(matchesSecretRule("groq_api_key", groqApiKey), true);
+  assert.equal(matchesSecretRule("huggingface_token", huggingFaceToken), true);
+  assert.equal(matchesSecretRule("xai_api_key", xaiApiKey), true);
   assert.equal(matchesSecretRule("google_api_key", googleApiKey), true);
   assert.equal(matchesSecretRule("aws_access_key_id", awsAccessKeyId), true);
   assert.equal(matchesSecretRule("pem_private_key", pemPrivateKeyHeader), true);

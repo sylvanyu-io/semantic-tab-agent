@@ -1294,6 +1294,10 @@ function redactSensitiveText(value, options = {}) {
     .replace(/\bre_[A-Za-z0-9_-]{20,}\b/g, "[redacted-key]")
     .replace(/\bghp_[A-Za-z0-9_]{36,}\b/g, "[redacted-key]")
     .replace(/\bgithub_pat_[A-Za-z0-9_]{80,}\b/g, "[redacted-key]")
+    .replace(/\bglpat-[A-Za-z0-9_-]{20,}\b/g, "[redacted-key]")
+    .replace(/\bgsk_[A-Za-z0-9]{20,}\b/g, "[redacted-key]")
+    .replace(/\bhf_[A-Za-z0-9]{20,}\b/g, "[redacted-key]")
+    .replace(/\bxai-[A-Za-z0-9_-]{20,}\b/g, "[redacted-key]")
     .replace(/\bAIza[0-9A-Za-z_-]{35}\b/g, "[redacted-key]")
     .replace(/\bAKIA[0-9A-Z]{16}\b/g, "[redacted-key]")
     .replace(

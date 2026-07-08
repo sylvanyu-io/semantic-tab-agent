@@ -16,6 +16,22 @@ export const SECRET_PATTERNS = [
     pattern: /\bgithub_pat_[A-Za-z0-9_]{80,}\b/g
   },
   {
+    name: "gitlab_personal_access_token",
+    pattern: /\bglpat-[A-Za-z0-9_-]{20,}\b/g
+  },
+  {
+    name: "groq_api_key",
+    pattern: /\bgsk_[A-Za-z0-9]{20,}\b/g
+  },
+  {
+    name: "huggingface_token",
+    pattern: /\bhf_[A-Za-z0-9]{20,}\b/g
+  },
+  {
+    name: "xai_api_key",
+    pattern: /\bxai-[A-Za-z0-9_-]{20,}\b/g
+  },
+  {
     name: "google_api_key",
     pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g
   },
