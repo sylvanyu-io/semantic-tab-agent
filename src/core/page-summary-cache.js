@@ -17,14 +17,14 @@ const BACKGROUND_SAMPLE_TIMEOUT_MS = 1800;
 
 export async function cachedPageSampleForTab(chromeApi, tabDescriptor, options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now();
-  const cache = await loadPrunedCache(chromeApi, now);
+  const cache = await loadPrunedPageSummaryCache(chromeApi, now);
   return cachedSampleFromCache(cache, tabDescriptor, options, now);
 }
 
 export async function cachedPageSamplesForTabs(chromeApi, tabDescriptors = [], options = {}) {
   if (!tabDescriptors.length) return [];
   const now = Number.isFinite(options.now) ? options.now : Date.now();
-  const cache = await loadPrunedCache(chromeApi, now);
+  const cache = await loadPrunedPageSummaryCache(chromeApi, now);
   return tabDescriptors.map((tabDescriptor) => cachedSampleFromCache(cache, tabDescriptor, options, now)).filter(Boolean);
 }
 
@@ -144,7 +144,7 @@ function pruneCache(cache, now = Date.now()) {
   };
 }
 
-async function loadPrunedCache(chromeApi, now) {
+export async function loadPrunedPageSummaryCache(chromeApi, now = Date.now()) {
   const rawCache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
   const pruned = pruneCache(rawCache, now);
   if (summaryCacheCompacted(rawCache, pruned)) {

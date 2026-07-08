@@ -71,9 +71,7 @@ function upsertActivityEntry(cache, tab, sampleResult, now) {
 export async function getActivityOverview(chromeApi, options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const rangeMs = normalizeRangeMs(options.rangeMs);
-  const rawCache = normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null));
-  const cache = pruneActivityCache(rawCache, now);
-  await persistActivityCacheIfCompacted(chromeApi, rawCache, cache);
+  const cache = await loadPrunedActivityCache(chromeApi, now);
   const currentTabs = await collectCurrentNormalTabs(chromeApi, options);
   const lifecycle = await getTabLifecycleStats(chromeApi, { now });
   const lifecycleByTabId = new Map((lifecycle.olderOpenTabs || []).map((tab) => [tab.tabId, tab]));
@@ -105,6 +103,13 @@ export async function getActivityOverview(chromeApi, options = {}) {
     recap: buildLocalRecap(entries, rangeMs),
     staleTabs
   };
+}
+
+export async function loadPrunedActivityCache(chromeApi, now = Date.now()) {
+  const rawCache = normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null));
+  const cache = pruneActivityCache(rawCache, now);
+  await persistActivityCacheIfCompacted(chromeApi, rawCache, cache);
+  return cache;
 }
 
 function buildLocalRecap(entries, rangeMs) {

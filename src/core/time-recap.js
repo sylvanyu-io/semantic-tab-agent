@@ -15,8 +15,9 @@ import {
   parsePlanFromResponse,
   requireGatewayModel
 } from "./gateway-planner.js";
-import { getLocal } from "./storage.js";
-import { STORAGE_KEYS } from "./storage.js";
+import { loadPrunedActivityCache } from "./page-activity-cache.js";
+import { loadPrunedPageSummaryCache } from "./page-summary-cache.js";
+import { loadPrunedTabLifecycleLog } from "./tab-lifecycle-log.js";
 import { canSampleUrl, getTabUrl, sanitizeTabUrl } from "./url-sanitizer.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -128,9 +129,9 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const range = normalizeTimeRecapRange(options.range || options, now);
   const [activityCache, summaryCache, lifecycleLog, currentTabs] = await Promise.all([
-    getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null),
-    getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null),
-    getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null),
+    loadPrunedActivityCache(chromeApi, now),
+    loadPrunedPageSummaryCache(chromeApi, now),
+    loadPrunedTabLifecycleLog(chromeApi, now),
     collectCurrentTabs(chromeApi, settings)
   ]);
 

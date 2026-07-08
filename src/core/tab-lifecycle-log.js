@@ -112,6 +112,16 @@ export async function reconcileTabLifecycle(chromeApi, options = {}) {
 
 export async function getTabLifecycleStats(chromeApi, options = {}) {
   const now = normalizeNow(options.now);
+  const pruned = await loadPrunedTabLifecycleLog(chromeApi, now);
+  return getLifecycleStatsFromLog(pruned, now);
+}
+
+export async function getTabActivationFlowContext(chromeApi, tabs = [], options = {}) {
+  const log = await loadPrunedTabLifecycleLog(chromeApi, normalizeNow(options.now));
+  return buildActivationFlowContext(log, tabs, options);
+}
+
+export async function loadPrunedTabLifecycleLog(chromeApi, now = Date.now()) {
   await lifecycleWriteQueue.catch(() => null);
   const storedLog = await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null);
   const log = normalizeLifecycleLog(storedLog);
@@ -119,13 +129,7 @@ export async function getTabLifecycleStats(chromeApi, options = {}) {
   if (lifecycleLogCompacted(storedLog, pruned)) {
     await setLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, pruned);
   }
-  return getLifecycleStatsFromLog(pruned, now);
-}
-
-export async function getTabActivationFlowContext(chromeApi, tabs = [], options = {}) {
-  await lifecycleWriteQueue.catch(() => null);
-  const log = normalizeLifecycleLog(await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null));
-  return buildActivationFlowContext(log, tabs, options);
+  return pruned;
 }
 
 function mutateLifecycleLog(chromeApi, now, mutate) {
