@@ -1456,7 +1456,11 @@ async function generateTimeRecap() {
     lastTimeRecap = result;
     lastTimeRecapError = null;
     renderTimeRecap(result);
-    setStatusKey("status.recapReady", {}, false, { mode: PANEL_MODE_RECAP });
+    if (isTimeRecapFallbackResult(result)) {
+      setStatus(timeRecapFallbackStatusText(result), false, { mode: PANEL_MODE_RECAP });
+    } else {
+      setStatusKey("status.recapReady", {}, false, { mode: PANEL_MODE_RECAP });
+    }
   } catch (error) {
     if (canceledRecapOperations.has(operationId) || /stopped|canceled|cancelled|已停止|已取消/i.test(error?.message || "")) {
       setStatusKey("status.recapCanceled", {}, false, { mode: PANEL_MODE_RECAP });
@@ -1674,10 +1678,11 @@ function renderTimeRecap(result) {
   }
 
   const summary = recapMemoCard(displayResult);
-  if (result.source === "local_fallback" || result.error) {
+  if (isTimeRecapFallbackResult(result)) {
     const fallback = document.createElement("p");
     fallback.className = "recap-fallback-note";
-    fallback.textContent = t("recap.localFallback");
+    const reason = timeRecapFallbackReasonText(result);
+    fallback.textContent = reason ? `${t("recap.localFallback")} ${reason}` : t("recap.localFallback");
     summary.append(fallback);
   }
 
@@ -1913,8 +1918,10 @@ function recapEvidenceDetailsText(result = {}, pagesById = new Map()) {
     );
   }
 
-  if (result.source === "local_fallback" || result.error) {
+  if (isTimeRecapFallbackResult(result)) {
     lines.push(t("recap.evidenceFallback"));
+    const reason = timeRecapFallbackReasonText(result);
+    if (reason) lines.push(reason);
   }
 
   const pages = recapReferencedPages(result.recap || {}, input, pagesById);
@@ -1978,7 +1985,7 @@ function isCancellationError(error) {
 }
 
 function friendlyErrorMessage(error) {
-  const message = String(error?.message || "").trim();
+  const message = String(error?.message || error || "").trim();
   if (!message) return t("status.default");
   if (/No analyzed plan is available/i.test(message)) return t("status.noPlanToApply");
   if (/No rollback snapshot is available/i.test(message)) return t("status.noRollback");
@@ -2004,6 +2011,29 @@ function friendlyErrorMessage(error) {
     return t("status.gatewayInvalidOutput");
   }
   return message;
+}
+
+function isTimeRecapFallbackResult(result = {}) {
+  return result?.source === "local_fallback" || Boolean(result?.error);
+}
+
+function timeRecapFallbackStatusText(result = {}) {
+  return timeRecapFallbackReasonText(result) || t("status.recapAiUnavailable");
+}
+
+function timeRecapFallbackReasonText(result = {}) {
+  if (!result?.error) return "";
+  const rawMessage = String(result.error?.message || result.error || "").trim();
+  const message = friendlyErrorMessage(result.error);
+  if (!message || message === t("status.default") || message === t("status.recapAiUnavailable")) return "";
+  if (message === rawMessage && !isProductSafeGatewayMessage(message)) return "";
+  return message;
+}
+
+function isProductSafeGatewayMessage(message = "") {
+  return /(?:默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务|AI gateway|default AI service|custom AI gateway|custom API|AI service)/i.test(
+    message
+  );
 }
 
 async function cancelAnalyze() {
