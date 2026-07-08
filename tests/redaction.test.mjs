@@ -40,6 +40,18 @@ test("redacts common cloud and developer token shapes covered by release scannin
   assert.equal(output.match(/\[redacted-key\]/g)?.length, keys.length);
 });
 
+test("redacts pem private key blocks", () => {
+  const begin = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
+  const end = ["-----END", "PRIVATE KEY-----"].join(" ");
+  const privateKeyBody = "abc123-private-key-material";
+  const output = redactSensitiveText(`prefix ${begin}\n${privateKeyBody}\n${end} suffix`);
+
+  assert.equal(output.includes(privateKeyBody), false);
+  assert.equal(output.includes(begin), false);
+  assert.equal(output.includes(end), false);
+  assert.match(output, /\[redacted-key\]/);
+});
+
 test("redacts structured auth headers, cookies, and secret fields", () => {
   const secrets = {
     authorization: "auth-header-secret-123456",

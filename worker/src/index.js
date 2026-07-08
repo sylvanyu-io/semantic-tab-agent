@@ -1284,6 +1284,7 @@ function compactResponseText(text) {
 
 function redactSensitiveText(value) {
   return String(value || "")
+    .replace(/-----BEGIN (?:[A-Z0-9]+ )?PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z0-9]+ )?PRIVATE KEY-----/g, "[redacted-key]")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
     .replace(/\b(authorization)\s*([:=])\s*[^\n\r<>]+/gi, (_match, key, separator) =>
       separator === ":" ? `${key}: [redacted]` : `${key}=[redacted]`

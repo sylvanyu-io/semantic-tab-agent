@@ -62,6 +62,7 @@ test("secret scanners cover model, alert email, and common cloud key shapes", ()
   const githubFineGrainedToken = ["github", "pat", "B".repeat(80)].join("_");
   const googleApiKey = `AIza${"C".repeat(35)}`;
   const awsAccessKeyId = `AKIA${"D".repeat(16)}`;
+  const pemPrivateKeyHeader = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
 
   assert.equal(matchesSecretRule("provider_api_key", providerKey), true);
   assert.equal(matchesSecretRule("resend_api_key", resendKey), true);
@@ -69,6 +70,7 @@ test("secret scanners cover model, alert email, and common cloud key shapes", ()
   assert.equal(matchesSecretRule("github_fine_grained_token", githubFineGrainedToken), true);
   assert.equal(matchesSecretRule("google_api_key", googleApiKey), true);
   assert.equal(matchesSecretRule("aws_access_key_id", awsAccessKeyId), true);
+  assert.equal(matchesSecretRule("pem_private_key", pemPrivateKeyHeader), true);
 });
 
 test("secret pattern helper is safe to call repeatedly with global regex rules", () => {

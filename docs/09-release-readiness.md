@@ -50,8 +50,9 @@ Implemented:
   states, rollback counts, and coarse error classes without exporting custom
   keys, page URLs, page titles, page text, or custom prompts.
 - Side-panel diagnostic details and user-visible custom gateway errors redact
-  provider keys, bearer tokens, tokenized URLs, cookies, passwords, and common
-  secret query parameters before rendering.
+  provider keys, private/session key fields, PEM private-key blocks, bearer
+  tokens, tokenized URLs, cookies, passwords, and common secret query parameters
+  before rendering.
 - The default AI gateway Worker exposes a token-protected `/monitor/status`
   endpoint for outage triage. It reads the last scheduled monitor snapshot from
   KV without spending model usage and only returns redacted readiness, LLM probe,
@@ -126,11 +127,12 @@ Blocking gates:
   has already disappeared before the cancel request reaches it.
 - Recap UI exposes only recap-relevant advanced settings.
 - No model provider key, alert email provider key, GitHub token, Google API key,
-  or AWS access key id appears in git history, screenshots, test output, or
-  fixtures. The current and history scanners share the same secret-pattern list;
-  history scanning only skips known old fake test fixtures that were already
-  removed from source. Release artifact audit also scans the final unpacked
-  extension files and fails without printing matched secret values.
+  AWS access key id, or PEM private-key block appears in git history,
+  screenshots, test output, or fixtures. The current and history scanners share
+  the same secret-pattern list; history scanning only skips known old fake test
+  fixtures that were already removed from source. Release artifact audit also
+  scans the final unpacked extension files and fails without printing matched
+  secret values.
 - Extension package contains no `node_modules`, test outputs, or local secrets.
 - Extension zip entries exactly match their unpacked build directories and only
   contain publishable extension assets: `manifest.json`, `src/`, and `icons/`.
@@ -143,8 +145,9 @@ Blocking gates:
 - Diagnostics can be exported for support without exposing custom gateway keys,
   page URLs, page titles, page text, or custom prompts.
 - Raw provider error payloads may be kept for local debugging paths only after
-  UI-facing details are redacted; product copy must not expose keys, bearer
-  tokens, tokenized URLs, cookies, passwords, or secret query parameters.
+  UI-facing details are redacted; product copy must not expose keys, private key
+  material, bearer tokens, tokenized URLs, cookies, passwords, or secret query
+  parameters.
 - Gateway monitor status can be queried with `MONITOR_TOKEN`, does not trigger
   a live model request, and does not expose upstream URLs, alert mailboxes, or
   provider secrets.

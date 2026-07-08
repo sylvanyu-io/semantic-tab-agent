@@ -22,6 +22,10 @@ export const SECRET_PATTERNS = [
   {
     name: "aws_access_key_id",
     pattern: /\bAKIA[0-9A-Z]{16}\b/g
+  },
+  {
+    name: "pem_private_key",
+    pattern: /-----BEGIN (?:[A-Z0-9]+ )?PRIVATE KEY-----/g
   }
 ];
 

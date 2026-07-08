@@ -86,6 +86,9 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   const providerKey = ["sk", "worker", "readyz", "secret", "1234567890"].join("-");
   const bearer = "gateway-monitor-secret-1234567890";
   const tokenizedUrl = "https://raw-llm.example/private/health?token=abc123&api_key=def456";
+  const pemBegin = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
+  const pemEnd = ["-----END", "PRIVATE KEY-----"].join(" ");
+  const pemBody = "worker-pem-private-key-material";
   const structuredSecrets = [
     "worker-auth-secret-123456",
     "worker-cookie-secret",
@@ -107,6 +110,7 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
         throw new Error(
           [
             `failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, ${cloudKeys.join(", ")}`,
+            `${pemBegin}\n${pemBody}\n${pemEnd}`,
             `Authorization: Bearer ${structuredSecrets[0]}`,
             `Cookie: sid=${structuredSecrets[1]}`,
             `api_key=${structuredSecrets[2]}`,
@@ -136,6 +140,9 @@ test("worker LLM readiness errors are redacted before monitor responses", async 
   assert.equal(serialized.includes("token=abc123"), false);
   assert.equal(serialized.includes("api_key=def456"), false);
   assert.equal(serialized.includes("/private/health"), false);
+  assert.equal(serialized.includes(pemBegin), false);
+  assert.equal(serialized.includes(pemBody), false);
+  assert.equal(serialized.includes(pemEnd), false);
   for (const secret of structuredSecrets) {
     assert.equal(serialized.includes(secret), false);
   }
@@ -343,6 +350,9 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
   const tokenizedUrl = "https://raw-llm.example/private/status?token=abc123&secret=def456";
   const privateKey = "monitor-private-key-secret";
   const sessionKey = "monitor-session-key-secret";
+  const pemBegin = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
+  const pemEnd = ["-----END", "PRIVATE KEY-----"].join(" ");
+  const pemBody = "monitor-pem-private-key-material";
   const emails = [];
   const fetchImpl = async (url, options = {}) => {
     const textUrl = String(url);
@@ -352,7 +362,9 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
     }
     if (textUrl.endsWith("/healthz")) return new Response("ok", { status: 200 });
     if (textUrl.endsWith("/chat/completions")) {
-      throw new Error(`failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, private_key=${privateKey}, session_key=${sessionKey}`);
+      throw new Error(
+        `failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, private_key=${privateKey}, session_key=${sessionKey}, ${pemBegin}\n${pemBody}\n${pemEnd}`
+      );
     }
     return new Response("not found", { status: 404 });
   };
@@ -373,6 +385,9 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
     assert.equal(serialized.includes("secret=def456"), false);
     assert.equal(serialized.includes(privateKey), false);
     assert.equal(serialized.includes(sessionKey), false);
+    assert.equal(serialized.includes(pemBegin), false);
+    assert.equal(serialized.includes(pemBody), false);
+    assert.equal(serialized.includes(pemEnd), false);
     assert.equal(serialized.includes("/private/status"), false);
   }
   assert.equal(serializedEmail.includes("[redacted-key]"), true);
