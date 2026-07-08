@@ -512,6 +512,7 @@ function upsertPage(rows, rawKey, patch) {
 }
 
 function mergePage(existing, patch) {
+  const open = Boolean(existing.open || patch.open);
   return {
     ...existing,
     ...patch,
@@ -524,7 +525,8 @@ function mergePage(existing, patch) {
     activeCount: Math.min(999999, Number(existing.activeCount || 0) + Number(patch.activeCount || 0)),
     activeSeconds: Math.min(90 * DAY_MS / 1000, Number(existing.activeSeconds || 0) + Number(patch.activeSeconds || 0)),
     summary: patch.summary || existing.summary || null,
-    open: Boolean(existing.open || patch.open)
+    closedAt: open ? "" : latestIso(existing.closedAt, patch.closedAt),
+    open
   };
 }
 

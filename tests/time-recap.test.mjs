@@ -100,6 +100,60 @@ test("time recap input accumulates repeated page sessions and estimated dwell ti
   assert.equal(localRecap.timeline.some((item) => /估算停留约/.test(item.description)), true);
 });
 
+test("time recap input clears stale closed time when a page is currently open again", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [
+          {
+            id: 30,
+            windowId: 1,
+            index: 0,
+            title: "回顾设计文档",
+            url: "https://docs.example.com/recap-design",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      earlierClosed: {
+        id: "earlierClosed",
+        tabId: 20,
+        windowId: 1,
+        title: "回顾设计文档",
+        hostname: "docs.example.com",
+        sanitizedUrl: "https://docs.example.com/recap-design",
+        openedAt: "2026-06-26T01:00:00.000Z",
+        firstObservedAt: "2026-06-26T01:00:00.000Z",
+        lastObservedAt: "2026-06-26T02:00:00.000Z",
+        closedAt: "2026-06-26T02:05:00.000Z",
+        activeCount: 2
+      }
+    },
+    events: []
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "7d" }, now: NOW }
+  );
+  const pages = input.pages.filter((item) => item.title === "回顾设计文档");
+  const [page] = pages;
+
+  assert.equal(pages.length, 1);
+  assert.ok(page);
+  assert.equal(page.open, true);
+  assert.equal(page.closedAt, "");
+  assert.equal(page.tabId, 30);
+});
+
 test("time recap dwell estimates include focused-window returns and cap long tails", async () => {
   const chrome = createFakeChrome();
   chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
