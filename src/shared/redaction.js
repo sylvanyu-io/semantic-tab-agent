@@ -2,6 +2,11 @@ export function redactSensitiveText(value, options = {}) {
   return String(value || "")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
     .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/\bre_[A-Za-z0-9_-]{20,}\b/g, "[redacted-key]")
+    .replace(/\bghp_[A-Za-z0-9_]{36,}\b/g, "[redacted-key]")
+    .replace(/\bgithub_pat_[A-Za-z0-9_]{80,}\b/g, "[redacted-key]")
+    .replace(/\bAIza[0-9A-Za-z_-]{35}\b/g, "[redacted-key]")
+    .replace(/\bAKIA[0-9A-Z]{16}\b/g, "[redacted-key]")
     .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')<>]+/gi, "$1[redacted]")
     .replace(/https?:\/\/[^\s"')<>]+/gi, (rawUrl) => redactSensitiveUrl(rawUrl, options));
 }

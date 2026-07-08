@@ -24,6 +24,22 @@ test("redacts provider keys, bearer tokens, tokenized query params, and URL path
   assert.equal(output.includes("/secret/project"), false);
 });
 
+test("redacts common cloud and developer token shapes covered by release scanning", () => {
+  const keys = [
+    ["re", "A".repeat(22)].join("_"),
+    ["ghp", "B".repeat(36)].join("_"),
+    ["github", "pat", "C".repeat(80)].join("_"),
+    `AIza${"D".repeat(35)}`,
+    `AKIA${"E".repeat(16)}`
+  ];
+  const output = redactSensitiveText(keys.join(" "));
+
+  for (const key of keys) {
+    assert.equal(output.includes(key), false);
+  }
+  assert.equal(output.match(/\[redacted-key\]/g)?.length, keys.length);
+});
+
 test("redacts malformed URL matches to a stable placeholder", () => {
   assert.equal(redactSensitiveUrl("https://", { fallback: "[url]" }), "[url]");
 });
