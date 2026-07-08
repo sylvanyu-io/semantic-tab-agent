@@ -1913,6 +1913,40 @@ test("progress copy generation uses spark without tab metadata", async () => {
   }
 });
 
+test("progress copy generation falls back locally without leaking gateway errors", async () => {
+  const chrome = createFakeChrome();
+  const originalFetch = globalThis.fetch;
+  const fakeSkKey = ["sk", "progress", "copy", "token", "1234567890"].join("-");
+  const tokenizedUrl = "https://private.example.com/progress/copy?token=abc123";
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        error: {
+          message: `upstream failed for ${tokenizedUrl} with Bearer ${fakeSkKey}`
+        }
+      }),
+      { status: 502, headers: { "content-type": "application/json" } }
+    );
+
+  try {
+    const result = await generateProgressCopy(chrome, {
+      phase: "recapping",
+      languageMode: "en-US"
+    });
+    const serialized = JSON.stringify(result);
+
+    assert.equal(result.source, "local_fallback");
+    assert.equal(result.model, "gpt-5.3-codex-spark");
+    assert.equal(result.messages.length, 90);
+    assert.match(result.messages[0], /timeline/i);
+    assert.equal(serialized.includes(fakeSkKey), false);
+    assert.equal(serialized.includes("token=abc123"), false);
+    assert.equal(serialized.includes("/progress/copy"), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("canceling during preview cannot be overwritten by completion", async () => {
   const chrome = createFakeChrome({
     windows: [

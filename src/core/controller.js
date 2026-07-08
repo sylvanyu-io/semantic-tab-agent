@@ -747,13 +747,14 @@ export async function cancelActiveJob(chromeApi, windowId = null) {
 }
 
 export async function generateProgressCopy(chromeApi, request = {}) {
-  if (typeof fetch !== "function") {
-    throw new Error("Fetch is not available for progress copy generation.");
-  }
-
   const activeJob = await getActiveJob(chromeApi, request.windowId);
   const installId = await getOrCreateInstallId(chromeApi);
   const languageMode = normalizeProgressLanguage(request.languageMode || activeJob?.settings?.languageMode);
+  const phase = String(request.phase || activeJob?.phase || "planning");
+  if (typeof fetch !== "function") {
+    return localProgressCopyResult(languageMode, phase);
+  }
+
   const body = {
     model: PROGRESS_COPY_MODEL,
     messages: [
@@ -771,7 +772,7 @@ export async function generateProgressCopy(chromeApi, request = {}) {
         role: "user",
         content: JSON.stringify({
           languageMode,
-          phase: String(request.phase || activeJob?.phase || "planning"),
+          phase,
           tabCount: Number(request.tabCount || activeJob?.tabCount || 0),
           windowCount: Number(request.windowCount || activeJob?.windowCount || 0),
           style: "calm, varied, product-like, suitable for multi-minute progress UI"
@@ -782,29 +783,34 @@ export async function generateProgressCopy(chromeApi, request = {}) {
     max_tokens: 1200
   };
 
-  const { response, data } = await fetchJsonWithTimeout(
-    fetch,
-    `${BUILTIN_GATEWAY_BASE_URL}/chat/completions`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-tab-recap-install-id": installId,
-        "x-tab-recap-request-id": `progress_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  try {
+    const { response, data } = await fetchJsonWithTimeout(
+      fetch,
+      `${BUILTIN_GATEWAY_BASE_URL}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-tab-recap-install-id": installId,
+          "x-tab-recap-request-id": `progress_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        },
+        body: JSON.stringify(body)
       },
-      body: JSON.stringify(body)
-    },
-    "Progress copy generation",
-    PROGRESS_COPY_TIMEOUT_MS
-  );
-  if (!response.ok) {
-    throw new Error(data?.error?.message || `Progress copy generation failed with status ${response.status}.`);
-  }
+      "Progress copy generation",
+      PROGRESS_COPY_TIMEOUT_MS
+    );
+    if (!response.ok) {
+      throw new Error("Progress copy generation failed.");
+    }
 
-  return {
-    model: PROGRESS_COPY_MODEL,
-    messages: normalizeProgressCopyMessages(extractProgressCopyText(data))
-  };
+    return {
+      model: PROGRESS_COPY_MODEL,
+      source: "ai",
+      messages: normalizeProgressCopyMessages(extractProgressCopyText(data))
+    };
+  } catch {
+    return localProgressCopyResult(languageMode, phase);
+  }
 }
 
 export async function applyLastPlan(chromeApi, options = {}) {
@@ -1136,6 +1142,36 @@ function normalizeProgressCopyMessages(text) {
     throw new Error("Progress copy generation returned too few usable messages.");
   }
   return normalized;
+}
+
+function localProgressCopyResult(languageMode, phase) {
+  return {
+    model: PROGRESS_COPY_MODEL,
+    source: "local_fallback",
+    messages: localProgressCopyMessages(languageMode, phase)
+  };
+}
+
+function localProgressCopyMessages(languageMode, phase) {
+  const zh = {
+    coarse_planning: ["快速扫一遍", "寻找跨窗口主题", "拆出主题方向", "标记模糊标签", "压缩相近线索"],
+    refining: ["拆开过大的组", "复核模糊边界", "合并同一任务", "保留原始顺序", "校对分组命名"],
+    cleanup_planning: ["排序清理清单", "比较新旧任务", "挑出低价值页面", "保留手动决定权", "检查关闭风险"],
+    retrying: ["修正校验问题", "补齐遗漏标签", "移除重复分配", "重新检查结构", "确认可回退"],
+    recapping: ["梳理时间线索", "合并本机活动", "对齐页面摘要", "提炼阶段重点", "保留人工判断"],
+    planning: ["理解标题线索", "寻找相邻任务", "避开域名硬分组", "检查不确定页", "整理分组边界"]
+  };
+  const en = {
+    coarse_planning: ["Scanning tabs", "Finding cross-window topics", "Shaping topic lanes", "Marking fuzzy tabs", "Compressing nearby clues"],
+    refining: ["Splitting large groups", "Reviewing fuzzy edges", "Merging one task", "Keeping tab order", "Checking group names"],
+    cleanup_planning: ["Ranking cleanup items", "Comparing old tasks", "Finding low-value pages", "Keeping manual control", "Checking close risk"],
+    retrying: ["Fixing validation issues", "Filling missing tabs", "Removing duplicates", "Checking structure again", "Confirming rollback"],
+    recapping: ["Reading the timeline", "Merging local activity", "Aligning page summaries", "Finding key phases", "Keeping review manual"],
+    planning: ["Reading title clues", "Finding neighboring tasks", "Avoiding domain-only groups", "Checking uncertain pages", "Tightening group edges"]
+  };
+  const source = languageMode === "en-US" ? en : zh;
+  const base = source[phase] || source.planning;
+  return Array.from({ length: PROGRESS_COPY_COUNT }, (_, index) => base[index % base.length]);
 }
 
 function parseJsonObjectFromText(text) {
