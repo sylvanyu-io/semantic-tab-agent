@@ -16,22 +16,24 @@ const CACHE_MAX_ENTRIES = 800;
 const BACKGROUND_SAMPLE_TIMEOUT_MS = 1800;
 
 export async function cachedPageSampleForTab(chromeApi, tabDescriptor, options = {}) {
-  const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
-  return cachedSampleFromCache(cache, tabDescriptor, options);
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const cache = await loadPrunedCache(chromeApi, now);
+  return cachedSampleFromCache(cache, tabDescriptor, options, now);
 }
 
 export async function cachedPageSamplesForTabs(chromeApi, tabDescriptors = [], options = {}) {
   if (!tabDescriptors.length) return [];
-  const cache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
-  return tabDescriptors.map((tabDescriptor) => cachedSampleFromCache(cache, tabDescriptor, options)).filter(Boolean);
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const cache = await loadPrunedCache(chromeApi, now);
+  return tabDescriptors.map((tabDescriptor) => cachedSampleFromCache(cache, tabDescriptor, options, now)).filter(Boolean);
 }
 
-function cachedSampleFromCache(cache, tabDescriptor, options = {}) {
+function cachedSampleFromCache(cache, tabDescriptor, options = {}, now = Date.now()) {
   const key = pageSummaryCacheKey(tabDescriptor.sanitizedUrl || tabDescriptor.fullUrl || "");
   if (!key) return null;
 
   const entry = cache.entries[key];
-  if (!isFreshEntry(entry)) return null;
+  if (!isFreshEntry(entry, now)) return null;
   if (entry.incognito && !options.includeIncognitoTabs) return null;
 
   return {
@@ -140,6 +142,22 @@ function pruneCache(cache, now = Date.now()) {
     version: CACHE_VERSION,
     entries: Object.fromEntries(freshEntries.map((entry) => [entry.key, entry]))
   };
+}
+
+async function loadPrunedCache(chromeApi, now) {
+  const rawCache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
+  const pruned = pruneCache(rawCache, now);
+  if (summaryCacheCompacted(rawCache, pruned)) {
+    await setLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, pruned);
+  }
+  return pruned;
+}
+
+function summaryCacheCompacted(rawCache, compactedCache) {
+  const rawKeys = Object.keys(rawCache.entries || {});
+  const compactedKeys = Object.keys(compactedCache.entries || {});
+  if (rawKeys.length !== compactedKeys.length) return true;
+  return rawKeys.some((key) => !(key in compactedCache.entries));
 }
 
 function isFreshEntry(entry, now = Date.now()) {

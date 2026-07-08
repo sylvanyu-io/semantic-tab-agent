@@ -78,6 +78,43 @@ test("page summary pruning uses the same injected clock as the write", async () 
   assert.equal(Object.values(cache.entries).some((entry) => entry.title === "Fresh page"), true);
 });
 
+test("cached page summary reads persist cache compaction for expired summaries", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-07-08T00:00:00.000Z");
+  await rememberPageSummary(
+    chrome,
+    { id: 11, title: "Fresh page", url: "https://fresh.example/page" },
+    {
+      status: "ok",
+      sample: { title: "Fresh page", visibleText: "Fresh text" }
+    },
+    { now }
+  );
+  chrome.__state.storage[STORAGE_KEYS.pageSummaryCache].entries.stale = {
+    key: "stale",
+    title: "Expired summary",
+    sampledAt: new Date(now - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    lastUsedAt: new Date(now - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    sample: { title: "Expired summary", visibleText: "Old text" }
+  };
+
+  const cached = await cachedPageSampleForTab(
+    chrome,
+    {
+      tabId: 11,
+      windowId: 1,
+      sanitizedUrl: "https://fresh.example/page",
+      fullUrl: ""
+    },
+    { now }
+  );
+  const cache = chrome.__state.storage[STORAGE_KEYS.pageSummaryCache];
+
+  assert.equal(cached.sample.title, "Fresh page");
+  assert.equal(cache.entries.stale, undefined);
+  assert.equal(Object.values(cache.entries).length, 1);
+});
+
 test("continuous summary capture skips sleeping tabs", async () => {
   const chrome = createFakeChrome();
   let sampled = false;

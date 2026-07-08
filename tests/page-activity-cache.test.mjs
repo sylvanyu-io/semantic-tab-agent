@@ -135,3 +135,34 @@ test("batch activity remember writes storage once and keeps recently active old 
   const overview = await getActivityOverview(chrome, { rangeMs: 24 * 60 * 60 * 1000, now });
   assert.equal(overview.recap.entries, 2);
 });
+
+test("activity overview persists cache compaction for expired local memory", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-07-08T00:00:00.000Z");
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      stale: {
+        key: "stale",
+        title: "Expired activity",
+        hostname: "old.example",
+        sanitizedUrl: "https://old.example/page",
+        lastSeenAt: new Date(now - 46 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      fresh: {
+        key: "fresh",
+        title: "Fresh activity",
+        hostname: "fresh.example",
+        sanitizedUrl: "https://fresh.example/page",
+        lastSeenAt: new Date(now - 60 * 1000).toISOString()
+      }
+    }
+  };
+
+  const overview = await getActivityOverview(chrome, { now });
+  const cache = chrome.__state.storage[STORAGE_KEYS.pageActivityCache];
+
+  assert.equal(overview.cache.entries, 1);
+  assert.equal(cache.entries.stale, undefined);
+  assert.equal(cache.entries.fresh.title, "Fresh activity");
+});

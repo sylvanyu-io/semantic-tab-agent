@@ -71,7 +71,9 @@ function upsertActivityEntry(cache, tab, sampleResult, now) {
 export async function getActivityOverview(chromeApi, options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const rangeMs = normalizeRangeMs(options.rangeMs);
-  const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
+  const rawCache = normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null));
+  const cache = pruneActivityCache(rawCache, now);
+  await persistActivityCacheIfCompacted(chromeApi, rawCache, cache);
   const currentTabs = await collectCurrentNormalTabs(chromeApi, options);
   const lifecycle = await getTabLifecycleStats(chromeApi, { now });
   const lifecycleByTabId = new Map((lifecycle.olderOpenTabs || []).map((tab) => [tab.tabId, tab]));
@@ -237,6 +239,18 @@ function pruneActivityCache(cache, now = Date.now()) {
     version: CACHE_VERSION,
     entries: Object.fromEntries(freshEntries.map((entry) => [entry.key, entry]))
   };
+}
+
+async function persistActivityCacheIfCompacted(chromeApi, rawCache, compactedCache) {
+  if (!activityCacheCompacted(rawCache, compactedCache)) return;
+  await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, compactedCache);
+}
+
+function activityCacheCompacted(rawCache, compactedCache) {
+  const rawKeys = Object.keys(rawCache.entries || {});
+  const compactedKeys = Object.keys(compactedCache.entries || {});
+  if (rawKeys.length !== compactedKeys.length) return true;
+  return rawKeys.some((key) => !(key in compactedCache.entries));
 }
 
 function isFreshActivityEntry(entry, now) {

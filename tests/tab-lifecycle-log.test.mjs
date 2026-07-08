@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getTabActivationFlowContext,
+  getTabLifecycleStats,
   reconcileTabLifecycle,
   recordTabClosed,
   rememberTabLifecycle,
@@ -93,6 +94,51 @@ test("tab lifecycle can store an inventory in one batch", async () => {
 
   assert.equal(result.stored, 2);
   assert.equal(Object.keys(log.sessions).length, 2);
+});
+
+test("tab lifecycle stats persist log compaction for expired sessions and old events", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-07-08T00:00:00.000Z");
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    nextSeq: 2000,
+    sessions: {
+      stale: {
+        id: "stale",
+        tabId: 10,
+        windowId: 1,
+        title: "Expired session",
+        lastObservedAt: new Date(now - 91 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      fresh: {
+        id: "fresh",
+        tabId: 11,
+        windowId: 1,
+        title: "Fresh session",
+        openedAt: new Date(now - 60 * 1000).toISOString(),
+        lastObservedAt: new Date(now - 60 * 1000).toISOString()
+      }
+    },
+    tabIndex: { 10: "stale", 11: "fresh" },
+    events: Array.from({ length: 1805 }, (_, index) => ({
+      seq: index + 1,
+      type: "tab_seen",
+      tabId: index % 2 ? 10 : 11,
+      windowId: 1,
+      at: new Date(now - index * 1000).toISOString()
+    }))
+  };
+
+  const stats = await getTabLifecycleStats(chrome, { now });
+  const log = chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog];
+
+  assert.equal(stats.sessions, 1);
+  assert.equal(log.sessions.stale, undefined);
+  assert.equal(log.sessions.fresh.title, "Fresh session");
+  assert.equal(log.tabIndex[10], undefined);
+  assert.equal(log.tabIndex[11], "fresh");
+  assert.equal(log.events.length, 1800);
+  assert.equal(log.events[0].seq, 6);
 });
 
 test("tab lifecycle activation count only increments on real re-entry", async () => {

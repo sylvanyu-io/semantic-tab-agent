@@ -113,8 +113,13 @@ export async function reconcileTabLifecycle(chromeApi, options = {}) {
 export async function getTabLifecycleStats(chromeApi, options = {}) {
   const now = normalizeNow(options.now);
   await lifecycleWriteQueue.catch(() => null);
-  const log = normalizeLifecycleLog(await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null));
-  return getLifecycleStatsFromLog(log, now);
+  const storedLog = await getLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, null);
+  const log = normalizeLifecycleLog(storedLog);
+  const pruned = pruneLifecycleLog(log, now);
+  if (lifecycleLogCompacted(storedLog, pruned)) {
+    await setLocal(chromeApi, STORAGE_KEYS.tabLifecycleLog, pruned);
+  }
+  return getLifecycleStatsFromLog(pruned, now);
 }
 
 export async function getTabActivationFlowContext(chromeApi, tabs = [], options = {}) {
@@ -318,6 +323,21 @@ function pruneLifecycleLog(log, now) {
     lastReconciledAt: log.lastReconciledAt || "",
     reconcileStats: log.reconcileStats || null
   };
+}
+
+function lifecycleLogCompacted(storedLog, prunedLog) {
+  if (storedLog?.version !== LOG_VERSION) {
+    return Boolean(Object.keys(prunedLog.sessions || {}).length || (prunedLog.events || []).length);
+  }
+  const storedSessions = storedLog.sessions && typeof storedLog.sessions === "object" ? storedLog.sessions : {};
+  const storedTabIndex = storedLog.tabIndex && typeof storedLog.tabIndex === "object" ? storedLog.tabIndex : {};
+  const storedEvents = Array.isArray(storedLog.events) ? storedLog.events : [];
+  if (Object.keys(storedSessions).length !== Object.keys(prunedLog.sessions || {}).length) return true;
+  if (Object.keys(storedTabIndex).length !== Object.keys(prunedLog.tabIndex || {}).length) return true;
+  if (storedEvents.length !== (prunedLog.events || []).length) return true;
+  const firstStoredSeq = storedEvents[0]?.seq;
+  const firstPrunedSeq = prunedLog.events?.[0]?.seq;
+  return firstStoredSeq !== firstPrunedSeq;
 }
 
 function isFreshSession(session, now) {
