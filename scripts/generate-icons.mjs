@@ -1,8 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { deflateSync } from "node:zlib";
 
-const rootDir = new URL("..", import.meta.url).pathname;
+const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const outDir = join(rootDir, "icons");
 const docsAssetsDir = join(rootDir, "docs", "assets");
 await mkdir(outDir, { recursive: true });

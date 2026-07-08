@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { findSecretPatternMatches } from "./lib/secret-patterns.mjs";
 
-const rootDir = new URL("..", import.meta.url).pathname;
+const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const ignoredDirs = new Set([".git", "node_modules", "dist", "test-results", "playwright-report", "coverage"]);
 
 const findings = [];

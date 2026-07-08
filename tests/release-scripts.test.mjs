@@ -304,6 +304,21 @@ test("release scripts honor custom extension dist directories", async () => {
   }
 });
 
+test("release scripts derive filesystem paths without URL-encoded pathnames", async () => {
+  const scripts = [
+    "scripts/build-extension.mjs",
+    "scripts/clean-dist.mjs",
+    "scripts/generate-icons.mjs",
+    "scripts/scan-secrets.mjs"
+  ];
+
+  for (const scriptPath of scripts) {
+    const source = await readFile(scriptPath, "utf8");
+    assert.match(source, /fileURLToPath\(new URL\("..", import\.meta\.url\)\)/, `${scriptPath} should decode file URLs`);
+    assert.doesNotMatch(source, /new URL\("..", import\.meta\.url\)\.pathname/, `${scriptPath} should not use URL pathname`);
+  }
+});
+
 test("real extension stress writes machine and human readable artifacts", async () => {
   const stressScript = await readFile("scripts/stress-extension.mjs", "utf8");
 

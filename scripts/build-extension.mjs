@@ -2,8 +2,9 @@ import { cp, mkdir, rm, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const rootDir = new URL("..", import.meta.url).pathname;
+const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
 const manifest = JSON.parse(await readFile(join(rootDir, "manifest.json"), "utf8"));
 const channel = process.env.EXTENSION_CHANNEL === "store" ? "store" : "dev";
