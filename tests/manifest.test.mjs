@@ -38,7 +38,7 @@ test("store extension build strips content-reading permissions", async () => {
     const manifest = JSON.parse(await readFile(join(tempDist, "extension-store/manifest.json"), "utf8"));
     assert.equal((manifest.permissions || []).includes("activeTab"), false);
     assert.equal((manifest.permissions || []).includes("sidePanel"), true);
-    assert.equal((manifest.optional_permissions || []).includes("scripting"), false);
+    assert.equal(Object.hasOwn(manifest, "optional_permissions"), false);
     assert.deepEqual(manifest.optional_host_permissions, ["https://*/*", "http://*/*"]);
     assert.deepEqual(manifest.host_permissions, ["https://cliproxy.sylvanyu.io/*"]);
     assert.equal(manifest.action.default_popup, undefined);
