@@ -920,11 +920,22 @@ function constantTimeStringEqual(a, b) {
 }
 
 async function runGatewayMonitorChecks(env, options = {}) {
-  const [readyz, llm] = await Promise.all([
-    checkUpstreamReadiness(env, options),
-    checkLlmReadiness(env, options)
-  ]);
+  const readyz = await checkUpstreamReadiness(env, options);
+  const llm = readyz.ok
+    ? await checkLlmReadiness(env, options)
+    : skippedLlmReadinessCheck();
   return { readyz, llm, requestId: options.requestId || "" };
+}
+
+function skippedLlmReadinessCheck() {
+  return {
+    ok: true,
+    skipped: true,
+    code: "skipped",
+    message: "Skipped because readyz failed before the real LLM probe.",
+    model: DEFAULT_LLM_READY_MODEL,
+    httpStatus: 0
+  };
 }
 
 function monitorSummary(checks) {
@@ -1174,7 +1185,7 @@ function monitorEmailText(event, summary, checks, now) {
     "",
     "Interpretation:",
     "- readyz checks Worker -> Cloudflare Tunnel -> local API-only proxy health.",
-    `- llm-readyz sends a tiny real ${checks.llm?.model || DEFAULT_LLM_READY_MODEL} / low / max_tokens=2 request.`,
+    `- llm-readyz sends a tiny real ${checks.llm?.model || DEFAULT_LLM_READY_MODEL} / low / max_tokens=2 request only after readyz passes.`,
     "",
     "Runbook:",
     "1. Check https://cliproxy.sylvanyu.io/readyz",
@@ -1185,6 +1196,16 @@ function monitorEmailText(event, summary, checks, now) {
 
 function formatMonitorCheck(check) {
   if (!check) return "missing";
+  if (check.skipped) {
+    return [
+      "skipped",
+      `code=${check.code || "skipped"}`,
+      check.model ? `model=${check.model}` : "",
+      check.message ? `message=${check.message}` : ""
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
   return [
     check.ok ? "ok" : "failed",
     `code=${check.code || "unknown"}`,

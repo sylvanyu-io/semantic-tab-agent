@@ -163,9 +163,10 @@ The Worker has a Cron Trigger:
 crons = ["*/30 * * * *"]
 ```
 
-Every 30 minutes it checks both the local-origin readiness path and the tiny
-real LLM probe. It sends email through the Resend HTTP API only when state
-changes:
+Every 30 minutes it first checks the free local-origin readiness path. Only
+when that passes does it run the tiny real LLM probe, so a broken Tunnel or
+offline local origin will not spend model usage. It sends email through the
+Resend HTTP API only when state changes:
 
 - first detected outage;
 - recovery after an outage;

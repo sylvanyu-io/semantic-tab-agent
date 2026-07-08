@@ -287,6 +287,23 @@ test("scheduled monitor does not spend LLM tokens before state storage is config
   assert.equal(calls.emails.length, 0);
 });
 
+test("scheduled monitor skips the real LLM probe when origin readiness fails", async () => {
+  const calls = monitorFetch({ readyzStatus: 530, readyzBody: "error code: 1033" });
+  const result = await runScheduledMonitor(monitorEnv(), {
+    scheduledTime: Date.parse("2026-07-02T00:00:00.000Z"),
+    fetchImpl: calls.fetch
+  });
+  const chatCalls = calls.calls.filter((call) => String(call.url).endsWith("/chat/completions"));
+
+  assert.equal(result.ok, false);
+  assert.equal(result.event, "down");
+  assert.deepEqual(result.summary.failed, ["readyz"]);
+  assert.equal(result.checks.llm.code, "skipped");
+  assert.equal(chatCalls.length, 0);
+  assert.equal(calls.emails.length, 1);
+  assert.match(calls.emails[0].text, /llm-readyz: skipped/);
+});
+
 test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds later", async () => {
   const env = monitorEnv({ MONITOR_REMINDER_HOURS: "6", MONITOR_TOKEN: "secret" });
   const calls = monitorFetch({ llmStatus: 503, llmBody: "upstream temporarily unavailable" });
