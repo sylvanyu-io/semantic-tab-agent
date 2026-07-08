@@ -68,7 +68,7 @@ AI 只负责给出整理方案、清理建议和回顾内容。真正移动、�
 ```bash
 npm install
 npm run assets:icons
-npm run build:extension
+npm run build
 ```
 
 然后在 Chrome 中加载：
@@ -150,7 +150,7 @@ npm run build:extension:store
 ## 压力测试
 
 ```bash
-npm run build:extension
+npm run build
 npm run stress:extension
 ```
 
