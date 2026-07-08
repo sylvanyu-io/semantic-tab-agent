@@ -257,8 +257,10 @@ test("release artifact audit locks store host permissions to the default gateway
   const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
 
   assert.match(auditScript, /storeHostPermissions/);
+  assert.match(auditScript, /storeOptionalHostPermissions/);
   assert.match(auditScript, /https:\/\/cliproxy\.sylvanyu\.io\/\*/);
   assert.match(auditScript, /store build must only request the default AI gateway host permission/);
+  assert.match(auditScript, /store build must keep optional host permissions for custom AI API origins/);
 });
 
 test("release scripts honor custom extension dist directories", async () => {

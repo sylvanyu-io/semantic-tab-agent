@@ -39,7 +39,7 @@ test("store extension build strips content-reading permissions", async () => {
     assert.equal((manifest.permissions || []).includes("activeTab"), false);
     assert.equal((manifest.permissions || []).includes("sidePanel"), true);
     assert.equal((manifest.optional_permissions || []).includes("scripting"), false);
-    assert.equal(manifest.optional_host_permissions, undefined);
+    assert.deepEqual(manifest.optional_host_permissions, ["https://*/*", "http://*/*"]);
     assert.deepEqual(manifest.host_permissions, ["https://cliproxy.sylvanyu.io/*"]);
     assert.equal(manifest.action.default_popup, undefined);
     assert.equal(manifest.side_panel.default_path, "src/sidepanel/index.html");

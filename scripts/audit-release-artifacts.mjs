@@ -38,6 +38,7 @@ const forbiddenProductCopy = [
   { label: "tab-tidy", pattern: /tab-tidy/i }
 ];
 const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
+const storeOptionalHostPermissions = ["https://*/*", "http://*/*"];
 const forbiddenEntryPatterns = [
   /^docs\//,
   /^tests?\//,
@@ -117,7 +118,11 @@ function auditManifest(channel, manifest, files) {
       `${channel}: store build must only request the default AI gateway host permission.`
     );
     assertNotIncludes(manifest.optional_permissions, "scripting", `${channel}: store build must not request optional scripting.`);
-    if (manifest.optional_host_permissions) fail(`${channel}: store build must not include optional_host_permissions.`);
+    assertExactList(
+      manifest.optional_host_permissions,
+      storeOptionalHostPermissions,
+      `${channel}: store build must keep optional host permissions for custom AI API origins.`
+    );
   } else {
     assertIncludes(manifest.permissions, "activeTab", `${channel}: dev build should keep activeTab for local diagnostics.`);
     assertIncludes(manifest.optional_permissions, "scripting", `${channel}: dev build should keep optional scripting.`);

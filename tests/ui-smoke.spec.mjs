@@ -3763,7 +3763,7 @@ test("store manifest hides content-reading controls", async ({ page }) => {
     };
     window.chrome = {
       runtime: {
-        getManifest: () => ({ optional_permissions: [], optional_host_permissions: [] }),
+        getManifest: () => ({ optional_permissions: [], optional_host_permissions: ["https://*/*", "http://*/*"] }),
         sendMessage: async (message) => {
           if (message.type === "settings:get") return { ok: true, result: settings };
           if (message.type === "settings:save") return { ok: true, result: message.settings };
@@ -3780,6 +3780,9 @@ test("store manifest hides content-reading controls", async ({ page }) => {
   await page.getByText("更多选项").click();
   await expect(page.locator("#pageContextMode")).toBeHidden();
   await expect(page.locator("#pageSummaryMemoryMode")).toHaveCount(0);
+  await page.locator("#gatewayProviderMode").selectOption("custom");
+  await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
+  await expect(page.getByRole("button", { name: "测试连接" })).toBeVisible();
 });
 
 test("page summary permission denial rolls back the toggle before generation", async ({ page }) => {

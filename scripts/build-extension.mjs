@@ -50,6 +50,5 @@ async function writeStoreManifest(manifestPath) {
   );
   storeManifest.optional_permissions = (storeManifest.optional_permissions || []).filter((permission) => permission !== "scripting");
   if (!storeManifest.optional_permissions.length) delete storeManifest.optional_permissions;
-  delete storeManifest.optional_host_permissions;
   await writeFile(manifestPath, `${JSON.stringify(storeManifest, null, 2)}\n`);
 }
