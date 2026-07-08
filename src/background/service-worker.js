@@ -204,5 +204,5 @@ function sanitizeBackgroundErrorMessage(error) {
 }
 
 function redactBackgroundErrorString(value) {
-  return redactSensitiveText(value).slice(0, 500);
+  return redactSensitiveText(value, { redactUrls: true }).slice(0, 500);
 }

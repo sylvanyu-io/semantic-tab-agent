@@ -216,13 +216,15 @@ test("service worker redacts runtime errors before logging or responding", async
 
     const serializedLogs = debugLogs.join("\n");
     assert.equal(response.ok, false);
-    assert.equal(response.error.includes("https://private.example.com/..."), true);
+    assert.equal(response.error.includes("[redacted-url]"), true);
+    assert.equal(response.error.includes("private.example.com"), false);
     assert.equal(response.error.includes("[redacted-key]"), true);
     assert.equal(response.error.includes(fakeProviderKey), false);
     assert.equal(response.error.includes("token=abc123"), false);
     assert.equal(response.error.includes("/secret/project"), false);
     assert.equal(serializedLogs.includes("tab_recap_background_error"), true);
-    assert.equal(serializedLogs.includes("https://private.example.com/..."), true);
+    assert.equal(serializedLogs.includes("[redacted-url]"), true);
+    assert.equal(serializedLogs.includes("private.example.com"), false);
     assert.equal(serializedLogs.includes("[redacted-key]"), true);
     assert.equal(serializedLogs.includes(fakeProviderKey), false);
     assert.equal(serializedLogs.includes("token=abc123"), false);
