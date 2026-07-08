@@ -1,6 +1,6 @@
 # Default AI Gateway Runbook
 
-Status: current production path as of 2026-07-09 00:47 CST.
+Status: current production path as of 2026-07-09 05:39 CST.
 
 This document records the public TabRecap AI gateway setup so it can be
 debugged, migrated, or rebuilt later without relying on memory. It intentionally
@@ -224,7 +224,7 @@ Covered in this verification:
 - side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, and custom provider ping errors.
 ```
 
-Latest live gateway smoke, 2026-07-09 05:12 CST:
+Latest live gateway smoke, 2026-07-09 05:39 CST:
 
 ```text
 manage-cliroxyapi-service.sh status:
@@ -237,18 +237,18 @@ public main ready: 200
 
 manage-cliroxyapi-service.sh smoke:
 HTTP_STATUS: 200
-TOTAL_TIME: 6.65s
+TOTAL_TIME: 9.27s
 model: gpt-5.4
 
 npm run smoke:gateway:
-elapsedMs: 16477
+elapsedMs: 44362
 model: gpt-5.4
 thinkingIntensity: high
 healthz: 200
 readyz: 200, upstreamCode=ready
 monitor: ok
-monitor lastStatusAt: 2026-07-08T21:00:33.000Z
-monitor lastStatusAgeMinutes: 11
+monitor lastStatusAt: 2026-07-08T21:30:33.000Z
+monitor lastStatusAgeMinutes: 8
 monitor readyzCode: ready
 monitor llmCode: llm_ready
 monitor email: configured
