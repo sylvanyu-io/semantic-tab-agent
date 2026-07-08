@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { SECRET_PATTERNS } from "./lib/secret-patterns.mjs";
+import { findSecretPatternMatches } from "./lib/secret-patterns.mjs";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
@@ -191,11 +191,8 @@ async function auditSecrets(channel, extensionDir, files) {
     if (!textExtensions.has(extensionOf(file))) continue;
 
     const content = await readFile(join(extensionDir, file), "utf8");
-    for (const rule of SECRET_PATTERNS) {
-      rule.pattern.lastIndex = 0;
-      if (rule.pattern.test(content)) {
-        fail(`${channel}: ${file} contains secret pattern "${rule.name}".`);
-      }
+    for (const match of findSecretPatternMatches(content)) {
+      fail(`${channel}: ${file} contains secret pattern "${match.rule}".`);
     }
   }
 }

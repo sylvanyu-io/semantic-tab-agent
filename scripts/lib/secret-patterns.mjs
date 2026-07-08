@@ -24,3 +24,23 @@ export const SECRET_PATTERNS = [
     pattern: /\bAKIA[0-9A-Z]{16}\b/g
   }
 ];
+
+export function findSecretPatternMatches(text) {
+  const value = String(text || "");
+  const findings = [];
+  for (const rule of SECRET_PATTERNS) {
+    rule.pattern.lastIndex = 0;
+    for (const match of value.matchAll(rule.pattern)) {
+      findings.push({
+        rule: rule.name,
+        value: match[0],
+        offset: match.index
+      });
+    }
+  }
+  return findings;
+}
+
+export function matchesSecretPattern(ruleName, value) {
+  return findSecretPatternMatches(value).some((finding) => finding.rule === ruleName);
+}

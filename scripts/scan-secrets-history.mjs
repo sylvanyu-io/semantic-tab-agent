@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { SECRET_PATTERNS } from "./lib/secret-patterns.mjs";
+import { findSecretPatternMatches } from "./lib/secret-patterns.mjs";
 
 const allowedHistoricalFixtureValues = new Set([
   ["sk", "private-secret-token-1234567890"].join("-"),
@@ -17,11 +17,9 @@ if (gitLog.status !== 0) {
 }
 
 const findings = [];
-for (const rule of SECRET_PATTERNS) {
-  for (const match of gitLog.stdout.matchAll(rule.pattern)) {
-    if (isAllowedHistoricalFixture(match[0])) continue;
-    findings.push({ rule: rule.name, offset: match.index });
-  }
+for (const match of findSecretPatternMatches(gitLog.stdout)) {
+  if (isAllowedHistoricalFixture(match.value)) continue;
+  findings.push({ rule: match.rule, offset: match.offset });
 }
 
 if (findings.length) {

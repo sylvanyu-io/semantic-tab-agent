@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { SECRET_PATTERNS } from "../scripts/lib/secret-patterns.mjs";
+import { findSecretPatternMatches, matchesSecretPattern } from "../scripts/lib/secret-patterns.mjs";
 
 test("public release scripts include real extension stress and live gateway gates", async () => {
   const manifest = JSON.parse(await readFile("package.json", "utf8"));
@@ -69,6 +69,21 @@ test("secret scanners cover model, alert email, and common cloud key shapes", ()
   assert.equal(matchesSecretRule("github_fine_grained_token", githubFineGrainedToken), true);
   assert.equal(matchesSecretRule("google_api_key", googleApiKey), true);
   assert.equal(matchesSecretRule("aws_access_key_id", awsAccessKeyId), true);
+});
+
+test("secret pattern helper is safe to call repeatedly with global regex rules", () => {
+  const providerKey = ["sk", "provider-token-1234567890"].join("-");
+
+  assert.equal(matchesSecretPattern("provider_api_key", providerKey), true);
+  assert.equal(matchesSecretPattern("provider_api_key", providerKey), true);
+  assert.deepEqual(
+    findSecretPatternMatches(`left ${providerKey} right`).map((finding) => ({
+      rule: finding.rule,
+      value: finding.value,
+      offset: finding.offset
+    })),
+    [{ rule: "provider_api_key", value: providerKey, offset: 5 }]
+  );
 });
 
 test("secret scanner success copy stays generic across secret provider types", async () => {
@@ -278,8 +293,6 @@ function escapeRegExp(value) {
 }
 
 function matchesSecretRule(ruleName, value) {
-  const rule = SECRET_PATTERNS.find((entry) => entry.name === ruleName);
-  assert.ok(rule, `Missing secret scanner rule ${ruleName}`);
-  rule.pattern.lastIndex = 0;
-  return rule.pattern.test(value);
+  assert.equal(matchesSecretPattern(ruleName, value), true, `Missing secret scanner rule ${ruleName}`);
+  return true;
 }
