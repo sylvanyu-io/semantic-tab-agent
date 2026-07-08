@@ -1,9 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { buildPlannerPayload } from "../src/core/gateway-planner.js";
 import { collectTabInventory } from "../src/core/tab-inventory.js";
 import { rememberTabLifecycle, rememberTabsLifecycle } from "../src/core/tab-lifecycle-log.js";
 import { DEFAULT_SETTINGS, EXISTING_GROUP_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
+
+function assertNoPlannerBehaviorBridge(payload) {
+  assert.deepEqual(payload.activationFlowRuns, []);
+  assert.deepEqual(payload.activationFlowTransitions, []);
+  assert.deepEqual(payload.activationFlowEvidence, []);
+  assert.deepEqual(
+    payload.activationFlowTabActivity.map((row) => [row[0], row.at(-1)]),
+    [
+      [10, []],
+      [12, []]
+    ]
+  );
+}
 
 test("tab inventory includes activation flow behavior context", async () => {
   const now = Date.parse("2026-06-25T00:00:00.000Z");
@@ -92,6 +106,9 @@ test("tab inventory keeps preserved group tabs as activation-flow barriers", asy
       [11, 12]
     ]
   );
+
+  const payload = buildPlannerPayload(inventory, DEFAULT_SETTINGS);
+  assertNoPlannerBehaviorBridge(payload);
 });
 
 test("tab inventory keeps excluded tabs as activation-flow barriers", async () => {
@@ -132,6 +149,9 @@ test("tab inventory keeps excluded tabs as activation-flow barriers", async () =
       [11, 12]
     ]
   );
+
+  const payload = buildPlannerPayload(inventory, DEFAULT_SETTINGS);
+  assertNoPlannerBehaviorBridge(payload);
 });
 
 test("tab inventory keeps activation flow shape when behavior storage is unavailable", async () => {
