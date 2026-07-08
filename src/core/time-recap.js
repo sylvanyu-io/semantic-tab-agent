@@ -120,7 +120,7 @@ function genericTimeRecapFallbackError(settings) {
 }
 
 function sanitizeTimeRecapErrorDetail(message) {
-  return redactSensitiveText(message).trim();
+  return redactSensitiveText(message, { redactUrls: true }).trim();
 }
 
 export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options = {}) {

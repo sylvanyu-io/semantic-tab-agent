@@ -787,6 +787,39 @@ test("time recap fallback redacts raw gateway errors before returning state", as
   assert.equal(serialized.includes(`token=${queryToken}`), false);
 });
 
+test("time recap fallback fully redacts URLs inside known product errors", async () => {
+  const chrome = seededRecapChrome();
+  const bearerToken = "known-product-secret-1234567890";
+  const providerKey = `sk-${"knownproduct1234567890"}`;
+  const privateUrl = "https://private-gateway.example.test/v1/chat/completions?token=abc123";
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      fetchImpl: async () => {
+        throw new Error(`自定义 API 暂时连不上。fetch failed for ${privateUrl} with Bearer ${bearerToken} ${providerKey}`);
+      }
+    }
+  );
+  const serialized = JSON.stringify(result);
+
+  assert.equal(result.source, "local_fallback");
+  assert.match(result.error, /自定义 API 暂时连不上/);
+  assert.match(result.error, /\[redacted-url\]/);
+  assert.equal(serialized.includes("private-gateway.example.test"), false);
+  assert.equal(serialized.includes("token=abc123"), false);
+  assert.equal(serialized.includes(bearerToken), false);
+  assert.equal(serialized.includes(providerKey), false);
+});
+
 test("time recap runtime message can be canceled while AI is running", async () => {
   const chrome = seededRecapChrome();
   const originalFetch = globalThis.fetch;
