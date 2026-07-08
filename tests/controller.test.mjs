@@ -1917,6 +1917,43 @@ test("window analysis is blocked while an all-window analysis is running", async
   }
 });
 
+test("time recap and tab organization can run at the same time", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Concurrent work", url: "https://example.com/current", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) =>
+    new Promise((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+
+  try {
+    const recapPending = handleRuntimeMessage(chrome, {
+      type: "activity:generateTimeRecap",
+      settings: { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
+      languageMode: "zh-CN",
+      range: { preset: "24h" },
+      windowId: 1
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const organize = await startAnalyzeTabs(chrome, FAKE_PLANNER_SETTINGS, { windowId: 1 });
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === organize.operationId && job.status === "complete");
+
+    const cancel = await handleRuntimeMessage(chrome, { type: "activity:cancelTimeRecap", windowId: 1 });
+    assert.equal(cancel.canceled, true);
+    await assert.rejects(recapPending, /已停止生成回顾/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("startAnalyzeTabs returns immediately while the background job writes final preview", async () => {
   const chrome = createFakeChrome({
     windows: [
