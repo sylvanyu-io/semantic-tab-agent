@@ -14,6 +14,8 @@ const RECAP_CLEANUP_RECOMMENDATION_PATTERN = new RegExp(
     "(?:标签页|标签|页面|旧页|页签)[^。！？!?；;\\n]{0,18}(?:不再需要|低价值|过期)",
     "\\b(?:should|can|could|consider)\\b[^.!?\\n]{0,28}\\b(?:close|delete|remove|clean\\s*up|keep)\\b",
     "\\b(?:worth\\s+reviewing|review\\s+whether|cleanup\\s+candidate|no\\s+longer\\s+needed)\\b",
+    "\\b(?:review|revisit|triage|check)\\b[^.!?\\n]{0,28}\\b(?:tab|tabs|page|pages)\\b[^.!?\\n]{0,18}\\b(?:later|tomorrow|again|soon|whether|keep|open)\\b",
+    "\\b(?:keep|save|archive)\\b[^.!?\\n]{0,28}\\b(?:tab|tabs|page|pages)\\b[^.!?\\n]{0,18}\\b(?:open|for\\s+tomorrow|for\\s+later|for\\s+next\\s+time)\\b",
     "\\b(?:check|decide)\\s+later\\s+whether\\s+to\\s+keep\\b",
     "\\b(?:not\\s+worth|not\\s+useful\\s+enough)\\b[^.!?\\n]{0,24}\\b(?:keep|keeping)\\s+open\\b",
     "\\b(?:tab|tabs|page|pages)\\b[^.!?\\n]{0,36}\\b(?:safe\\s+to\\s+drop|get\\s+rid\\s+of|no\\s+need\\s+to\\s+keep|do\\s+not\\s+need\\s+to\\s+keep|don[’']?t\\s+need\\s+to\\s+keep|discard|drop)\\b",

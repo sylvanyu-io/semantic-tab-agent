@@ -83,6 +83,35 @@ test("page sampler extracts forum discussion content instead of page chrome", as
   expect(sample.visibleText).not.toContain("all 120 comments sorted");
 });
 
+test("page sampler skips editable drafts and form-like text", async ({ page }) => {
+  await page.setContent(`
+    <html lang="zh-CN">
+      <head><title>Forum draft privacy</title></head>
+      <body>
+        <main class="thread discussion">
+          <h1>公开讨论：页面摘要采样边界</h1>
+          <article class="post topic-body">
+            <p>这是一段公开可见的论坛正文，讨论页面摘要如何避开用户正在编辑的内容。</p>
+            <p>采样器仍然应该读取稳定的帖子正文，帮助 AI 判断标签页主题。</p>
+          </article>
+          <div contenteditable="true">PRIVATE_EDITABLE_DRAFT_TOKEN</div>
+          <textarea>PRIVATE_TEXTAREA_TOKEN</textarea>
+          <div role="textbox">PRIVATE_ROLE_TEXTBOX_TOKEN</div>
+          <div class="ProseMirror">PRIVATE_PROSEMIRROR_TOKEN</div>
+        </main>
+      </body>
+    </html>
+  `);
+
+  const sample = await page.evaluate(samplePage, "test editable redaction");
+
+  expect(sample.visibleText).toContain("公开可见的论坛正文");
+  expect(sample.visibleText).not.toContain("PRIVATE_EDITABLE_DRAFT_TOKEN");
+  expect(sample.visibleText).not.toContain("PRIVATE_TEXTAREA_TOKEN");
+  expect(sample.visibleText).not.toContain("PRIVATE_ROLE_TEXTBOX_TOKEN");
+  expect(sample.visibleText).not.toContain("PRIVATE_PROSEMIRROR_TOKEN");
+});
+
 test("control surface renders settings and mock preview", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 

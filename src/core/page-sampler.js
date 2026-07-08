@@ -126,7 +126,7 @@ export function samplePage(reason) {
     const discussionSnippets = collectDiscussionSnippets();
     const bestContainer = findBestContentContainer();
     const blockText = collectReadableBlocks(limit);
-    const bodyText = cleanText(document.body?.innerText || "");
+    const bodyText = sanitizedElementText(document.body);
     const pieces = [];
     let kind = bestContainer.kind;
 
@@ -187,7 +187,7 @@ export function samplePage(reason) {
     let best = { element: null, score: 0, text: "", kind: "" };
     for (const element of candidates) {
       if (isNoiseElement(element) || isInvisible(element)) continue;
-      const text = cleanText(element.innerText || element.textContent || "");
+      const text = sanitizedElementText(element);
       if (text.length < 80) continue;
       const score = scoreContentElement(element, text);
       if (score > best.score) {
@@ -203,7 +203,7 @@ export function samplePage(reason) {
     const seen = new Set();
     for (const node of document.querySelectorAll(selector)) {
       if (isNoiseElement(node) || isInvisible(node)) continue;
-      const text = cleanText(node.innerText || node.textContent || "");
+      const text = sanitizedElementText(node);
       if (text.length < 24 || text.length > 900) continue;
       const key = text.toLowerCase();
       if (seen.has(key) || looksLikeBoilerplate(text)) continue;
@@ -236,7 +236,7 @@ export function samplePage(reason) {
     const seen = new Set();
     for (const node of document.querySelectorAll(selector)) {
       if (isNoiseElement(node) || isInvisible(node)) continue;
-      const text = cleanText(node.innerText || node.textContent || "");
+      const text = sanitizedElementText(node);
       if (text.length < 50 || text.length > 1200 || looksLikeBoilerplate(text)) continue;
       const key = text.slice(0, 160).toLowerCase();
       if (seen.has(key)) continue;
@@ -249,7 +249,7 @@ export function samplePage(reason) {
 
   function scoreContentElement(element, text) {
     const links = element.querySelectorAll ? [...element.querySelectorAll("a")] : [];
-    const linkTextLength = links.reduce((sum, link) => sum + cleanText(link.innerText || link.textContent || "").length, 0);
+    const linkTextLength = links.reduce((sum, link) => sum + sanitizedElementText(link).length, 0);
     const linkDensity = text.length ? linkTextLength / text.length : 1;
     const blockCount = element.querySelectorAll?.("p,li,blockquote,pre,h1,h2,h3").length || 0;
     const codeCount = element.querySelectorAll?.("pre,code").length || 0;
@@ -257,6 +257,36 @@ export function samplePage(reason) {
     const semanticBoost = /(article|post|thread|topic|comment|reply|message|discussion|content|main|markdown|cooked|body|issue)/i.test(idClass) ? 450 : 0;
     const tagBoost = ["ARTICLE", "MAIN"].includes(element.tagName) ? 350 : 0;
     return Math.min(text.length, 3500) + blockCount * 90 + codeCount * 140 + semanticBoost + tagBoost - linkDensity * 1800;
+  }
+
+  function sanitizedElementText(element) {
+    if (!element || isEditableElement(element)) return "";
+    const clone = element.cloneNode(true);
+    clone.querySelectorAll?.(editableSelector()).forEach((node) => node.remove());
+    return cleanText(clone.innerText || clone.textContent || "");
+  }
+
+  function isEditableElement(element) {
+    return Boolean(element?.matches?.(editableSelector()));
+  }
+
+  function editableSelector() {
+    return [
+      "input",
+      "textarea",
+      "select",
+      "option",
+      "[contenteditable]:not([contenteditable='false'])",
+      "[role='textbox']",
+      "[role='searchbox']",
+      "[aria-multiline='true']",
+      "[data-slate-editor='true']",
+      "[data-lexical-editor='true']",
+      ".ProseMirror",
+      ".CodeMirror",
+      ".cm-content",
+      ".monaco-editor"
+    ].join(",");
   }
 
   function classifyContentElement(element) {

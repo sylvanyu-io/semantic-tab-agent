@@ -84,6 +84,24 @@ test("recap safety strips keep-open and later-review wording", () => {
   assert.equal(cleaned.includes("whether to keep"), false);
 });
 
+test("recap safety strips direct English tab review and keep recommendations", () => {
+  const cleaned = stripCleanupRecommendationsFromRecapText(
+    [
+      "Morning work focused on prompt tuning and gateway diagnostics.",
+      "Review these tabs later.",
+      "Keep these pages open for tomorrow.",
+      "Revisit old pages tomorrow.",
+      "Afternoon work covered page performance review and release notes."
+    ].join(" ")
+  );
+
+  assert.equal(cleaned.includes("prompt tuning"), true);
+  assert.equal(cleaned.includes("page performance review"), true);
+  assert.equal(cleaned.includes("Review these tabs later"), false);
+  assert.equal(cleaned.includes("Keep these pages open"), false);
+  assert.equal(cleaned.includes("Revisit old pages tomorrow"), false);
+});
+
 test("recap safety keeps cleanup words when they are work topics", () => {
   const cleaned = stripCleanupRecommendationsFromRecapText(
     [
