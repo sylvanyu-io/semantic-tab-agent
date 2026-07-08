@@ -2031,7 +2031,7 @@ function timeRecapFallbackReasonText(result = {}) {
 }
 
 function isProductSafeGatewayMessage(message = "") {
-  return /(?:默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务|AI gateway|default AI service|custom AI gateway|custom API|AI service)/i.test(
+  return /^(?:默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务拒绝访问|The default AI service|The custom API|The AI service)/i.test(
     message
   );
 }
