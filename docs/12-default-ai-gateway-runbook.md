@@ -224,6 +224,37 @@ Covered in this verification:
 - side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, and custom provider ping errors.
 ```
 
+Latest live gateway smoke, 2026-07-09 05:12 CST:
+
+```text
+manage-cliroxyapi-service.sh status:
+main local 8317: 200
+proxy local 18317: 200
+public origin health: 200
+public origin models: 200
+public main health: 200
+public main ready: 200
+
+manage-cliroxyapi-service.sh smoke:
+HTTP_STATUS: 200
+TOTAL_TIME: 6.65s
+model: gpt-5.4
+
+npm run smoke:gateway:
+elapsedMs: 16477
+model: gpt-5.4
+thinkingIntensity: high
+healthz: 200
+readyz: 200, upstreamCode=ready
+monitor: ok
+monitor lastStatusAt: 2026-07-08T21:00:33.000Z
+monitor lastStatusAgeMinutes: 11
+monitor readyzCode: ready
+monitor llmCode: llm_ready
+monitor email: configured
+planner validation: ok
+```
+
 If the stack is running from `screen` fallback, current traffic can be healthy,
 but macOS reboot recovery depends on the helper script or re-enabling the
 LaunchAgents. Use `manage-cliroxyapi-service.sh restart` before deeper
