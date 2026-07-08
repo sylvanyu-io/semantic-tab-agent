@@ -1801,6 +1801,84 @@ test("AI gateway planner maps built-in tunnel errors to retry copy", async () =>
   );
 });
 
+test("AI gateway planner maps built-in model allowlist failures to model copy", async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 400,
+    headers: {
+      get(name) {
+        return name.toLowerCase() === "x-tab-recap-request-id" ? "req_builtin_model" : "";
+      }
+    },
+    async text() {
+      return JSON.stringify({
+        error: {
+          code: "model_not_allowed",
+          message: "This model is not available on the free gateway."
+        }
+      });
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /默认 AI 服务暂时不支持这个模型/);
+      assert.match(message, /req_builtin_model/);
+      assert.doesNotMatch(message, /这次没有成功完成/);
+      return true;
+    }
+  );
+});
+
+test("AI gateway planner maps custom model allowlist failures to custom model copy", async () => {
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 400,
+    async text() {
+      return JSON.stringify({
+        error: {
+          code: "planner_model_not_allowed",
+          message: "This model is not available for TabRecap planning."
+        }
+      });
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      createGatewayPlan(
+        inventory,
+        {
+          ...DEFAULT_SETTINGS,
+          plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+          gatewayBaseUrl: "https://api.example.test/v1",
+          gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+          gatewayCustomModel: "unknown-model",
+          gatewayApiKey: "test-key"
+        },
+        fetchImpl
+      ),
+    (error) => {
+      const message = String(error?.message || "");
+      assert.match(message, /自定义 API 不支持这个模型/);
+      assert.doesNotMatch(message, /This model is not available/);
+      assert.doesNotMatch(message, /这次没有完成请求/);
+      return true;
+    }
+  );
+});
+
 test("AI gateway planner accepts common non-infrastructure string error payloads", async () => {
   const fetchImpl = async () => ({
     ok: false,

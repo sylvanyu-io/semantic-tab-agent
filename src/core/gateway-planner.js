@@ -356,6 +356,11 @@ export function gatewayErrorMessage(response, data, settings) {
       ? "AI 服务拒绝访问。请检查自定义网关地址和密钥。"
       : `默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。${suffix}`;
   }
+  if (isModelNotAllowedError(data, rawProviderMessage)) {
+    return isCustomProvider
+      ? `自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。${suffix}`
+      : `默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。${suffix}`;
+  }
   if (isLocalOriginOffline(response, rawProviderMessage, data)) {
     return isCustomProvider
       ? `自定义 AI 网关的本地源站暂时离线。请检查本机服务、Cloudflare Tunnel 和上游模型。${suffix}`
@@ -407,6 +412,14 @@ function extractGatewayRequestId(response, data) {
   const fromBody = data?.error?.requestId || data?.requestId || "";
   const fromHeader = response?.headers?.get?.("x-tab-recap-request-id") || "";
   return String(fromBody || fromHeader || "").slice(0, 96);
+}
+
+function isModelNotAllowedError(data, providerMessage) {
+  const code = String(data?.error?.code || data?.code || data?.error?.upstreamCode || data?.upstreamCode || "");
+  const text = `${providerMessage || ""} ${code}`.toLowerCase();
+  return /model_not_allowed|planner_model_not_allowed|recap_model_not_allowed|model.*not available|not available.*model|unsupported.*model|model.*unsupported|不支持.*模型/.test(
+    text
+  );
 }
 
 function isLocalOriginOffline(response, providerMessage, data) {
