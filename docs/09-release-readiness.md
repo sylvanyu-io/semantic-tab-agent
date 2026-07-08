@@ -222,6 +222,13 @@ Post-release hardening verification:
   windows after the stress harness was updated to follow scoped stored jobs. The
   run validated all-window apply/undo, current-window apply/undo, risk-gated
   sampling, UI-driven page sampling `240/240`, and active-tab sampling `4/4`.
+- `2026-07-09 07:13` Asia/Shanghai: the live release gate components passed on
+  the same code path. The latest `release:check:live` run reached and passed the
+  240-tab stress phase (`dist/stress/sta-stress-mrcowcwu.json`), which means the
+  standard release gate had already passed. A follow-up monitor-required live
+  gateway smoke passed against `https://cliproxy.sylvanyu.io/v1` with `gpt-5.4`
+  high reasoning in `33.4s`; `/healthz`, `/readyz`, monitor status, email
+  configuration, and planner JSON validation were all OK.
 
 Recommended before public listing:
 

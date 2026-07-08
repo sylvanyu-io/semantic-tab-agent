@@ -297,6 +297,35 @@ monitor lastStatusAgeMinutes: 3
 planner validation: ok
 ```
 
+Latest live release-gate verification, 2026-07-09 07:13 CST:
+
+```text
+npm run release:check:live:
+standard release gate: passed before stress phase
+stress artifact: dist/stress/sta-stress-mrcowcwu.json
+stress status: passed
+stress scope: 240 tabs across 4 windows
+UI-driven page sampling: 240/240
+active-tab page sampling: 4/4
+
+GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway:
+elapsedMs: 33357
+model: gpt-5.4
+thinkingIntensity: high
+healthz: 200
+readyz: 200, upstreamCode=ready
+monitor: ok
+monitor lastStatusAt: 2026-07-08T23:00:33.000Z
+monitor lastStatusAgeMinutes: 11
+monitor readyzCode: ready
+monitor llmCode: llm_ready
+monitor email: configured
+planner validation: ok
+preview groups: 2
+reviewTabsCount: 0
+excludedTabsCount: 0
+```
+
 This verification followed a transient 2026-07-09 06:30 CST monitor outage.
 Cloudflared logs showed edge disconnects and TLS handshake failures around the
 scheduled check. The local stack and tunnel were healthy again after the
