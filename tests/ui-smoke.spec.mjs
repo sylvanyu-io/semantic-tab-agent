@@ -2593,6 +2593,74 @@ test("custom provider ping errors stay product-safe in the side panel", async ({
   await expect(page.locator("#statusText")).not.toContainText(privateKey);
 });
 
+test("custom provider connection test requests the custom origin before pinging", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__permissionRequests = [];
+    window.__gatewayPings = 0;
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      gatewayProviderMode: "custom",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "glm-5.2",
+      gatewayCustomAuxiliaryModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "test-key",
+      customPrompt: ""
+    };
+    window.chrome = {
+      permissions: {
+        contains: async () => false,
+        request: async (request) => {
+          window.__permissionRequests.push(request);
+          return false;
+        }
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "gateway:testConnection") {
+            window.__gatewayPings += 1;
+            return { ok: true, result: { model: "glm-5.2" } };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByText("更多选项").click();
+  await page.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.locator("#statusText")).toHaveText("需要先授权这个 AI 服务地址，才能发送 AI 请求。");
+  await expect.poll(() => page.evaluate(() => window.__gatewayPings)).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.__permissionRequests.map((request) => request.origins))).toEqual([
+    ["https://api.example.test/*"]
+  ]);
+});
+
 test("error diagnostic details redact secrets and tokenized urls", async ({ page }) => {
   await page.addInitScript(() => {
     const providerKey = ["sk", "private-secret-token-1234567890"].join("-");
