@@ -283,6 +283,7 @@ LLM_READY_MAX_TOKENS = "2"
 LLM_READY_TIMEOUT_MS = "45000"
 UPSTREAM_RETRY_ATTEMPTS = "2"
 UPSTREAM_RETRY_DELAY_MS = "1200"
+UPSTREAM_CHAT_TIMEOUT_MS = "300000"
 UPSTREAM_READY_TIMEOUT_MS = "8000"
 ```
 
@@ -347,6 +348,16 @@ not run another upstream health check or model request. A healthy response only
 means the status snapshot was read successfully; check `monitor.status`,
 `monitor.lastSummary.readyzCode`, and `monitor.lastSummary.llmCode` for the
 gateway state.
+
+Useful monitor fields:
+
+- `monitor.firstFailureAt`: when the current outage streak started;
+- `monitor.lastFailureAt`: the latest scheduled check that still failed;
+- `monitor.lastOkAt`: the latest scheduled healthy check;
+- `monitor.lastEmail`: whether the latest alert/recovery email attempt was
+  sent successfully;
+- `config.upstreamChatTimeoutMs`: Worker chat-completions timeout in
+  milliseconds. The current default is 300000 ms.
 
 The response is deliberately redacted. It reports configuration status and
 coarse failure codes, but not the upstream origin URL, Worker secrets, Resend
@@ -673,6 +684,9 @@ Use this when moving the origin from this Mac to another machine or a server.
 - `/llm-readyz` costs a tiny model request and is protected by `MONITOR_TOKEN`.
 - `/monitor/status` costs no model usage and shows the latest Cron monitor
   snapshot for outage triage.
+- Normal extension chat-completions calls are bounded by
+  `UPSTREAM_CHAT_TIMEOUT_MS`; a hung local origin should become
+  `origin_chat_timeout` instead of an endless wait.
 - Resend is only for alerts; Migadu remains the mailbox provider for
   `me@sylvanyu.io`.
 - Secret values live in Cloudflare Worker secrets and local config files, not in

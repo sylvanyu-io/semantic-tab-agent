@@ -36,6 +36,7 @@ This avoids the observed QUIC failure mode where `cloudflared` stays alive but r
 | `/healthz` 200, `/readyz` 503 | Worker is alive, local origin path is unhealthy | Show default service temporarily offline |
 | 530 with `error code: 1033` | Cloudflare has no healthy tunnel connection to the local origin | Retry once, then return structured JSON |
 | 502/503/504/52x from origin | Local proxy, tunnel, or origin service is unstable | Retry once, then return structured JSON |
+| Chat request exceeds `UPSTREAM_CHAT_TIMEOUT_MS` | Origin path accepted the request but did not finish in time | Return structured `origin_chat_timeout` JSON |
 | cloudflared process is alive, public origin is 530, logs show QUIC timeouts | Process-level restart alone may not help; edge transport is unhealthy | Use `protocol: http2`, restart tunnel, then check `/readyz` |
 | 401/403 | Auth/config issue, not transient tunnel failure | Do not retry |
 | 429 | Rate/model capacity issue | Do not retry |
@@ -93,6 +94,12 @@ This avoids the observed QUIC failure mode where `cloudflared` stays alive but r
 
    The extension can now show a stable product message instead of leaking raw Cloudflare text.
 
+   Long chat-completions requests are also bounded by
+   `UPSTREAM_CHAT_TIMEOUT_MS` in the Worker. The default is 300 seconds. If the
+   local origin hangs instead of returning, the Worker returns structured
+   `origin_chat_timeout` JSON instead of leaving the extension waiting
+   indefinitely.
+
 5. Protected real LLM readiness probe
 
    `/llm-readyz` checks the full model path by sending a tiny real chat request
@@ -136,6 +143,7 @@ This avoids the observed QUIC failure mode where `cloudflared` stays alive but r
 ```toml
 UPSTREAM_RETRY_ATTEMPTS = "2"
 UPSTREAM_RETRY_DELAY_MS = "1200"
+UPSTREAM_CHAT_TIMEOUT_MS = "300000"
 UPSTREAM_READY_TIMEOUT_MS = "8000"
 LLM_READY_MODEL = "gpt-5.4-mini"
 LLM_READY_REASONING_EFFORT = "low"
