@@ -60,6 +60,11 @@ const UI_COPY = Object.freeze({
     "status.settingsImportInvalid": "设置文件不可用，请选择 TabRecap 导出的 JSON。",
     "status.diagnosticsExported": "诊断包已导出，不包含密钥、页面网址或页面正文。",
     "status.gatewayTimeout": "AI 服务响应超时。请稍后重试；如果使用自定义 API，请先点「测试连接」。",
+    "status.gatewayAuthDenied": "默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。",
+    "status.gatewayUnavailable": "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+    "status.gatewayLocalOriginOffline": "默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。",
+    "status.gatewayFailed": "默认 AI 服务这次没有成功响应。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+    "status.customGatewayAuthDenied": "AI 服务拒绝访问。请检查自定义网关地址和密钥。",
     "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页{reviewText}",
     "status.applyDone": "已创建 {groupCount} 个分组",
     "status.applyReviewSuffix": "，{reviewCount} 个放进「{reviewTitle}」",
@@ -70,6 +75,7 @@ const UI_COPY = Object.freeze({
     "status.progressCopyFailed": "提示文案生成失败，请稍后重试。",
     "status.gatewayUnsupportedModel": "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
     "status.customGatewayUnsupportedModel": "自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。",
+    "status.customGatewayFailed": "自定义 AI 网关这次没有完成请求。请检查网关服务后重试。",
     "status.gatewayInvalidOutput": "AI 服务这次返回格式异常。请重新生成，或在更多选项里切换模型。",
     "button.generate": "生成方案",
     "button.regenerate": "返回上级",
@@ -332,6 +338,11 @@ const UI_COPY = Object.freeze({
     "status.settingsImportInvalid": "This settings file is not usable. Choose a JSON exported by TabRecap.",
     "status.diagnosticsExported": "Diagnostics exported without keys, page URLs, or page text.",
     "status.gatewayTimeout": "The AI service timed out. Try again later; if you use a custom API, run Test connection first.",
+    "status.gatewayAuthDenied": "The default AI service denied access. Try again later, or switch to a custom gateway in More options.",
+    "status.gatewayUnavailable": "The default AI service is temporarily unavailable. Try again later, or switch to a custom AI gateway in More options.",
+    "status.gatewayLocalOriginOffline": "The default AI service origin is temporarily offline. Try again later; if it keeps failing, the local gateway or Cloudflare Tunnel needs attention.",
+    "status.gatewayFailed": "The default AI service did not respond successfully. Try again later, or switch to a custom AI gateway in More options.",
+    "status.customGatewayAuthDenied": "The AI service denied access. Check the custom gateway URL and key.",
     "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs{reviewText}",
     "status.applyDone": "Created {groupCount} groups",
     "status.applyReviewSuffix": ", {reviewCount} added to \"{reviewTitle}\"",
@@ -342,6 +353,7 @@ const UI_COPY = Object.freeze({
     "status.progressCopyFailed": "Progress captions could not be generated. Try again later.",
     "status.gatewayUnsupportedModel": "The default AI service does not support this model right now. Try again later, or switch models in More options.",
     "status.customGatewayUnsupportedModel": "The custom API does not support this model. Check the model name or run Test connection first.",
+    "status.customGatewayFailed": "The custom AI gateway did not complete the request. Check the gateway service and try again.",
     "status.gatewayInvalidOutput": "The AI service returned an unexpected format. Regenerate, or switch models in More options.",
     "button.generate": "Generate plan",
     "button.regenerate": "Back",
@@ -2020,12 +2032,6 @@ function friendlyErrorMessage(error) {
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
   if (/AI gateway time recap timed out/i.test(message)) return t("status.recapAiUnavailable");
   if (/AI gateway .* timed out/i.test(message)) return t("status.gatewayTimeout");
-  if (/自定义 API 连接超时|The custom API connection timed out/i.test(message)) {
-    return t("status.customGatewayConnectionTimeout");
-  }
-  if (/自定义 API 暂时连不上|The custom API is not reachable/i.test(message)) {
-    return t("status.customGatewayUnreachable");
-  }
   if (
     /(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API).*?(?:不支持.*模型|model.*(?:not available|unsupported)|model_not_allowed)|(?:model_not_allowed|planner_model_not_allowed|recap_model_not_allowed).*?(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API)/i.test(
       message
@@ -2039,6 +2045,25 @@ function friendlyErrorMessage(error) {
     )
   ) {
     return t("status.gatewayUnsupportedModel");
+  }
+  if (/默认 AI 服务拒绝访问|default AI service denied access/i.test(message)) return t("status.gatewayAuthDenied");
+  if (/默认 AI 服务的本地源站暂时离线|default AI service origin is temporarily offline/i.test(message)) {
+    return t("status.gatewayLocalOriginOffline");
+  }
+  if (/默认 AI 服务暂时不可用|default AI service is temporarily unavailable/i.test(message)) {
+    return t("status.gatewayUnavailable");
+  }
+  if (/默认 AI 服务这次没有成功|default AI service did not respond successfully/i.test(message)) return t("status.gatewayFailed");
+  if (/AI 服务拒绝访问|AI service denied access/i.test(message)) return t("status.customGatewayAuthDenied");
+  if (/自定义 AI 网关的本地源站暂时离线|自定义 AI 网关暂时连不上|custom AI gateway.*(?:offline|not reachable)/i.test(message)) {
+    return t("status.customGatewayUnreachable");
+  }
+  if (/自定义 AI 网关这次没有完成请求|custom AI gateway did not complete/i.test(message)) return t("status.customGatewayFailed");
+  if (/自定义 API 连接超时|The custom API connection timed out/i.test(message)) {
+    return t("status.customGatewayConnectionTimeout");
+  }
+  if (/自定义 API 暂时连不上|The custom API is not reachable/i.test(message)) {
+    return t("status.customGatewayUnreachable");
   }
   if (/AI gateway planner returned invalid JSON|Unexpected token|is not valid JSON|invalid JSON/i.test(message)) {
     return t("status.gatewayInvalidOutput");

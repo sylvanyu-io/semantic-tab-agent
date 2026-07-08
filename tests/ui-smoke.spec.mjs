@@ -2281,6 +2281,129 @@ test("side panel translates stored core model errors", async ({ page }) => {
   await expect(page.locator(".error-panel")).toContainText("The default AI service does not support this model right now.");
 });
 
+test("side panel translates stored gateway infrastructure errors", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    const activeJob = {
+      operationId: "job_core_gateway_down",
+      status: "error",
+      phase: "error",
+      progress: 100,
+      message: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+      error: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString()
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: activeJob };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。");
+  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不可用。");
+  await page.locator("#uiLanguageToggle").click();
+  await expect(page.locator("#statusText")).toHaveText(
+    "The default AI service is temporarily unavailable. Try again later, or switch to a custom AI gateway in More options."
+  );
+  await expect(page.locator(".error-panel")).toContainText("The default AI service is temporarily unavailable.");
+});
+
+test("side panel translates stored English gateway infrastructure errors", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    const activeJob = {
+      operationId: "job_core_gateway_down_en",
+      status: "error",
+      phase: "error",
+      progress: 100,
+      message: "The default AI service is temporarily unavailable. Try again later.",
+      error: "The default AI service is temporarily unavailable. Try again later.",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString()
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: activeJob };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。");
+  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不可用。");
+});
+
 test("custom provider model errors use custom API copy", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
