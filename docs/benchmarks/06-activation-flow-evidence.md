@@ -119,6 +119,19 @@ Additional verification on 2026-07-08:
 - full Node/Worker test suite: 267 pass;
 - current secret scan passed.
 
+Additional verification on 2026-07-09:
+
+- rechecked the intended "anchor tab -> short checks -> return to anchor"
+  pattern: a tab with a long dwell, two quick follow-up tabs, and a return to
+  the first tab is represented as dwell seconds, quick handoff clues, and
+  return-to-anchor evidence rather than a hard grouping rule;
+- rechecked scoped planner payload behavior: preserved groups, excluded tabs,
+  and out-of-bucket tabs remain barriers, so a larger activation run cannot be
+  compressed into a fake relationship between two eligible tabs;
+- targeted behavior/planner/evidence tests: 77 pass;
+- full release-style check passed locally: 325 Node/Worker tests and 50
+  Playwright UI smoke tests.
+
 ## Transition Payload Check
 
 After adding directed transitions, a local no-network measurement on the
