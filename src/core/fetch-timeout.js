@@ -81,7 +81,7 @@ async function readJsonResponse(response, label) {
 }
 
 function compactResponseText(text) {
-  return redactSensitiveText(text)
+  return redactSensitiveText(text, { redactUrls: true })
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 300);

@@ -31,6 +31,8 @@ test("fetch timeout helper redacts non-json response details at the source", asy
   }
   assert.match(data.error.message, /Authorization: \[redacted\]/);
   assert.match(data.error.message, /Cookie: \[redacted\]/);
+  assert.match(data.error.message, /\[redacted-url\]/);
+  assert.equal(serialized.includes("private.example.com"), false);
   assert.equal(serialized.includes("/path/to/secret"), false);
   assert.equal(serialized.includes("token="), false);
   assert.equal(serialized.includes("api_key=[redacted]"), true);
