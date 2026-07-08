@@ -209,14 +209,14 @@ TOTAL_TIME: 7.42s
 model: gpt-5.4
 ```
 
-Latest local code verification, 2026-07-09 00:47 CST:
+Latest local code verification, 2026-07-09 05:54 CST:
 
 ```text
 npm test:
-322/322 passed
+338/338 passed
 
-Targeted Playwright UI smoke:
-9/9 passed
+Full Playwright UI smoke:
+51/51 passed
 
 Covered in this verification:
 - Worker/monitor tests for 530/1033 tunnel failures, retries, alert email state, recovery mail, and redaction;
