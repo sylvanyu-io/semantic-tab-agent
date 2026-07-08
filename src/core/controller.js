@@ -1589,9 +1589,26 @@ function sanitizeActiveJob(job) {
   } else {
     safeJob.progress = Math.max(0, Math.min(100, Math.round(safeJob.progress)));
   }
-  if (safeJob.error) safeJob.error = String(safeJob.error).slice(0, 500);
-  if (safeJob.message) safeJob.message = String(safeJob.message).slice(0, 160);
+  if (safeJob.error) safeJob.error = redactActiveJobText(safeJob.error).slice(0, 500);
+  if (safeJob.message) safeJob.message = redactActiveJobText(safeJob.message).slice(0, 160);
   return safeJob;
+}
+
+function redactActiveJobText(value) {
+  return String(value || "")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')]+/gi, "$1[redacted]")
+    .replace(/https?:\/\/[^\s"')<>]+/gi, redactActiveJobUrl);
+}
+
+function redactActiveJobUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
+  } catch {
+    return "[redacted-url]";
+  }
 }
 
 function throwIfCanceled(signal) {

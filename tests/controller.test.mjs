@@ -1702,6 +1702,41 @@ test("active analysis exposes progress and can be canceled", async () => {
   }
 });
 
+test("active analysis terminal errors are redacted before storage", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Sensitive gateway docs", url: "https://example.com/docs", active: true }]
+      }
+    ]
+  });
+  const providerKey = ["sk", "private", "provider", "token", "1234567890"].join("-");
+  const tokenizedUrl = "https://private.example.com/secret/project?token=abc123";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error(`gateway failed for ${tokenizedUrl} with Bearer ${providerKey}`);
+  };
+
+  try {
+    await startAnalyzeTabs(
+      chrome,
+      { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
+      { windowId: 1 }
+    );
+    const failedJob = await waitForActiveJob(chrome, (job) => job?.status === "error");
+    const serialized = JSON.stringify(failedJob);
+    assert.equal(serialized.includes(providerKey), false);
+    assert.equal(serialized.includes("token=abc123"), false);
+    assert.equal(serialized.includes("/secret/project"), false);
+    assert.equal(serialized.includes("Bearer [redacted]"), true);
+    assert.equal(serialized.includes("https://private.example.com/..."), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("running analyses are isolated per source window", async () => {
   const chrome = createFakeChrome({
     windows: [
