@@ -7,6 +7,7 @@ import { findSecretPatternMatches } from "./lib/secret-patterns.mjs";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
+const packageManifest = JSON.parse(await readFile(join(rootDir, "package.json"), "utf8"));
 const rootManifest = JSON.parse(await readFile(join(rootDir, "manifest.json"), "utf8"));
 
 const artifacts = [
@@ -56,6 +57,8 @@ const forbiddenEntryPatterns = [
 
 let failures = 0;
 
+auditSourceVersions();
+
 for (const artifact of artifacts) {
   auditExists(artifact.extensionDir, `${artifact.channel} unpacked extension`);
   auditExists(artifact.zipPath, `${artifact.channel} zip`);
@@ -79,6 +82,12 @@ if (failures) {
 }
 
 console.log("Release artifact audit passed.");
+
+function auditSourceVersions() {
+  if (packageManifest.version !== rootManifest.version) {
+    fail(`package.json version ${packageManifest.version} does not match manifest.json version ${rootManifest.version}.`);
+  }
+}
 
 function auditExists(path, label) {
   if (!existsSync(path)) fail(`${label} is missing: ${path}`);

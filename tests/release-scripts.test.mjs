@@ -56,6 +56,15 @@ test("release artifact audit rejects obsolete product names and legacy extension
   assert.match(auditScript, /tab-tidy/);
 });
 
+test("release artifact audit checks package and manifest version drift", async () => {
+  const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
+
+  assert.match(auditScript, /package\.json/);
+  assert.match(auditScript, /manifest\.json/);
+  assert.match(auditScript, /packageManifest\.version !== rootManifest\.version/);
+  assert.match(auditScript, /does not match manifest\.json version/);
+});
+
 test("secret scanners cover model, alert email, and common cloud key shapes", () => {
   const providerKey = ["sk", "provider-token-1234567890"].join("-");
   const resendKey = ["re", "alert-token-1234567890"].join("_");
