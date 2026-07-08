@@ -82,6 +82,39 @@ test("worker LLM readiness check uses the tiny mini-model probe", async () => {
   assert.equal(upstreamBody.max_tokens, 2);
 });
 
+test("worker LLM readiness errors are redacted before monitor responses", async () => {
+  const providerKey = ["sk", "worker", "readyz", "secret", "1234567890"].join("-");
+  const bearer = "gateway-monitor-secret-1234567890";
+  const tokenizedUrl = "https://raw-llm.example/private/health?token=abc123&api_key=def456";
+  const localHandle = createWorkerHandler({
+    fetchImpl: async (url) => {
+      if (String(url).endsWith("/chat/completions")) {
+        throw new Error(`failed ${tokenizedUrl} with Bearer ${bearer} and ${providerKey}`);
+      }
+      return new Response("ok", { status: 200 });
+    }
+  });
+
+  const response = await localHandle(
+    new Request("https://cliproxy.example/llm-readyz", {
+      headers: { "x-monitor-token": "secret" }
+    }),
+    envWithKv({ MONITOR_TOKEN: "secret" })
+  );
+  const body = await response.json();
+  const serialized = JSON.stringify(body);
+
+  assert.equal(response.status, 503);
+  assert.equal(body.llm.code, "llm_ready_failed");
+  assert.equal(serialized.includes(providerKey), false);
+  assert.equal(serialized.includes(bearer), false);
+  assert.equal(serialized.includes("token=abc123"), false);
+  assert.equal(serialized.includes("api_key=def456"), false);
+  assert.equal(serialized.includes("/private/health"), false);
+  assert.equal(serialized.includes("[redacted-key]"), true);
+  assert.equal(serialized.includes("Bearer [redacted]"), true);
+});
+
 test("worker protects the monitor status snapshot with a monitor token", async () => {
   const missingConfig = await handle(new Request("https://cliproxy.example/monitor/status"), envWithKv());
   assert.equal(missingConfig.status, 503);
@@ -271,6 +304,44 @@ test("scheduled monitor sends recovery mail after a failed state", async () => {
   assert.equal(failing.emails.length, 1);
   assert.equal(healthy.emails.length, 1);
   assert.match(healthy.emails[0].subject, /recovered/);
+});
+
+test("scheduled monitor emails redact thrown readiness details", async () => {
+  const providerKey = ["sk", "worker", "email", "secret", "1234567890"].join("-");
+  const bearer = "monitor-email-secret-1234567890";
+  const tokenizedUrl = "https://raw-llm.example/private/status?token=abc123&secret=def456";
+  const emails = [];
+  const fetchImpl = async (url, options = {}) => {
+    const textUrl = String(url);
+    if (textUrl.includes("api.resend.com")) {
+      emails.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ id: "email_123" }), { status: 200 });
+    }
+    if (textUrl.endsWith("/healthz")) return new Response("ok", { status: 200 });
+    if (textUrl.endsWith("/chat/completions")) {
+      throw new Error(`failed ${tokenizedUrl} with Bearer ${bearer} and ${providerKey}`);
+    }
+    return new Response("not found", { status: 404 });
+  };
+
+  const result = await runScheduledMonitor(monitorEnv(), {
+    scheduledTime: Date.parse("2026-07-02T00:00:00.000Z"),
+    fetchImpl
+  });
+  const serializedEmail = JSON.stringify(emails[0]);
+  const serializedResult = JSON.stringify(result);
+
+  assert.equal(result.event, "down");
+  assert.equal(emails.length, 1);
+  for (const serialized of [serializedEmail, serializedResult]) {
+    assert.equal(serialized.includes(providerKey), false);
+    assert.equal(serialized.includes(bearer), false);
+    assert.equal(serialized.includes("token=abc123"), false);
+    assert.equal(serialized.includes("secret=def456"), false);
+    assert.equal(serialized.includes("/private/status"), false);
+  }
+  assert.equal(serializedEmail.includes("[redacted-key]"), true);
+  assert.equal(serializedEmail.includes("Bearer [redacted]"), true);
 });
 
 test("worker rejects chat requests without a rate limit store", async () => {

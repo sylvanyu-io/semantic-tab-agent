@@ -1276,10 +1276,27 @@ function allowedCorsOrigin(origin) {
 }
 
 function compactResponseText(text) {
-  return String(text || "")
+  return redactSensitiveText(text)
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 300);
+}
+
+function redactSensitiveText(value) {
+  return String(value || "")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/([?&](?:access_token|refresh_token|api[_-]?key|token|secret|password|key)=)[^&\s"')<>]+/gi, "$1[redacted]")
+    .replace(/https?:\/\/[^\s"')<>]+/gi, redactSensitiveUrl);
+}
+
+function redactSensitiveUrl(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl || ""));
+    return `${url.protocol}//${url.hostname}${url.pathname && url.pathname !== "/" ? "/..." : ""}`;
+  } catch {
+    return "[redacted-url]";
+  }
 }
 
 function delay(ms) {
