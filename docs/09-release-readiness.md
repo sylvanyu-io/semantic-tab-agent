@@ -136,10 +136,10 @@ Blocking gates:
 - Extension package contains no `node_modules`, test outputs, or local secrets.
 - Extension zip entries exactly match their unpacked build directories and only
   contain publishable extension assets: `manifest.json`, `src/`, and `icons/`.
-- Store packages remove `activeTab` and `scripting`, so page-body sampling
-  controls are unavailable in that channel. Store packages keep optional host
-  permissions so a user-selected custom AI API origin can still be requested
-  explicitly.
+- Store packages remove `activeTab` and all optional extension permissions,
+  including `scripting`, so page-body sampling controls are unavailable in that
+  channel. Store packages keep optional host permissions so a user-selected
+  custom AI API origin can still be requested explicitly.
 - Release artifact audit also requires page-summary controls to be hidden by
   default before runtime feature detection, preventing unavailable store-channel
   controls from flashing during side-panel startup.

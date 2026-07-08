@@ -44,7 +44,7 @@ MVP required permissions:
 
 ```json
 {
-  "permissions": ["tabs", "tabGroups", "storage", "activeTab", "sidePanel"],
+  "permissions": ["tabs", "tabGroups", "storage", "activeTab", "alarms", "sidePanel"],
   "host_permissions": ["https://cliproxy.sylvanyu.io/*"],
   "optional_permissions": ["scripting"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
@@ -60,7 +60,7 @@ Notes:
 - Custom provider host permissions should stay optional and be requested during setup.
 - Keep `scripting` optional until page sampling is enabled.
 - Keep `optional_host_permissions` broad only as an optional declaration. Normal one-shot page summaries request concrete origins at runtime; the long-term summary memory switch may request broad optional host access after the user explicitly turns it on.
-- Store-channel builds remove `scripting` but keep optional host permissions so custom AI API origins can still be requested explicitly. Without `scripting`, those optional host grants do not enable page-body sampling.
+- Store-channel builds remove all optional extension permissions, including `scripting`, but keep optional host permissions so custom AI API origins can still be requested explicitly. Without `scripting`, those optional host grants do not enable page-body sampling.
 - Do not ask for all site access during install.
 - The toolbar action opens the native side panel. Page-content permission prompts are requested from the explicit page-summary switch, not during long-running organization jobs.
 - The side panel defaults page-summary controls to hidden in static HTML. Runtime code only reveals them after the installed manifest declares `scripting` plus broad optional host permissions, which keeps store-channel builds from flashing unavailable controls before feature detection completes.
