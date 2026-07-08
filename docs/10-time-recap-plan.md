@@ -206,6 +206,11 @@ Behavior signal handling:
 - `activeSeconds` is an estimate derived from same-window activation events and
   capped per continuous segment. It is evidence for the model and local fallback
   copy, not a precise analytics timer.
+- Same-window `window_focused` returns are treated as activity when they follow
+  a different active page, so switching away and later coming back still helps
+  the recap infer related work.
+- A continuous dwell segment is capped at 60 minutes to prevent one long-idle
+  tab from dominating the recap.
 
 Add a strict output schema:
 

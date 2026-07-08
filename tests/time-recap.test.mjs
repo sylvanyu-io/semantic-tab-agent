@@ -100,6 +100,76 @@ test("time recap input accumulates repeated page sessions and estimated dwell ti
   assert.equal(localRecap.timeline.some((item) => /估算停留约/.test(item.description)), true);
 });
 
+test("time recap dwell estimates include focused-window returns and cap long tails", async () => {
+  const chrome = createFakeChrome();
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      research: {
+        id: "research",
+        tabId: 20,
+        windowId: 1,
+        title: "长线研究资料",
+        hostname: "research.example",
+        sanitizedUrl: "https://research.example/deep-topic",
+        urlKey: "researchTopic",
+        openedAt: "2026-06-27T01:00:00.000Z",
+        firstObservedAt: "2026-06-27T01:00:00.000Z",
+        lastObservedAt: "2026-06-27T05:00:00.000Z",
+        closedAt: "2026-06-27T05:00:00.000Z",
+        activeCount: 2
+      },
+      inbox: {
+        id: "inbox",
+        tabId: 21,
+        windowId: 1,
+        title: "邮件收件箱",
+        hostname: "mail.example",
+        sanitizedUrl: "https://mail.example/inbox",
+        urlKey: "mailInbox",
+        openedAt: "2026-06-27T01:10:00.000Z",
+        firstObservedAt: "2026-06-27T01:10:00.000Z",
+        lastObservedAt: "2026-06-27T01:12:00.000Z",
+        closedAt: "2026-06-27T01:12:00.000Z",
+        activeCount: 1
+      },
+      quickSearch: {
+        id: "quickSearch",
+        tabId: 22,
+        windowId: 1,
+        title: "快速查询",
+        hostname: "search.example",
+        sanitizedUrl: "https://search.example/query",
+        urlKey: "quickSearch",
+        openedAt: "2026-06-27T01:12:00.000Z",
+        firstObservedAt: "2026-06-27T01:12:00.000Z",
+        lastObservedAt: "2026-06-27T02:00:00.000Z",
+        closedAt: "2026-06-27T02:00:00.000Z",
+        activeCount: 1
+      }
+    },
+    events: [
+      { seq: 1, type: "tab_activated", sessionId: "research", tabId: 20, windowId: 1, at: "2026-06-27T01:00:00.000Z" },
+      { seq: 2, type: "tab_activated", sessionId: "inbox", tabId: 21, windowId: 1, at: "2026-06-27T01:10:00.000Z" },
+      { seq: 3, type: "tab_activated", sessionId: "quickSearch", tabId: 22, windowId: 1, at: "2026-06-27T01:12:00.000Z" },
+      { seq: 4, type: "window_focused", sessionId: "research", tabId: 20, windowId: 1, active: true, at: "2026-06-27T02:00:00.000Z" }
+    ]
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "today" }, now: NOW }
+  );
+  const researchPage = input.pages.find((page) => page.title === "长线研究资料");
+  const localRecap = buildLocalTimeRecap(input, { ...DEFAULT_SETTINGS, languageMode: "zh-CN" });
+
+  assert.ok(researchPage);
+  assert.equal(researchPage.activeCount, 2);
+  assert.equal(researchPage.activeSeconds, 70 * 60);
+  assert.equal(localRecap.timeline.some((item) => /估算停留约/.test(item.description)), true);
+});
+
 test("time recap input suppresses historical URL details in title-only mode", async () => {
   const chrome = seededRecapChrome();
 
