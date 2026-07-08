@@ -2025,6 +2025,7 @@ function isCancellationError(error) {
 
 function friendlyErrorMessage(error) {
   const message = String(error?.message || error || "").trim();
+  const gatewayStatus = (key) => withVisibleGatewayRequestId(t(key), message);
   if (!message) return t("status.default");
   if (/No analyzed plan is available/i.test(message)) return t("status.noPlanToApply");
   if (/No rollback snapshot is available/i.test(message)) return t("status.noRollback");
@@ -2032,51 +2033,63 @@ function friendlyErrorMessage(error) {
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
   if (/AI 增强未完成|AI enhancement did not finish/i.test(message)) return t("status.recapAiUnavailable");
   if (/AI gateway time recap timed out/i.test(message)) return t("status.recapAiUnavailable");
-  if (/AI gateway .* timed out/i.test(message)) return t("status.gatewayTimeout");
+  if (/AI gateway .* timed out/i.test(message)) return gatewayStatus("status.gatewayTimeout");
   if (
     /(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API).*?(?:不支持.*模型|model.*(?:not available|unsupported)|model_not_allowed)|(?:model_not_allowed|planner_model_not_allowed|recap_model_not_allowed).*?(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API)/i.test(
       message
     )
   ) {
-    return t("status.customGatewayUnsupportedModel");
+    return gatewayStatus("status.customGatewayUnsupportedModel");
   }
   if (
     /默认 AI 服务.*不支持.*模型|model.*not available|not available.*model|unsupported.*model|model.*unsupported|model_not_allowed|planner_model_not_allowed|recap_model_not_allowed/i.test(
       message
     )
   ) {
-    return t("status.gatewayUnsupportedModel");
+    return gatewayStatus("status.gatewayUnsupportedModel");
   }
-  if (/默认 AI 服务拒绝访问|default AI service denied access/i.test(message)) return t("status.gatewayAuthDenied");
+  if (/默认 AI 服务拒绝访问|default AI service denied access/i.test(message)) return gatewayStatus("status.gatewayAuthDenied");
   if (
     /默认 AI 服务的本地源站暂时离线|default AI service origin is temporarily offline|local TabRecap AI origin is offline|Cloudflare could not reach the local TabRecap AI origin|Worker could not connect to the local TabRecap AI origin/i.test(
       message
     )
   ) {
-    return t("status.gatewayLocalOriginOffline");
+    return gatewayStatus("status.gatewayLocalOriginOffline");
   }
   if (/默认 AI 服务暂时不可用|default AI service is temporarily unavailable|TabRecap AI origin is temporarily unavailable/i.test(message)) {
-    return t("status.gatewayUnavailable");
+    return gatewayStatus("status.gatewayUnavailable");
   }
-  if (/默认 AI 服务这次没有成功|default AI service did not respond successfully/i.test(message)) return t("status.gatewayFailed");
-  if (/AI 服务拒绝访问|AI service denied access/i.test(message)) return t("status.customGatewayAuthDenied");
+  if (/默认 AI 服务这次没有成功|default AI service did not respond successfully/i.test(message)) return gatewayStatus("status.gatewayFailed");
+  if (/AI 服务拒绝访问|AI service denied access/i.test(message)) return gatewayStatus("status.customGatewayAuthDenied");
   if (/自定义 AI 网关的本地源站暂时离线|自定义 AI 网关暂时连不上|custom AI gateway.*(?:offline|not reachable)/i.test(message)) {
-    return t("status.customGatewayUnreachable");
+    return gatewayStatus("status.customGatewayUnreachable");
   }
-  if (/自定义 AI 网关这次没有完成请求|custom AI gateway did not complete/i.test(message)) return t("status.customGatewayFailed");
+  if (/自定义 AI 网关这次没有完成请求|custom AI gateway did not complete/i.test(message)) return gatewayStatus("status.customGatewayFailed");
   if (/自定义 API 连接超时|The custom API connection timed out/i.test(message)) {
-    return t("status.customGatewayConnectionTimeout");
+    return gatewayStatus("status.customGatewayConnectionTimeout");
   }
   if (/自定义 API 暂时连不上|The custom API is not reachable/i.test(message)) {
-    return t("status.customGatewayUnreachable");
+    return gatewayStatus("status.customGatewayUnreachable");
   }
   if (/AI gateway planner returned invalid JSON|Unexpected token|is not valid JSON|invalid JSON/i.test(message)) {
-    return t("status.gatewayInvalidOutput");
+    return gatewayStatus("status.gatewayInvalidOutput");
   }
   if (/正在生成中，先停止后再清空本机记录|generation is running|clearing local records/i.test(message)) {
     return t("status.localMemoryBusy");
   }
   return message;
+}
+
+function withVisibleGatewayRequestId(text, sourceMessage) {
+  const requestId = gatewayRequestIdFromMessage(sourceMessage);
+  if (!requestId) return text;
+  const suffix = uiLanguage === "en-US" ? ` (request id ${requestId})` : `（请求号 ${requestId}）`;
+  return String(text || "").includes(suffix) ? text : `${text}${suffix}`;
+}
+
+function gatewayRequestIdFromMessage(message = "") {
+  const match = String(message || "").match(/(?:请求号|request id)\s+([A-Za-z0-9._:-]{3,96})/i);
+  return match?.[1] || "";
 }
 
 function anyActionBusy() {

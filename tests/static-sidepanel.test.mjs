@@ -41,6 +41,17 @@ test("side panel static copy references resolve to localized strings", async () 
   assert.deepEqual([...referencedKeys].filter((key) => !keys.has(key)), []);
 });
 
+test("side panel preserves request ids when gateway errors are localized", async () => {
+  const source = await readFile(new URL("../src/sidepanel/sidepanel.js", import.meta.url), "utf8");
+
+  assert.match(source, /function withVisibleGatewayRequestId/);
+  assert.match(source, /function gatewayRequestIdFromMessage/);
+  assert.match(source, /const gatewayStatus = \(key\) => withVisibleGatewayRequestId\(t\(key\), message\);/);
+  assert.match(source, /return gatewayStatus\("status\.customGatewayFailed"\)/);
+  assert.match(source, /return gatewayStatus\("status\.gatewayInvalidOutput"\)/);
+  assert.match(source, /\?:请求号\|request id\)\\s\+\(\[A-Za-z0-9\._:-\]\{3,96\}\)/);
+});
+
 function staticCopyReferenceKeys(source) {
   const keys = new Set();
   const patterns = [
