@@ -5,7 +5,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { findSecretPatternMatches } from "./lib/secret-patterns.mjs";
 
-const rootDir = fileURLToPath(new URL("..", import.meta.url));
+const defaultRootDir = fileURLToPath(new URL("..", import.meta.url));
+const rootDir = process.env.EXTENSION_ROOT_DIR ? resolve(process.env.EXTENSION_ROOT_DIR) : defaultRootDir;
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
 const packageManifest = JSON.parse(await readFile(join(rootDir, "package.json"), "utf8"));
 const rootManifest = JSON.parse(await readFile(join(rootDir, "manifest.json"), "utf8"));

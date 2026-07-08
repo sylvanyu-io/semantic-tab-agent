@@ -56,13 +56,24 @@ test("release artifact audit rejects obsolete product names and legacy extension
   assert.match(auditScript, /tab-tidy/);
 });
 
-test("release artifact audit checks package and manifest version drift", async () => {
-  const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
+test("release artifact audit fails when package and manifest versions drift", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "tab-recap-audit-root-"));
+  try {
+    await writeFile(join(tempRoot, "package.json"), JSON.stringify({ version: "9.9.9" }));
+    await writeFile(join(tempRoot, "manifest.json"), JSON.stringify({ version: "9.9.8" }));
 
-  assert.match(auditScript, /package\.json/);
-  assert.match(auditScript, /manifest\.json/);
-  assert.match(auditScript, /packageManifest\.version !== rootManifest\.version/);
-  assert.match(auditScript, /does not match manifest\.json version/);
+    const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_ROOT_DIR: tempRoot }
+    });
+    assert.notEqual(audit.status, 0, audit.stderr || audit.stdout);
+    assert.match(
+      `${audit.stdout}\n${audit.stderr}`,
+      /package\.json version 9\.9\.9 does not match manifest\.json version 9\.9\.8/
+    );
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test("secret scanners cover model, alert email, and common cloud key shapes", () => {
