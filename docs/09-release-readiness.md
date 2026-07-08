@@ -139,6 +139,9 @@ Blocking gates:
 - Store packages remove `activeTab`, `scripting`, and optional host permissions,
   so page-body sampling controls and custom gateway host permission requests are
   unavailable in that channel.
+- Release artifact audit also requires page-summary controls to be hidden by
+  default before runtime feature detection, preventing unavailable store-channel
+  controls from flashing during side-panel startup.
 - Settings can be exported and imported for migration without exporting custom
   gateway keys, local activity records, page summaries, timeline logs, jobs, or
   rollback snapshots.

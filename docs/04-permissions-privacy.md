@@ -62,6 +62,7 @@ Notes:
 - Keep `optional_host_permissions` broad only as an optional declaration. Normal one-shot page summaries request concrete origins at runtime; the long-term summary memory switch may request broad optional host access after the user explicitly turns it on.
 - Do not ask for all site access during install.
 - The toolbar action opens the native side panel. Page-content permission prompts are requested from the explicit page-summary switch, not during long-running organization jobs.
+- The side panel defaults page-summary controls to hidden in static HTML. Runtime code only reveals them after the installed manifest declares `scripting` plus broad optional host permissions, which keeps store-channel builds from flashing unavailable controls before feature detection completes.
 - Background page sampling must never call `chrome.permissions.request()`; it samples already authorized pages and falls back to metadata-only for the rest.
 - Long-term memory is best-effort. MV3 service workers are suspended by Chrome, so the extension records activity when it is woken by startup, tab/window events, alarms, or explicit side-panel actions. It must not promise complete browsing history.
 
