@@ -345,6 +345,24 @@ test("tab lifecycle extracts activation flow context with dwell and return-to-an
   ]);
 });
 
+test("tab lifecycle accepts native chrome tab ids for activation flow context", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const tabs = [
+    { id: 1, windowId: 1, index: 0, title: "One", url: "https://a.example/", active: true },
+    { id: 2, windowId: 1, index: 1, title: "Two", url: "https://b.example/", active: false }
+  ];
+
+  await rememberTabsLifecycle(chrome, tabs, { now });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[0], active: true }, { now: now + 1000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...tabs[1], active: true }, { now: now + 7000 });
+
+  const context = await getTabActivationFlowContext(chrome, tabs);
+
+  assert.deepEqual(context.runs.map((run) => run.ids), [[1, 2]]);
+  assert.deepEqual(context.transitions.map((transition) => [transition.fromId, transition.toId]), [[1, 2]]);
+});
+
 test("tab lifecycle keeps activation flow separated by idle gaps and windows", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");

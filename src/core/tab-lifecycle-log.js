@@ -388,7 +388,7 @@ function getLifecycleStatsFromLog(log, now) {
 }
 
 function buildActivationFlowContext(log, tabs = [], options = {}) {
-  const tabIds = new Set((tabs || []).map((tab) => tab?.tabId).filter(Number.isInteger));
+  const tabIds = new Set((tabs || []).map((tab) => tab?.tabId ?? tab?.id).filter(Number.isInteger));
   if (!tabIds.size) return emptyActivationFlowContext();
   const runBreakMs = Number.isFinite(options.runBreakMs) ? options.runBreakMs : FLOW_RUN_BREAK_MS;
   const maxDwellMs = Number.isFinite(options.maxDwellMs) ? options.maxDwellMs : FLOW_MAX_DWELL_MS;
