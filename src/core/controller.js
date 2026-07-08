@@ -616,6 +616,7 @@ async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId
     throwIfCanceled(abortController.signal);
 
     await reportProgress({ phase: "inventory", progress: 10, message: "正在读取标签页" });
+    await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
     const inventory = await collectTabInventory(chromeApi, settings, invocation);
     if (inventory.tabs?.length) {
       await Promise.allSettled([

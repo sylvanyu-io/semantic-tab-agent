@@ -409,6 +409,28 @@ test("tab lifecycle accepts native chrome tab ids for activation flow context", 
   assert.deepEqual(context.transitions.map((transition) => [transition.fromId, transition.toId]), [[1, 2]]);
 });
 
+test("tab lifecycle does not attach pre-navigation behavior to the current page", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const oldPage = { id: 7, windowId: 1, index: 0, title: "Old research page", url: "https://old.example/topic", active: true };
+  const otherPage = { id: 8, windowId: 1, index: 1, title: "Other page", url: "https://other.example/check", active: false };
+  const newPage = { id: 7, windowId: 1, index: 0, title: "New task page", url: "https://new.example/task", active: true };
+
+  await rememberTabsLifecycle(chrome, [oldPage, otherPage], { now });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...otherPage, active: true }, { now: now + 10_000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...oldPage, active: true }, { now: now + 20_000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...otherPage, active: true }, { now: now + 30_000 });
+  await rememberTabLifecycle(chrome, "tab_updated", newPage, { now: now + 60_000 });
+
+  const context = await getTabActivationFlowContext(chrome, [newPage, otherPage]);
+
+  assert.deepEqual(context.runs, []);
+  assert.deepEqual(context.transitions, []);
+  assert.deepEqual(context.evidence, []);
+  assert.equal(context.tabActivity.find((activity) => activity.id === 7).activeCount, 1);
+  assert.equal(context.tabActivity.find((activity) => activity.id === 7).totalActiveSeconds, 0);
+});
+
 test("tab lifecycle keeps activation flow separated by idle gaps and windows", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");

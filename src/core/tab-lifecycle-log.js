@@ -403,13 +403,13 @@ function getLifecycleStatsFromLog(log, now) {
 }
 
 function buildActivationFlowContext(log, tabs = [], options = {}) {
-  const tabIds = new Set((tabs || []).map((tab) => tab?.tabId ?? tab?.id).filter(Number.isInteger));
-  if (!tabIds.size) return emptyActivationFlowContext();
+  const scope = buildActivationFlowScope(log, tabs);
+  if (!scope.tabIds.size) return emptyActivationFlowContext();
   const runBreakMs = Number.isFinite(options.runBreakMs) ? options.runBreakMs : FLOW_RUN_BREAK_MS;
   const maxDwellMs = Number.isFinite(options.maxDwellMs) ? options.maxDwellMs : FLOW_MAX_DWELL_MS;
   const maxRuns = Number.isFinite(options.maxRuns) ? options.maxRuns : FLOW_MAX_RUNS;
   const maxEvidence = Number.isFinite(options.maxEvidence) ? options.maxEvidence : FLOW_MAX_EVIDENCE;
-  const activityByTabId = buildInitialTabActivity(log, tabIds);
+  const activityByTabId = buildInitialTabActivity(log, scope);
   const runs = [];
 
   const eventsByWindow = new Map();
@@ -419,7 +419,7 @@ function buildActivationFlowContext(log, tabs = [], options = {}) {
       const byTime = Date.parse(left.at || "") - Date.parse(right.at || "");
       return byTime || Number(left.seq || 0) - Number(right.seq || 0);
     })) {
-    if (!tabIds.has(event.tabId)) continue;
+    if (!activationEventInScope(event, scope)) continue;
     const at = Date.parse(event.at || "");
     if (!Number.isFinite(at)) continue;
     if (!eventsByWindow.has(event.windowId)) eventsByWindow.set(event.windowId, []);
@@ -478,10 +478,51 @@ function emptyActivationFlowContext() {
   return { tabActivity: [], runs: [], transitions: [], evidence: [] };
 }
 
-function buildInitialTabActivity(log, tabIds) {
-  const byTabId = new Map([...tabIds].map((id) => [id, createTabActivity(id)]));
+function buildActivationFlowScope(log, tabs = []) {
+  const tabIds = new Set();
+  const sessionIds = new Set();
+  let hasCurrentSessionScope = false;
+
+  for (const tab of tabs || []) {
+    const tabId = tab?.tabId ?? tab?.id;
+    if (!Number.isInteger(tabId)) continue;
+    tabIds.add(tabId);
+
+    const explicitSessionId = typeof tab.sessionId === "string" ? tab.sessionId : "";
+    const indexedSessionId = log.tabIndex?.[String(tabId)] || "";
+    const candidateSession = explicitSessionId ? log.sessions?.[explicitSessionId] : indexedSessionId ? log.sessions?.[indexedSessionId] : null;
+    if (!candidateSession || candidateSession.closedAt || candidateSession.tabId !== tabId) continue;
+
+    const expectedUrlKey = tab.urlKey || currentTabUrlKey(tab);
+    if (expectedUrlKey && candidateSession.urlKey && candidateSession.urlKey !== expectedUrlKey) {
+      hasCurrentSessionScope = true;
+      continue;
+    }
+
+    sessionIds.add(candidateSession.id);
+    hasCurrentSessionScope = true;
+  }
+
+  return { tabIds, sessionIds, hasCurrentSessionScope };
+}
+
+function currentTabUrlKey(tab) {
+  const rawUrl = getTabUrl(tab);
+  if (rawUrl) return lifecycleUrlKey(rawUrl);
+  return "";
+}
+
+function activationEventInScope(event, scope) {
+  if (!scope.tabIds.has(event.tabId)) return false;
+  if (!scope.hasCurrentSessionScope) return true;
+  return Boolean(event.sessionId && scope.sessionIds.has(event.sessionId));
+}
+
+function buildInitialTabActivity(log, scope) {
+  const byTabId = new Map([...scope.tabIds].map((id) => [id, createTabActivity(id)]));
   for (const session of Object.values(log.sessions || {})) {
-    if (!tabIds.has(session.tabId)) continue;
+    if (!scope.tabIds.has(session.tabId)) continue;
+    if (scope.hasCurrentSessionScope && !scope.sessionIds.has(session.id)) continue;
     const activity = byTabId.get(session.tabId) || createTabActivity(session.tabId);
     activity.activeCount = Math.max(activity.activeCount, Number(session.activeCount || 0));
     if (isAfter(session.lastActivatedAt, activity.lastActivatedAt)) activity.lastActivatedAt = session.lastActivatedAt || "";
@@ -733,7 +774,7 @@ function isAfter(candidate, current) {
   return Number.isFinite(candidateTime) && (!Number.isFinite(currentTime) || candidateTime > currentTime);
 }
 
-function lifecycleUrlKey(rawUrl, urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL)) {
+export function lifecycleUrlKey(rawUrl, urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL)) {
   try {
     const url = new URL(rawUrl);
     if (!canSampleUrl(rawUrl)) {

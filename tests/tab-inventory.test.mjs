@@ -154,6 +154,41 @@ test("tab inventory keeps excluded tabs as activation-flow barriers", async () =
   assertNoPlannerBehaviorBridge(payload);
 });
 
+test("tab inventory does not leak pre-navigation behavior into current pages", async () => {
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const oldPage = { id: 10, title: "Old research page", url: "https://old.example/topic", active: true };
+  const otherPage = { id: 11, title: "Other page", url: "https://other.example/check", active: false };
+  const currentPage = { id: 10, title: "Current task page", url: "https://new.example/task", active: true };
+  const chrome = createFakeChrome({
+    windows: [{ id: 1, focused: true, tabs: [currentPage, otherPage] }]
+  });
+
+  await rememberTabsLifecycle(
+    chrome,
+    [
+      { ...oldPage, windowId: 1, index: 0 },
+      { ...otherPage, windowId: 1, index: 1 }
+    ],
+    { now }
+  );
+  await rememberTabLifecycle(chrome, "tab_activated", { ...otherPage, windowId: 1, index: 1, active: true }, { now: now + 10_000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...oldPage, windowId: 1, index: 0, active: true }, { now: now + 20_000 });
+  await rememberTabLifecycle(chrome, "tab_activated", { ...otherPage, windowId: 1, index: 1, active: true }, { now: now + 30_000 });
+  await rememberTabLifecycle(chrome, "tab_updated", { ...currentPage, windowId: 1, index: 0, active: true }, { now: now + 60_000 });
+
+  const inventory = await collectTabInventory(chrome, DEFAULT_SETTINGS, { windowId: 1, strictWindowId: true });
+  const payload = buildPlannerPayload(inventory, DEFAULT_SETTINGS);
+  const currentTab = inventory.tabs.find((tab) => tab.tabId === 10);
+
+  assert.match(currentTab.urlKey, /^u_/);
+  assert.deepEqual(inventory.activationFlow.runs, []);
+  assert.deepEqual(payload.activationFlowRuns, []);
+  assert.deepEqual(payload.activationFlowTransitions, []);
+  assert.deepEqual(payload.activationFlowEvidence, []);
+  assert.equal(payload.activationFlowTabActivity.find((row) => row[0] === 10)[1], 1);
+  assert.equal(JSON.stringify(payload).includes("urlKey"), false);
+});
+
 test("tab inventory keeps activation flow shape when behavior storage is unavailable", async () => {
   const chrome = createFakeChrome({
     windows: [
