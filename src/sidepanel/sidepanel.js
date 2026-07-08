@@ -1484,6 +1484,7 @@ async function generateTimeRecap() {
       setStatusKey("status.recapReady", {}, false, { mode: PANEL_MODE_RECAP });
     }
   } catch (error) {
+    if (activeRecapOperationId !== operationId) return;
     if (canceledRecapOperations.has(operationId) || /stopped|canceled|cancelled|已停止|已取消/i.test(error?.message || "")) {
       setStatusKey("status.recapCanceled", {}, false, { mode: PANEL_MODE_RECAP });
       return;
@@ -1492,7 +1493,7 @@ async function generateTimeRecap() {
     setErrorStatus(error, message, { mode: PANEL_MODE_RECAP });
     renderTimeRecapError(error);
   } finally {
-    stopRecapProgress();
+    stopRecapProgress(operationId);
     canceledRecapOperations.delete(operationId);
     if (activeRecapOperationId === operationId) {
       activeRecapOperationId = null;
@@ -1506,7 +1507,7 @@ async function cancelTimeRecap() {
   if (!operationId) return;
   canceledRecapOperations.add(operationId);
   setTimeout(() => canceledRecapOperations.delete(operationId), CANCELED_OPERATION_TTL_MS);
-  stopRecapProgress();
+  stopRecapProgress(operationId);
   setBusy(true, t("status.recapCanceling"), { mode: PANEL_MODE_RECAP, cancelable: true, progress: currentProgressValue(PANEL_MODE_RECAP) || 92 });
   setCancelDisabled(PANEL_MODE_RECAP, true);
   setStatusKey("status.recapCanceling", {}, false, { mode: PANEL_MODE_RECAP });
@@ -2989,14 +2990,15 @@ function startLocalAiWaitProgress({ operationId, phase, progress, message, setti
   updateProgressFromJob(recapProgressJob, mode);
   recapProgressTimer = setInterval(() => {
     if (!recapProgressJob || activeRecapOperationId !== operationId) {
-      stopRecapProgress();
+      stopRecapProgress(operationId);
       return;
     }
     updateProgressFromJob(recapProgressJob, mode);
   }, ACTIVE_JOB_POLL_MS);
 }
 
-function stopRecapProgress() {
+function stopRecapProgress(operationId = null) {
+  if (operationId && recapProgressJob?.operationId && recapProgressJob.operationId !== operationId) return;
   if (recapProgressTimer) {
     clearInterval(recapProgressTimer);
     recapProgressTimer = null;

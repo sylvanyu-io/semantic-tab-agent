@@ -1382,6 +1382,109 @@ test("time recap cancellation restores the shared bottom controls immediately", 
     .toBe(true);
 });
 
+test("stale canceled time recap cannot stop a newer recap run", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    const createDeferred = () => {
+      const deferred = {};
+      deferred.promise = new Promise((resolve, reject) => {
+        deferred.resolve = resolve;
+        deferred.reject = reject;
+      });
+      return deferred;
+    };
+    window.__recapRequests = [];
+    window.__resolveRecapRequest = (index, result) => window.__recapRequests[index]?.resolve(result);
+    window.__rejectRecapRequest = (index, message) => window.__recapRequests[index]?.reject(new Error(message));
+    window.chrome = {
+      windows: {
+        get: async (windowId) => ({ id: windowId, type: "normal" })
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "progressCopy:generate") return { ok: true, result: { messages: ["梳理时间线索"] } };
+          if (message.type === "activity:cancelTimeRecap") return { ok: true, result: { canceled: true } };
+          if (message.type === "activity:generateTimeRecap") {
+            const request = createDeferred();
+            request.message = message;
+            window.__recapRequests.push(request);
+            return { ok: true, result: await request.promise };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  const secondResult = {
+    source: "ai",
+    input: { pages: [], coverage: { includedPages: 2, sampledEntries: 1 } },
+    recap: {
+      schema: "tab_recap_time_recap_v1",
+      headline: "第二次回顾结果",
+      summary: "新请求仍在运行时，旧请求的取消结果不应该覆盖它。",
+      timeline: [],
+      themes: [],
+      followUps: [],
+      coverageNote: "已参考本机活动。"
+    }
+  };
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=43`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+  await expect.poll(() => page.evaluate(() => window.__recapRequests.length)).toBe(1);
+  await expect(page.locator(".actions #progressBar")).toBeVisible();
+
+  await page.getByRole("button", { name: "停止生成" }).click();
+  await expect(page.getByRole("button", { name: "生成回顾" })).toBeVisible();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+  await expect.poll(() => page.evaluate(() => window.__recapRequests.length)).toBe(2);
+  await expect(page.getByRole("button", { name: "停止生成" })).toBeVisible();
+
+  await page.evaluate(() => window.__rejectRecapRequest(0, "已停止生成回顾。"));
+  await expect(page.getByRole("button", { name: "停止生成" })).toBeVisible();
+  await expect(page.locator(".actions #progressBar")).toBeVisible();
+  await expect(page.locator("#statusText")).not.toHaveText("已停止生成回顾。");
+
+  await page.evaluate((result) => window.__resolveRecapRequest(1, result), secondResult);
+  await expect(page.locator("#statusText")).toHaveText("回顾已生成");
+  await expect(page.locator(".recap-summary-card")).toContainText("第二次回顾结果");
+});
+
 test("time recap fallback keeps raw AI errors out of the visible product copy", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
