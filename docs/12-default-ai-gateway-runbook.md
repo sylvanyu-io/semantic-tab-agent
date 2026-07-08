@@ -1,6 +1,6 @@
 # Default AI Gateway Runbook
 
-Status: current production path as of 2026-07-07 11:58 CST.
+Status: current production path as of 2026-07-09 00:47 CST.
 
 This document records the public TabRecap AI gateway setup so it can be
 debugged, migrated, or rebuilt later without relying on memory. It intentionally
@@ -196,6 +196,21 @@ the product default model family instead of the older gpt-5.5 smoke payload.
 HTTP_STATUS: 200
 TOTAL_TIME: 7.42s
 model: gpt-5.4
+```
+
+Latest local code verification, 2026-07-09 00:47 CST:
+
+```text
+npm test:
+322/322 passed
+
+Targeted Playwright UI smoke:
+9/9 passed
+
+Covered in this verification:
+- Worker/monitor tests for 530/1033 tunnel failures, retries, alert email state, recovery mail, and redaction;
+- gateway smoke helper tests for health, readiness, monitor status, and required-monitor gating;
+- side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, and custom provider ping errors.
 ```
 
 If the stack is running from `screen` fallback, current traffic can be healthy,

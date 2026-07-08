@@ -331,3 +331,17 @@ This recheck followed a local origin recovery where the API-only proxy on
 `127.0.0.1:18317` was down because the helper script used a stale Node path.
 The helper now resolves Node dynamically; see
 `docs/12-default-ai-gateway-runbook.md` for the incident record.
+
+2026-07-09 00:47 Asia/Shanghai local code recheck:
+
+| Check | Result |
+| --- | --- |
+| Node/Worker tests | 322/322 passed |
+| Targeted UI smoke tests | 9/9 passed |
+| Worker monitor coverage | 530/1033 tunnel failures, retry classification, alert email, recovery email, redaction |
+| Gateway smoke helper coverage | health, readiness, monitor status, required-monitor gating |
+| Side-panel coverage | recap progress/cancel, organize and recap parallel generation, stale organize suppression, custom provider errors |
+
+This was a local code-level verification, not a live release gate. The latest
+live deployment and public-gateway status remain documented in
+`docs/12-default-ai-gateway-runbook.md`.
