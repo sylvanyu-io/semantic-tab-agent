@@ -15,6 +15,8 @@ const CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 800;
 const BACKGROUND_SAMPLE_TIMEOUT_MS = 1800;
 
+let summaryCacheQueue = Promise.resolve();
+
 export async function cachedPageSampleForTab(chromeApi, tabDescriptor, options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const cache = await loadPrunedPageSummaryCache(chromeApi, now);
@@ -90,27 +92,29 @@ export async function rememberPageSummary(chromeApi, tab, sampleResult, options 
   const key = pageSummaryCacheKey(cacheComparableUrl(rawUrl));
   if (!key) return null;
 
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
-  const cache = pruneCache(normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null)), now);
-  const existing = cache.entries[key];
-  const nowIso = new Date(now).toISOString();
-  cache.entries[key] = {
-    key,
-    origin: hostPermissionPattern(rawUrl),
-    incognito: Boolean(tab?.incognito),
-    title: String(tab.title || sampleResult.sample.title || "").slice(0, 180),
-    firstSeenAt: existing?.firstSeenAt || existing?.sampledAt || nowIso,
-    lastSeenAt: nowIso,
-    seenCount: Math.min(9999, Number(existing?.seenCount || 0) + 1),
-    sampledAt: nowIso,
-    lastUsedAt: nowIso,
-    sample: normalizeCachedSample(sampleResult.sample)
-  };
+  return queueSummaryCacheOperation(async () => {
+    const now = Number.isFinite(options.now) ? options.now : Date.now();
+    const cache = pruneCache(normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null)), now);
+    const existing = cache.entries[key];
+    const nowIso = new Date(now).toISOString();
+    cache.entries[key] = {
+      key,
+      origin: hostPermissionPattern(rawUrl),
+      incognito: Boolean(tab?.incognito),
+      title: String(tab.title || sampleResult.sample.title || "").slice(0, 180),
+      firstSeenAt: existing?.firstSeenAt || existing?.sampledAt || nowIso,
+      lastSeenAt: nowIso,
+      seenCount: Math.min(9999, Number(existing?.seenCount || 0) + 1),
+      sampledAt: nowIso,
+      lastUsedAt: nowIso,
+      sample: normalizeCachedSample(sampleResult.sample)
+    };
 
-  const pruned = pruneCache(cache, now);
-  await setLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, pruned);
-  await rememberOpenTabActivity(chromeApi, tab, sampleResult, { now, includeIncognitoTabs: options.includeIncognitoTabs }).catch(() => null);
-  return pruned.entries[key];
+    const pruned = pruneCache(cache, now);
+    await setLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, pruned);
+    await rememberOpenTabActivity(chromeApi, tab, sampleResult, { now, includeIncognitoTabs: options.includeIncognitoTabs }).catch(() => null);
+    return pruned.entries[key];
+  });
 }
 
 function normalizeCachedSample(sample = {}) {
@@ -145,12 +149,23 @@ function pruneCache(cache, now = Date.now()) {
 }
 
 export async function loadPrunedPageSummaryCache(chromeApi, now = Date.now()) {
-  const rawCache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
-  const pruned = pruneCache(rawCache, now);
-  if (summaryCacheCompacted(rawCache, pruned)) {
-    await setLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, pruned);
-  }
-  return pruned;
+  return queueSummaryCacheOperation(async () => {
+    const rawCache = normalizeCache(await getLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, null));
+    const pruned = pruneCache(rawCache, now);
+    if (summaryCacheCompacted(rawCache, pruned)) {
+      await setLocal(chromeApi, STORAGE_KEYS.pageSummaryCache, pruned);
+    }
+    return pruned;
+  });
+}
+
+function queueSummaryCacheOperation(operation) {
+  const queued = summaryCacheQueue.catch(() => null).then(operation);
+  summaryCacheQueue = queued.then(
+    () => null,
+    () => null
+  );
+  return queued;
 }
 
 function summaryCacheCompacted(rawCache, compactedCache) {

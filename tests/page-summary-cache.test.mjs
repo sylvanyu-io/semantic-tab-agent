@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cachedPageSampleForTab, capturePageSummaryIfAllowed, rememberPageSummary } from "../src/core/page-summary-cache.js";
+import { cachedPageSampleForTab, capturePageSummaryIfAllowed, loadPrunedPageSummaryCache, rememberPageSummary } from "../src/core/page-summary-cache.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import { DEFAULT_SETTINGS, PAGE_CONTEXT_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
@@ -113,6 +113,63 @@ test("cached page summary reads persist cache compaction for expired summaries",
   assert.equal(cached.sample.title, "Fresh page");
   assert.equal(cache.entries.stale, undefined);
   assert.equal(Object.values(cache.entries).length, 1);
+});
+
+test("page summary cache compaction is queued with later writes", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-07-08T00:00:00.000Z");
+  await rememberPageSummary(
+    chrome,
+    { id: 11, title: "Fresh page", url: "https://fresh.example/page" },
+    {
+      status: "ok",
+      sample: { title: "Fresh page", visibleText: "Fresh text" }
+    },
+    { now }
+  );
+  chrome.__state.storage[STORAGE_KEYS.pageSummaryCache].entries.stale = {
+    key: "stale",
+    title: "Expired summary",
+    sampledAt: new Date(now - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    lastUsedAt: new Date(now - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    sample: { title: "Expired summary", visibleText: "Old text" }
+  };
+
+  const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+  let firstSummarySetStarted;
+  let releaseFirstSummarySet;
+  const firstSummarySet = new Promise((resolve) => {
+    firstSummarySetStarted = resolve;
+  });
+  chrome.storage.local.set = async (values) => {
+    if (!releaseFirstSummarySet && values?.[STORAGE_KEYS.pageSummaryCache]) {
+      await new Promise((resolve) => {
+        releaseFirstSummarySet = resolve;
+        firstSummarySetStarted();
+      });
+    }
+    return originalSet(values);
+  };
+
+  const compactPromise = loadPrunedPageSummaryCache(chrome, now);
+  await firstSummarySet;
+  const writePromise = rememberPageSummary(
+    chrome,
+    { id: 12, title: "New summary", url: "https://new.example/page" },
+    {
+      status: "ok",
+      sample: { title: "New summary", visibleText: "New text" }
+    },
+    { now: now + 1000 }
+  );
+
+  releaseFirstSummarySet();
+  await Promise.all([compactPromise, writePromise]);
+
+  const titles = Object.values(chrome.__state.storage[STORAGE_KEYS.pageSummaryCache].entries).map((entry) => entry.title);
+  assert.equal(titles.includes("Expired summary"), false);
+  assert.equal(titles.includes("Fresh page"), true);
+  assert.equal(titles.includes("New summary"), true);
 });
 
 test("continuous summary capture skips sleeping tabs", async () => {

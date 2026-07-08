@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getActivityOverview, rememberOpenTabActivity, rememberOpenTabsActivity } from "../src/core/page-activity-cache.js";
+import { getActivityOverview, loadPrunedActivityCache, rememberOpenTabActivity, rememberOpenTabsActivity } from "../src/core/page-activity-cache.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import { rememberTabLifecycle } from "../src/core/tab-lifecycle-log.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
@@ -165,4 +165,61 @@ test("activity overview persists cache compaction for expired local memory", asy
   assert.equal(overview.cache.entries, 1);
   assert.equal(cache.entries.stale, undefined);
   assert.equal(cache.entries.fresh.title, "Fresh activity");
+});
+
+test("activity cache compaction is queued with later writes", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-07-08T00:00:00.000Z");
+  chrome.__state.storage[STORAGE_KEYS.pageActivityCache] = {
+    version: 1,
+    entries: {
+      stale: {
+        key: "stale",
+        title: "Expired activity",
+        hostname: "old.example",
+        sanitizedUrl: "https://old.example/page",
+        lastSeenAt: new Date(now - 46 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      fresh: {
+        key: "fresh",
+        title: "Fresh activity",
+        hostname: "fresh.example",
+        sanitizedUrl: "https://fresh.example/page",
+        lastSeenAt: new Date(now - 60 * 1000).toISOString()
+      }
+    }
+  };
+
+  const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
+  let firstActivitySetStarted;
+  let releaseFirstActivitySet;
+  const firstActivitySet = new Promise((resolve) => {
+    firstActivitySetStarted = resolve;
+  });
+  chrome.storage.local.set = async (values) => {
+    if (!releaseFirstActivitySet && values?.[STORAGE_KEYS.pageActivityCache]) {
+      await new Promise((resolve) => {
+        releaseFirstActivitySet = resolve;
+        firstActivitySetStarted();
+      });
+    }
+    return originalSet(values);
+  };
+
+  const compactPromise = loadPrunedActivityCache(chrome, now);
+  await firstActivitySet;
+  const writePromise = rememberOpenTabActivity(
+    chrome,
+    { id: 22, windowId: 1, title: "New activity", url: "https://new.example/page" },
+    null,
+    { now: now + 1000 }
+  );
+
+  releaseFirstActivitySet();
+  await Promise.all([compactPromise, writePromise]);
+
+  const titles = Object.values(chrome.__state.storage[STORAGE_KEYS.pageActivityCache].entries).map((entry) => entry.title);
+  assert.equal(titles.includes("Expired activity"), false);
+  assert.equal(titles.includes("Fresh activity"), true);
+  assert.equal(titles.includes("New activity"), true);
 });

@@ -10,30 +10,36 @@ const DEFAULT_RECAP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const OLD_TAB_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const OLD_TAB_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
+let activityCacheQueue = Promise.resolve();
+
 export async function rememberOpenTabActivity(chromeApi, tab, sampleResult = null, options = {}) {
   if (tab?.incognito && !options.includeIncognitoTabs) return null;
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
-  const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
-  const key = upsertActivityEntry(cache, tab, sampleResult, now);
-  if (!key) return null;
+  return queueActivityCacheOperation(async () => {
+    const now = Number.isFinite(options.now) ? options.now : Date.now();
+    const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
+    const key = upsertActivityEntry(cache, tab, sampleResult, now);
+    if (!key) return null;
 
-  const pruned = pruneActivityCache(cache, now);
-  await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruned);
-  return pruned.entries[key];
+    const pruned = pruneActivityCache(cache, now);
+    await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruned);
+    return pruned.entries[key];
+  });
 }
 
 export async function rememberOpenTabsActivity(chromeApi, tabs = [], options = {}) {
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
-  const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
-  let stored = 0;
-  for (const tab of tabs) {
-    if (tab?.incognito && !options.includeIncognitoTabs) continue;
-    if (upsertActivityEntry(cache, tab, null, now)) stored += 1;
-  }
-  if (stored) {
-    await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruneActivityCache(cache, now));
-  }
-  return { stored };
+  return queueActivityCacheOperation(async () => {
+    const now = Number.isFinite(options.now) ? options.now : Date.now();
+    const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
+    let stored = 0;
+    for (const tab of tabs) {
+      if (tab?.incognito && !options.includeIncognitoTabs) continue;
+      if (upsertActivityEntry(cache, tab, null, now)) stored += 1;
+    }
+    if (stored) {
+      await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruneActivityCache(cache, now));
+    }
+    return { stored };
+  });
 }
 
 function upsertActivityEntry(cache, tab, sampleResult, now) {
@@ -106,10 +112,21 @@ export async function getActivityOverview(chromeApi, options = {}) {
 }
 
 export async function loadPrunedActivityCache(chromeApi, now = Date.now()) {
-  const rawCache = normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null));
-  const cache = pruneActivityCache(rawCache, now);
-  await persistActivityCacheIfCompacted(chromeApi, rawCache, cache);
-  return cache;
+  return queueActivityCacheOperation(async () => {
+    const rawCache = normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null));
+    const cache = pruneActivityCache(rawCache, now);
+    await persistActivityCacheIfCompacted(chromeApi, rawCache, cache);
+    return cache;
+  });
+}
+
+function queueActivityCacheOperation(operation) {
+  const queued = activityCacheQueue.catch(() => null).then(operation);
+  activityCacheQueue = queued.then(
+    () => null,
+    () => null
+  );
+  return queued;
 }
 
 function buildLocalRecap(entries, rangeMs) {
