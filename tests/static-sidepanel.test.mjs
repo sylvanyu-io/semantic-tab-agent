@@ -5,6 +5,7 @@ import test from "node:test";
 test("static side panel recap copy matches the product-facing runtime defaults", async () => {
   const html = await readFile(new URL("../src/sidepanel/index.html", import.meta.url), "utf8");
 
+  assert.match(html, /class="app-shell" data-content-access="off"/);
   assert.match(
     html,
     /结合最近活跃、打开次数、保留时长、标题、网址、现有分组和可用页面摘要生成，不会自动关闭标签页。/

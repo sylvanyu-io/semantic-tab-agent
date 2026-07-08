@@ -171,6 +171,9 @@ async function auditSidePanelRuntimeGuards(channel, extensionDir, files) {
   const script = await readFile(join(extensionDir, scriptPath), "utf8");
   const styles = await readFile(join(extensionDir, stylesPath), "utf8");
 
+  if (!html.includes('class="app-shell" data-content-access="off"')) {
+    fail(`${channel}: side panel must default content-reading controls to hidden before runtime feature detection.`);
+  }
   if (!html.includes("content-access-feature")) {
     fail(`${channel}: side panel content-reading controls are not marked as content-access-feature.`);
   }
