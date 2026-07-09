@@ -633,11 +633,11 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
                 recap: {
                   schema: "tab_recap_time_recap_v1",
                   headline: "这段时间主要在做扩展发布",
-                  summary: "主要围绕 TabRecap 发布检查和权限研究推进。这个旧标签页可以关闭。",
+                  summary: "主要围绕 TabRecap 发布检查和权限研究推进。这个旧标签页可以关闭。这个旧页没必要继续开着。",
                   themes: [
                     {
                       title: "发布检查",
-                      description: "权限、发布和回顾体验是主线。Old cleanup note 是否保留可以回头判断。",
+                      description: "权限、发布和回顾体验是主线。Old cleanup note 是否保留可以回头判断。这个入口不用开着。",
                       pageIds: [1],
                       evidence: ["发布检查", "建议关闭旧页面"]
                     }
@@ -684,6 +684,8 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
   await expect(page.locator(".recap-result")).not.toContainText("关闭旧标签页");
   await expect(page.locator(".recap-result")).not.toContainText("值得复查");
   await expect(page.locator(".recap-result")).not.toContainText("可以关闭");
+  await expect(page.locator(".recap-result")).not.toContainText("没必要继续开着");
+  await expect(page.locator(".recap-result")).not.toContainText("不用开着");
   await expect(page.locator(".recap-result")).not.toContainText("是否保留");
   await expect(page.locator(".recap-result")).not.toContainText("建议关闭");
   await expect(page.locator(".recap-result")).not.toContainText("Review whether");
