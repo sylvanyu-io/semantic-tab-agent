@@ -37,6 +37,7 @@ const forbiddenProductCopy = [
   { label: "tab_tidy_", pattern: /tab_tidy_/i },
   { label: "tab-tidy", pattern: /tab-tidy/i }
 ];
+const storeForbiddenPermissions = ["activeTab", "scripting"];
 const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 const storeOptionalHostPermissions = ["https://*/*", "http://*/*"];
 const forbiddenEntryPatterns = [
@@ -111,7 +112,9 @@ function auditManifest(channel, manifest, files) {
   }
 
   if (channel === "store") {
-    assertNotIncludes(manifest.permissions, "activeTab", `${channel}: store build must not request activeTab.`);
+    for (const permission of storeForbiddenPermissions) {
+      assertNotIncludes(manifest.permissions, permission, `${channel}: store build must not request ${permission}.`);
+    }
     assertExactList(
       manifest.host_permissions,
       storeHostPermissions,

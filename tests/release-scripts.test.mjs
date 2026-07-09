@@ -253,6 +253,44 @@ test("release artifact audit fails when zip contents drift from the unpacked ext
   }
 });
 
+test("release artifact audit fails store artifacts with required content-reading permissions", async () => {
+  const tempDist = await mkdtemp(join(tmpdir(), "tab-recap-audit-store-permissions-"));
+  try {
+    const sourceManifest = JSON.parse(await readFile("manifest.json", "utf8"));
+    for (const channel of ["dev", "store"]) {
+      const build = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXTENSION_DIST_DIR: tempDist,
+          ...(channel === "store" ? { EXTENSION_CHANNEL: "store" } : {})
+        }
+      });
+      assert.equal(build.status, 0, build.stderr || build.stdout);
+    }
+
+    const storeExtensionDir = join(tempDist, "extension-store");
+    const storeManifestPath = join(storeExtensionDir, "manifest.json");
+    const storeManifest = JSON.parse(await readFile(storeManifestPath, "utf8"));
+    storeManifest.permissions = [...new Set([...(storeManifest.permissions || []), "scripting"])];
+    await writeFile(storeManifestPath, `${JSON.stringify(storeManifest, null, 2)}\n`);
+    const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${sourceManifest.version}-store.zip`), "."], {
+      cwd: storeExtensionDir,
+      encoding: "utf8"
+    });
+    assert.equal(zip.status, 0, zip.stderr || zip.stdout);
+
+    const audit = spawnSync(process.execPath, ["scripts/audit-release-artifacts.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, EXTENSION_DIST_DIR: tempDist }
+    });
+    assert.notEqual(audit.status, 0, audit.stderr || audit.stdout);
+    assert.match(`${audit.stdout}\n${audit.stderr}`, /store: store build must not request scripting/);
+  } finally {
+    await rm(tempDist, { recursive: true, force: true });
+  }
+});
+
 test("release artifact audit locks store host permissions to the default gateway", async () => {
   const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
 
