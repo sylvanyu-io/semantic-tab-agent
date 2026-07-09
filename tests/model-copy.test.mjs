@@ -219,3 +219,31 @@ test("model product copy preserves explanatory clauses after behavior clue value
   assert.match(en, /evidence note/);
   assert.match(en, /This search result likely finished the navigation task/);
 });
+
+test("model product copy turns behavior numeric fields into readable copy", () => {
+  const zh = normalizeModelProductText(
+    "transitionCount=2，totalActiveSeconds=1800，avgDwellSeconds=45，appearedInRuns=3，说明这些页面经常在同一段任务里出现。",
+    { languageMode: "zh-CN" },
+    360
+  );
+  const en = normalizeModelProductText(
+    "transition_count=2, max active seconds=5400, dwellSeconds=45, appeared in runs=3, so these pages were used in the same work loop.",
+    { languageMode: "en-US" },
+    360
+  );
+
+  assert.doesNotMatch(zh, /\b(?:transitionCount|totalActiveSeconds|avgDwellSeconds|appearedInRuns)\b/i);
+  assert.doesNotMatch(zh, /=[\d.]+/);
+  assert.match(zh, /切换过 2 次/);
+  assert.match(zh, /总活跃约 30 分钟/);
+  assert.match(zh, /平均停留约 45 秒/);
+  assert.match(zh, /出现在 3 段浏览里/);
+  assert.match(zh, /同一段任务/);
+  assert.doesNotMatch(en, /\b(?:transition_count|max active seconds|dwellSeconds|appeared in runs)\b/i);
+  assert.doesNotMatch(en, /=[\d.]+/);
+  assert.match(en, /switched 2 times/);
+  assert.match(en, /longest stay about 1.5 hours/);
+  assert.match(en, /stayed about 45 seconds/);
+  assert.match(en, /appeared in 3 browsing runs/);
+  assert.match(en, /same work loop/);
+});

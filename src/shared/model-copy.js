@@ -28,6 +28,16 @@ const INTERNAL_SIGNAL_FIELD_VALUE_PATTERNS = {
   clues: /\bclues?\s*(?:为|=|is|:)?\s*(?:是\s*)?(?:\[[^\]]*\]|[^,.;，。；]+)/gi
 };
 
+const NUMERIC_FIELD_VALUE_PATTERNS = {
+  transitionCount: /\btransition(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi,
+  appearedInRuns: /\bappeared(?:InRuns|[_\s-]?in[_\s-]?runs?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi,
+  totalActiveSeconds: /\btotal(?:ActiveSeconds|[_\s-]?active[_\s-]?seconds?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi,
+  maxActiveSeconds: /\bmax(?:ActiveSeconds|[_\s-]?active[_\s-]?seconds?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi,
+  avgDwellSeconds: /\bavg(?:DwellSeconds|[_\s-]?dwell[_\s-]?seconds?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi,
+  activeSeconds: /\bactive(?:Seconds|[_\s-]?seconds?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi,
+  dwellSeconds: /\bdwell(?:Seconds|[_\s-]?seconds?)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi
+};
+
 const FIELD_NAME_PATTERNS = {
   activeCount: /\bactive(?:Count|[_\s-]?count)\b/gi,
   seenCount: /\bseen(?:Count|[_\s-]?count)\b/gi,
@@ -48,7 +58,7 @@ const FIELD_NAME_PATTERNS = {
   repeatedIds: /\brepeated(?:Ids|[_\s-]?ids?)\b/gi,
   dwellSeconds: /\bdwell(?:Seconds|[_\s-]?seconds?)\b/gi,
   activeSeconds: /\b(?:(?:active|totalActive|maxActive|avgDwell)(?:Seconds|[_\s-]?seconds?)|total[_\s-]?active[_\s-]?seconds?|max[_\s-]?active[_\s-]?seconds?|avg[_\s-]?dwell[_\s-]?seconds?)\b/gi,
-  appearedInRuns: /\bappeared(?:InRuns|[_\s-]?in(?:[_\s-]?runs?)?)\b/gi,
+  appearedInRuns: /\bappeared(?:InRuns|[_\s-]?in[_\s-]?runs?)\b/gi,
   returnedToCount: /\breturned(?:ToCount|[_\s-]?to[_\s-]?count)\b/gi,
   transitionCount: /\btransition(?:Count|[_\s-]?count)\b/gi,
   fromId: /\bfrom(?:Id|[_\s-]?id)\b/gi,
@@ -74,6 +84,25 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
     .replace(/\bactive(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("打开过 $1 次", "opened $1 times"))
     .replace(/\bseen(?:Count|[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("记录过 $1 次", "seen $1 times"))
     .replace(/\breturned(?:ToCount|[_\s-]?to[_\s-]?count)\s*(?:为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("切回过 $1 次", "returned $1 times"))
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.transitionCount, (_match, value) => copy(`切换过 ${formatNumberValue(value)} 次`, `switched ${formatNumberValue(value)} times`))
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.appearedInRuns, (_match, value) =>
+      copy(`出现在 ${formatNumberValue(value)} 段浏览里`, `appeared in ${formatNumberValue(value)} browsing runs`)
+    )
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.totalActiveSeconds, (_match, value) =>
+      copy(`总活跃约 ${formatDurationValue(value, "zh-CN")}`, `active for about ${formatDurationValue(value, "en-US")} total`)
+    )
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.maxActiveSeconds, (_match, value) =>
+      copy(`最长停留约 ${formatDurationValue(value, "zh-CN")}`, `longest stay about ${formatDurationValue(value, "en-US")}`)
+    )
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.avgDwellSeconds, (_match, value) =>
+      copy(`平均停留约 ${formatDurationValue(value, "zh-CN")}`, `average stay about ${formatDurationValue(value, "en-US")}`)
+    )
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.activeSeconds, (_match, value) =>
+      copy(`活跃约 ${formatDurationValue(value, "zh-CN")}`, `active for about ${formatDurationValue(value, "en-US")}`)
+    )
+    .replace(NUMERIC_FIELD_VALUE_PATTERNS.dwellSeconds, (_match, value) =>
+      copy(`停留约 ${formatDurationValue(value, "zh-CN")}`, `stayed about ${formatDurationValue(value, "en-US")}`)
+    )
     .replace(/\bage(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("已放约 $1 天", "kept about $1 days"))
     .replace(/\bidle(?:Days|[_\s-]?days?)\s*(?:约|about|为|=|is|:)?\s*(\d+(?:\.\d+)?)\b/gi, copy("闲置约 $1 天", "idle about $1 days"))
     .replace(/\bsample(?:able|[_\s-]?able)\s*(?:为|=|is|:)?\s*(?:false|no|否)\b/gi, copy("页面摘要不可用", "page summary unavailable"))
@@ -184,4 +213,26 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
     .replace(/\s{2,}/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+function formatNumberValue(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(value || "").trim();
+  return Number.isInteger(numeric) ? String(numeric) : String(Math.round(numeric * 10) / 10);
+}
+
+function formatDurationValue(value, languageMode) {
+  const seconds = Math.max(0, Number(value) || 0);
+  if (seconds < 90) {
+    const rounded = Math.max(1, Math.round(seconds));
+    return localizedText(languageMode, `${rounded} 秒`, `${rounded} ${rounded === 1 ? "second" : "seconds"}`);
+  }
+  const minutes = seconds / 60;
+  if (minutes < 90) {
+    const rounded = Math.max(1, Math.round(minutes));
+    return localizedText(languageMode, `${rounded} 分钟`, `${rounded} ${rounded === 1 ? "minute" : "minutes"}`);
+  }
+  const hours = minutes / 60;
+  const rounded = hours < 10 ? Math.round(hours * 10) / 10 : Math.round(hours);
+  return localizedText(languageMode, `${rounded} 小时`, `${rounded} ${rounded === 1 ? "hour" : "hours"}`);
 }
