@@ -1058,6 +1058,97 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
     .toBe(true);
 });
 
+test("time recap generation ignores a stale sourceWindowId", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      analysisMode: "group_and_cleanup",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      gatewayProviderMode: "builtin",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.__recapMessages = [];
+    window.__recapPromise = new Promise((resolve) => {
+      window.__resolveRecap = resolve;
+    });
+    window.chrome = {
+      windows: {
+        get: async (windowId) => {
+          if (windowId === 77) throw new Error("No window with id: 77.");
+          return { id: windowId, type: "normal" };
+        },
+        getLastFocused: async () => ({ id: 42, type: "normal" }),
+        getCurrent: async () => ({ id: 999, type: "popup" })
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          window.__recapMessages.push(message);
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "progressCopy:generate") return { ok: true, result: { messages: ["梳理时间线索"] } };
+          if (message.type === "activity:generateTimeRecap") return { ok: true, result: await window.__recapPromise };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=77`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const message = window.__recapMessages.find((item) => item.type === "activity:generateTimeRecap");
+        return message?.windowId;
+      })
+    )
+    .toBe(42);
+
+  await page.evaluate(() => {
+    window.__resolveRecap({
+      source: "ai",
+      input: { pages: [], coverage: { includedPages: 3 } },
+      recap: {
+        schema: "tab_recap_time_recap_v1",
+        headline: "回顾窗口已正确绑定。",
+        summary: "旧窗口 id 失效时，回顾会回到当前正常窗口。",
+        timeline: [],
+        themes: [],
+        followUps: []
+      }
+    });
+  });
+
+  await expect(page.locator("#statusText")).toHaveText("回顾已生成");
+  await expect(page.locator(".recap-summary-card")).toContainText("回顾窗口已正确绑定。");
+});
+
 test("time recap and organize generation can run in parallel", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
