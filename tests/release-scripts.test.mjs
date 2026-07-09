@@ -333,6 +333,9 @@ test("release scripts honor custom extension dist directories", async () => {
     }
 
     const storeManifest = JSON.parse(await readFile(join(tempDist, "extension-store", "manifest.json"), "utf8"));
+    assert.equal((storeManifest.permissions || []).includes("activeTab"), false);
+    assert.equal((storeManifest.permissions || []).includes("scripting"), false);
+    assert.deepEqual(storeManifest.host_permissions, ["https://cliproxy.sylvanyu.io/*"]);
     assert.equal(Object.hasOwn(storeManifest, "optional_permissions"), false);
     assert.deepEqual(storeManifest.optional_host_permissions, ["https://*/*", "http://*/*"]);
 
