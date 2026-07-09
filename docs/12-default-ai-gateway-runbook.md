@@ -262,17 +262,17 @@ TOTAL_TIME: 7.42s
 model: gpt-5.4
 ```
 
-Latest local code verification, 2026-07-09 CST:
+Latest local code verification, 2026-07-09 14:30 CST:
 
 ```text
+npm run release:check:
+passed
+
 npm test:
-348/348 passed
+355/355 passed
 
 Full Playwright UI smoke:
-53/53 passed
-
-npm run test:worker:
-36/36 passed
+57/57 passed
 
 npm run scan:secrets:
 No secret patterns found.
@@ -280,8 +280,11 @@ No secret patterns found.
 npm run scan:secrets:history:
 No secret patterns found in git history.
 
-npm run build:
+npm run build:extension:
 Built dist/tab-recap-0.2.6.zip
+
+npm run build:extension:store:
+Built dist/tab-recap-0.2.6-store.zip
 
 npm run audit:release-artifacts:
 Release artifact audit passed.
@@ -289,7 +292,7 @@ Release artifact audit passed.
 Covered in this verification:
 - Worker/monitor tests for 530/1033 tunnel failures, retries, alert email state, recovery mail, and redaction;
 - gateway smoke helper tests for health, readiness, monitor status, and required-monitor gating;
-- side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, custom provider ping errors, safe custom endpoint persistence, and local recap fallback display.
+- side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, custom provider ping errors, safe custom endpoint persistence, local recap fallback display, and stable recap date display.
 ```
 
 Latest live gateway smoke, 2026-07-09 05:39 CST:

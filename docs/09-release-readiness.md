@@ -273,6 +273,12 @@ Post-release hardening verification:
   gateway smoke passed against `https://cliproxy.sylvanyu.io/v1` with `gpt-5.4`
   high reasoning in `33.4s`; `/healthz`, `/readyz`, monitor status, email
   configuration, and planner JSON validation were all OK.
+- `2026-07-09 14:30` Asia/Shanghai: full local `npm run release:check` passed
+  after the recap date display was stabilized and README screenshots were
+  refreshed. The gate cleaned build output, regenerated icons, passed `355/355`
+  Node and Worker tests, passed `57/57` Playwright UI smoke tests, passed
+  current and history secret scans, rebuilt both dev and store packages, and
+  passed release artifact audit against the freshly built zips.
 
 Recommended before public listing:
 
