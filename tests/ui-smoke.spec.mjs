@@ -4605,6 +4605,88 @@ test("generation does not request page sampling permissions from a stale enabled
   await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([]);
 });
 
+test("time recap does not request page sampling permissions from a stale enabled state", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "all_granted_origins",
+      hostPermissionRequestMode: "ask_for_all_visible_origins",
+      pageSamplingConsentMode: "acknowledged_for_session",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: false,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.__permissionRequests = [];
+    window.__generateTimeRecapCalled = false;
+    window.chrome = {
+      permissions: {
+        contains: async (request) =>
+          (request.permissions || []).length === 0 && Boolean(request.origins?.includes("https://cliproxy.sylvanyu.io/*")),
+        request: async (request) => {
+          window.__permissionRequests.push(request);
+          return true;
+        }
+      },
+      runtime: {
+        getManifest: () => ({
+          optional_permissions: ["scripting"],
+          optional_host_permissions: ["https://*/*", "http://*/*"]
+        }),
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "activity:generateTimeRecap") {
+            window.__generateTimeRecapCalled = true;
+            return {
+              ok: true,
+              result: {
+                source: "ai",
+                input: { pages: [], coverage: { includedPages: 0, sampledEntries: 0 } },
+                recap: {
+                  schema: "tab_recap_time_recap_v1",
+                  headline: "不应该生成",
+                  summary: "缺少页面摘要权限时不应继续回顾。",
+                  timeline: [],
+                  themes: [],
+                  followUps: [],
+                  coverageNote: ""
+                }
+              }
+            };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+
+  await expect(page.locator("#statusText")).toHaveText("需要先打开「页面摘要增强」并完成授权，才能读取页面摘要。");
+  await expect(page.locator(".recap-summary-card")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([]);
+  await expect.poll(() => page.evaluate(() => window.__generateTimeRecapCalled)).toBe(false);
+});
+
 function contentType(filePath) {
   switch (extname(filePath)) {
     case ".html":
