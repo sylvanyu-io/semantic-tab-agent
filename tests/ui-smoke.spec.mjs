@@ -1924,7 +1924,15 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview")).not.toContainText("page_id");
   await expect(page.locator(".cleanup-preview")).not.toContainText("tab_ids");
   await expect(page.locator(".cleanup-preview")).not.toContainText("sample_able");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("activationFlow");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("nearbyIds");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("returnedToCount");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("dwellSeconds");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("fromId");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("toId");
   await expect(page.locator(".cleanup-preview")).not.toContainText("标题为");
+  await expect(page.locator(".cleanup-preview").getByText("浏览轨迹", { exact: false })).toBeVisible();
+  await expect(page.locator(".cleanup-preview").getByText("相邻标签页", { exact: false })).toBeVisible();
 
   await expect(page.locator(".cleanup-preview-actions")).toHaveCount(0);
   await expect(page.locator(".cleanup-select")).toHaveCount(0);

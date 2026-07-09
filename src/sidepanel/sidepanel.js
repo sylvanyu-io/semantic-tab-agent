@@ -7,6 +7,7 @@ import {
   readSettingsImportPayload
 } from "../shared/settings.js";
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
+import { normalizeModelProductText } from "../shared/model-copy.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { redactSensitiveText } from "../shared/redaction.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
@@ -2519,7 +2520,8 @@ function cleanupSummaryForPreview(cleanup, { cleanupOnly = false } = {}) {
   const summary = String(cleanup?.summary || "").trim();
   const leaksImplementationDetail =
     /不自动分组|不创建分组|按要求|grouping\s+is\s+disabled|without\s+creating\s+groups/i.test(summary);
-  if (summary && !leaksImplementationDetail) return summary;
+  const cleanedSummary = cleanupProductCopy(summary, 180);
+  if (cleanedSummary && !leaksImplementationDetail) return cleanedSummary;
   return t(cleanupOnly ? "cleanup.preview.subtitleOnly" : "cleanup.preview.subtitle");
 }
 
@@ -2539,11 +2541,12 @@ function cleanupPreviewRow(candidate) {
   meta.textContent = cleanupCandidateMeta(candidate);
   body.append(titleLine, meta);
 
-  if (candidate.reason) {
+  const reasonText = cleanupProductCopy(candidate.reason, 220);
+  if (reasonText) {
     const reason = document.createElement("div");
     reason.className = "cleanup-reason";
     const copy = document.createElement("p");
-    copy.textContent = candidate.reason;
+    copy.textContent = reasonText;
     reason.append(copy);
     body.append(reason);
   }
@@ -2636,7 +2639,7 @@ const CLEANUP_AGE_DAYS_FIELD_PATTERN = /\bage(?:Days|[_\s-]?days?)\s*(?:约|为|
 const CLEANUP_IDLE_DAYS_FIELD_PATTERN = /\bidle(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
 const CLEANUP_SAMPLEABLE_FIELD_PATTERN = /不可采样|cannot sample|not sampleable|sample(?:able|[_\s-]?able)/i;
 const CLEANUP_INTERNAL_FIELD_PATTERN =
-  /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))/i;
+  /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))|activation(?:Flow|[_\s-]?flow)|nearby(?:Ids?|[_\s-]?ids?)|return(?:ToId|[_\s-]?to[_\s-]?id)|returned(?:ToCount|[_\s-]?to[_\s-]?count)|repeated(?:Ids?|[_\s-]?ids?)|dwell(?:Seconds|[_\s-]?seconds?)|(?:total|avg|max)?(?:Active|Dwell)(?:Seconds|[_\s-]?seconds?)|transition(?:Count|[_\s-]?count)|from(?:Id|[_\s-]?id)|to(?:Id|[_\s-]?id)|started(?:At|[_\s-]?at)|ended(?:At|[_\s-]?at)|last(?:At|[_\s-]?at)|clues?/i;
 
 function cleanupEvidenceLabel(value) {
   const text = String(value || "").trim();
@@ -2660,9 +2663,15 @@ function cleanupEvidenceLabel(value) {
   if (/无直接|关系弱|不相关|weak fit|unrelated|low relevance/i.test(text)) return t("cleanup.clue.weakRelation");
   if (/重新|找回|恢复|recover|find again|refind|rerun/i.test(text)) return t("cleanup.clue.refindable");
   if (/主页|入口|总览|列表|overview|home page|entry page|index page|repository list/i.test(text)) return t("cleanup.clue.entryPage");
+  const productText = cleanupProductCopy(text, 48);
+  if (productText && productText !== text && !CLEANUP_INTERNAL_FIELD_PATTERN.test(productText)) return productText;
   if (CLEANUP_INTERNAL_FIELD_PATTERN.test(text)) return "";
 
-  return text.slice(0, 48);
+  return productText || text.slice(0, 48);
+}
+
+function cleanupProductCopy(value, maxLength = 160) {
+  return normalizeModelProductText(value, { languageMode: uiLanguage }, maxLength).trim();
 }
 
 function cleanupOpenCountLabel(count) {
@@ -3923,8 +3932,16 @@ function mockCleanupPreview(grouping = true) {
         idleMs: 18 * 24 * 60 * 60 * 1000,
         activeCount: 0,
         priority: "medium",
-        reason: "标题显示是旧研究资料，且没有归属到当前分组。",
-        evidence: ["active_count 为0", "age-days 约22", "page_id 32", "tab_ids [31,32]", "sample_able false", "标题为“上轮调研资料”"]
+        reason: "activationFlow 显示 nearbyIds 很近，returnedToCount=0，dwellSeconds 很短。",
+        evidence: [
+          "active_count 为0",
+          "age-days 约22",
+          "nearbyIds [31,32] and fromId 31 toId 32",
+          "page_id 32",
+          "tab_ids [31,32]",
+          "sample_able false",
+          "标题为“上轮调研资料”"
+        ]
       }
     ]
   };
