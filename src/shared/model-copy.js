@@ -25,7 +25,7 @@ const INTERNAL_ID_FIELD_VALUE_PATTERNS = {
 const INTERNAL_SIGNAL_FIELD_VALUE_PATTERNS = {
   strength: /\bstrength\s*(?:为|=|is|:)?\s*(?:0(?:\.\d+)?|1(?:\.0+)?|\d+(?:\.\d+)?%?)\b/gi,
   count: /\bcount\s*(?:为|=|is|:)?\s*\d+(?:\.\d+)?\b/gi,
-  clues: /\bclues?\s*(?:为|=|is|:)?\s*(?:是\s*)?(?:\[[^\]]*\]|[^,.;，。；]+(?:[,，]\s*[^,.;，。；]+)*)/gi
+  clues: /\bclues?\s*(?:为|=|is|:)?\s*(?:是\s*)?(?:\[[^\]]*\]|[^,.;，。；]+)/gi
 };
 
 const FIELD_NAME_PATTERNS = {

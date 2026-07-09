@@ -199,3 +199,23 @@ test("model product copy removes behavior evidence field values", () => {
   assert.match(zh, /重复线索/);
   assert.match(zh, /依据线索/);
 });
+
+test("model product copy preserves explanatory clauses after behavior clue values", () => {
+  const zh = normalizeModelProductText(
+    "clues quick handoff，说明这几个页面是连续比较资料，不建议只看标题。",
+    { languageMode: "zh-CN" },
+    320
+  );
+  const en = normalizeModelProductText(
+    "clues quick handoff. This search result likely finished the navigation task.",
+    { languageMode: "en-US" },
+    320
+  );
+
+  assert.doesNotMatch(zh, /\b(?:clues|quick handoff)\b/i);
+  assert.match(zh, /依据线索/);
+  assert.match(zh, /说明这几个页面是连续比较资料/);
+  assert.doesNotMatch(en, /\b(?:clues|quick handoff)\b/i);
+  assert.match(en, /evidence note/);
+  assert.match(en, /This search result likely finished the navigation task/);
+});
