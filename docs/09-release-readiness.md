@@ -257,6 +257,15 @@ Post-release hardening verification:
   dist, passed `354/354` Node and Worker tests, passed `54/54` Playwright UI
   smoke tests, passed current and history secret scans, rebuilt both dev and
   store packages, and passed release artifact audit.
+- `2026-07-09 13:06` Asia/Shanghai: full local `npm run release:check` passed
+  after `5a036df` tightened AI provider normalization. Explicit built-in
+  provider selection now wins over stale custom API fields, while base-URL-only
+  legacy settings still migrate to custom provider mode. Verification covered
+  `354/354` Node and Worker tests, `54/54` Playwright UI smoke tests, current
+  and history secret scans, dev/store package builds, and release artifact
+  audit. The UI smoke suite also verifies that switching from custom provider
+  back to built-in clears hidden custom URL, model, auxiliary model, key, and
+  remember-key state before saving.
 - `2026-07-09 07:13` Asia/Shanghai: the live release gate components passed on
   the same code path. The latest `release:check:live` run reached and passed the
   240-tab stress phase (`dist/stress/sta-stress-mrcowcwu.json`), which means the
