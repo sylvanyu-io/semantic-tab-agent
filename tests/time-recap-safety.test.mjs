@@ -18,6 +18,8 @@ test("recap safety strips cleanup recommendations without removing evidence word
 test("recap safety detects generic browser group names as invalid theme titles", () => {
   assert.equal(isGenericRecapThemeTitle("待分类"), true);
   assert.equal(isGenericRecapThemeTitle("「General Workbench」"), true);
+  assert.equal(isGenericRecapThemeTitle("page"), true);
+  assert.equal(isGenericRecapThemeTitle("网页"), true);
   assert.equal(isGenericRecapThemeTitle("AI 编程代理工具调研"), false);
 });
 
