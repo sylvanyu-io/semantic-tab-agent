@@ -1581,6 +1581,80 @@ test("time recap fallback keeps raw AI errors out of the visible product copy", 
   await expect(page.locator("#recapDetailsText")).not.toContainText("sampleable");
 });
 
+test("time recap fallback does not surface default service outages as recap content", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "activity:generateTimeRecap") {
+            return {
+              ok: true,
+              result: {
+                source: "local_fallback",
+                error: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 recap_down_123）",
+                input: { pages: [], coverage: { includedPages: 18, sampledEntries: 2 } },
+                recap: {
+                  schema: "tab_recap_time_recap_v1",
+                  headline: "这段时间主要在做稳定性排查。",
+                  summary: "本机线索显示最近集中在网关监控和回顾体验。",
+                  timeline: [],
+                  themes: [],
+                  followUps: [],
+                  coverageNote: "已参考本机活动。"
+                }
+              }
+            };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+
+  await expect(page.locator("#statusText")).toHaveText("已先生成本机回顾；AI 增强可稍后重试。");
+  await expect(page.locator(".recap-summary-card")).toContainText("已先根据本机线索完成回顾。");
+  await expect(page.locator("#timeRecapPanel")).not.toContainText("默认 AI 服务暂时不可用");
+  await expect(page.locator("#timeRecapPanel")).not.toContainText("recap_down_123");
+});
+
 test("time recap fallback hides unknown raw gateway errors even when they mention AI gateway", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {

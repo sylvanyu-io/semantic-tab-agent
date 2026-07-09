@@ -2134,8 +2134,16 @@ function timeRecapFallbackReasonText(result = {}) {
   const rawMessage = String(result.error?.message || result.error || "").trim();
   const message = friendlyErrorMessage(result.error);
   if (!message || message === t("status.default") || message === t("status.recapAiUnavailable")) return "";
+  if (isGenericDefaultGatewayFallbackMessage(message)) return "";
   if (message === rawMessage && !isProductSafeGatewayMessage(message)) return "";
   return message;
+}
+
+function isGenericDefaultGatewayFallbackMessage(message = "") {
+  return (
+    /^(?:默认 AI 服务|The default AI service)/i.test(message) &&
+    !/不支持.*模型|does not support this model/i.test(message)
+  );
 }
 
 function isProductSafeGatewayMessage(message = "") {
