@@ -337,6 +337,8 @@ test("tab lifecycle counts focused-window returns without double-counting focus 
   const sessions = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).sort((left, right) => left.tabId - right.tabId);
   assert.equal(sessions[0].activeCount, 1);
   assert.equal(sessions[1].activeCount, 2);
+  assert.equal(sessions[0].active, false);
+  assert.equal(sessions[1].active, true);
   assert.equal(sessions[1].lastActivatedAt, "2026-06-25T00:05:00.000Z");
 });
 

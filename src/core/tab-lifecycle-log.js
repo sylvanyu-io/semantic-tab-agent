@@ -168,7 +168,7 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
 
   const previousActive = Boolean(session.active);
   const nextActive = Boolean(tab.active || type === "tab_activated");
-  if (nextActive) deactivateOtherWindowSessions(log, session.id, tab.windowId);
+  if (nextActive) deactivateOtherWindowSessions(log, session.id, tab.windowId, { allWindows: type === "window_focused" });
   Object.assign(session, {
     tabId: tab.id,
     windowId: tab.windowId,
@@ -217,9 +217,9 @@ function shouldRecordActivationEntry(session, previousActive, nextActive, type, 
   return !Number.isFinite(lastActivatedAt) || now - lastActivatedAt > ACTIVATION_DEDUPE_MS;
 }
 
-function deactivateOtherWindowSessions(log, activeSessionId, windowId) {
+function deactivateOtherWindowSessions(log, activeSessionId, windowId, options = {}) {
   for (const session of Object.values(log.sessions)) {
-    if (session.id !== activeSessionId && !session.closedAt && session.windowId === windowId) {
+    if (session.id !== activeSessionId && !session.closedAt && (options.allWindows || session.windowId === windowId)) {
       session.active = false;
     }
   }

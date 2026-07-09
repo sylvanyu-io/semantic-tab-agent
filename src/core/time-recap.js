@@ -482,10 +482,11 @@ function normalizeTimeRecap(parsed, input, settings) {
 async function collectCurrentTabs(chromeApi, settings) {
   const windows = (await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => [])) || [];
   const groupsById = await collectTabGroupsById(chromeApi, windows);
+  const focusedWindowIds = new Set(windows.filter((window) => window.focused).map((window) => window.id));
   return windows
-    .flatMap((window) => window.tabs || [])
-    .filter((tab) => (!tab.incognito || settings.includeIncognitoTabs) && (getTabUrl(tab) || tab.title))
-    .map((tab) => {
+    .flatMap((window) => (window.tabs || []).map((tab) => ({ tab, window })))
+    .filter(({ tab }) => (!tab.incognito || settings.includeIncognitoTabs) && (getTabUrl(tab) || tab.title))
+    .map(({ tab, window }) => {
       const rawUrl = getTabUrl(tab);
       const urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL);
       const group = Number.isInteger(tab.groupId) && tab.groupId !== -1 ? groupsById.get(tab.groupId) : null;
@@ -498,7 +499,7 @@ async function collectCurrentTabs(chromeApi, settings) {
         hostname: urlInfo.hostname || urlInfo.urlKind || "",
         sanitizedUrl: urlInfo.sanitizedUrl || "",
         currentGroupTitle: group?.title || "",
-        active: Boolean(tab.active),
+        active: Boolean(tab.active && (!focusedWindowIds.size || focusedWindowIds.has(window.id))),
         discarded: Boolean(tab.discarded),
         pinned: Boolean(tab.pinned),
         audible: Boolean(tab.audible),
@@ -659,7 +660,7 @@ function buildActiveSecondsBySessionId(events, sessions, range, options = {}) {
       .map((session) => [lifecycleSessionId(session), session])
       .filter(([id]) => id)
   );
-  const byWindow = new Map();
+  const ordered = [];
   for (const event of events || []) {
     if (!RECAP_ACTIVE_EVENT_TYPES.has(event?.type)) continue;
     const id = lifecycleEventSessionId(event);
@@ -667,10 +668,7 @@ function buildActiveSecondsBySessionId(events, sessions, range, options = {}) {
     if (!session) continue;
     const at = Date.parse(event.at || "");
     if (!Number.isFinite(at) || at > to) continue;
-    const windowId = Number.isInteger(event.windowId) ? event.windowId : session.windowId;
-    if (!Number.isInteger(windowId)) continue;
-    if (!byWindow.has(windowId)) byWindow.set(windowId, []);
-    byWindow.get(windowId).push({
+    ordered.push({
       sessionId: id,
       at,
       seq: Number(event.seq || 0)
@@ -678,25 +676,23 @@ function buildActiveSecondsBySessionId(events, sessions, range, options = {}) {
   }
 
   const secondsBySessionId = new Map();
-  for (const eventsInWindow of byWindow.values()) {
-    const ordered = eventsInWindow
-      .sort((left, right) => left.at - right.at || left.seq - right.seq)
-      .filter((event, index, list) => index === 0 || event.sessionId !== list[index - 1].sessionId);
-    for (let index = 0; index < ordered.length; index += 1) {
-      const event = ordered[index];
-      const session = sessionsById.get(event.sessionId);
-      const next = ordered[index + 1];
-      const isCurrentlyActive = Number.isInteger(session?.tabId) && currentActiveTabIds.has(session.tabId);
-      const fallbackEndValue = session?.closedAt || (isCurrentlyActive ? range.to : session?.lastObservedAt) || "";
-      const fallbackEnd = Date.parse(fallbackEndValue);
-      const rawEnd = next ? next.at : fallbackEnd;
-      if (!Number.isFinite(rawEnd) || rawEnd <= event.at) continue;
-      const start = Math.max(event.at, from);
-      const end = Math.min(rawEnd, event.at + RECAP_MAX_DWELL_MS, to);
-      if (end <= start) continue;
-      const seconds = Math.max(1, Math.round((end - start) / 1000));
-      secondsBySessionId.set(event.sessionId, (secondsBySessionId.get(event.sessionId) || 0) + seconds);
-    }
+  const userFocusEvents = ordered
+    .sort((left, right) => left.at - right.at || left.seq - right.seq)
+    .filter((event, index, list) => index === 0 || event.sessionId !== list[index - 1].sessionId);
+  for (let index = 0; index < userFocusEvents.length; index += 1) {
+    const event = userFocusEvents[index];
+    const session = sessionsById.get(event.sessionId);
+    const next = userFocusEvents[index + 1];
+    const isCurrentlyActive = Number.isInteger(session?.tabId) && currentActiveTabIds.has(session.tabId);
+    const fallbackEndValue = session?.closedAt || (isCurrentlyActive ? range.to : session?.lastObservedAt) || "";
+    const fallbackEnd = Date.parse(fallbackEndValue);
+    const rawEnd = next ? next.at : fallbackEnd;
+    if (!Number.isFinite(rawEnd) || rawEnd <= event.at) continue;
+    const start = Math.max(event.at, from);
+    const end = Math.min(rawEnd, event.at + RECAP_MAX_DWELL_MS, to);
+    if (end <= start) continue;
+    const seconds = Math.max(1, Math.round((end - start) / 1000));
+    secondsBySessionId.set(event.sessionId, (secondsBySessionId.get(event.sessionId) || 0) + seconds);
   }
   return secondsBySessionId;
 }

@@ -277,6 +277,87 @@ test("time recap dwell estimates extend currently open active sessions to the re
   assert.equal(page.activeSeconds, 60 * 60);
 });
 
+test("time recap dwell follows the focused window instead of extending every window active tab", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: false,
+        tabs: [
+          {
+            id: 30,
+            windowId: 1,
+            index: 0,
+            title: "旧窗口研究页",
+            url: "https://research.example/old-window",
+            active: true
+          }
+        ]
+      },
+      {
+        id: 2,
+        focused: true,
+        tabs: [
+          {
+            id: 31,
+            windowId: 2,
+            index: 0,
+            title: "当前窗口研究页",
+            url: "https://research.example/current-window",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      oldWindow: {
+        id: "oldWindow",
+        tabId: 30,
+        windowId: 1,
+        title: "旧窗口研究页",
+        hostname: "research.example",
+        sanitizedUrl: "https://research.example/old-window",
+        openedAt: "2026-06-27T05:00:00.000Z",
+        firstObservedAt: "2026-06-27T05:00:00.000Z",
+        lastObservedAt: "2026-06-27T05:00:00.000Z",
+        activeCount: 1
+      },
+      currentWindow: {
+        id: "currentWindow",
+        tabId: 31,
+        windowId: 2,
+        title: "当前窗口研究页",
+        hostname: "research.example",
+        sanitizedUrl: "https://research.example/current-window",
+        openedAt: "2026-06-27T05:20:00.000Z",
+        firstObservedAt: "2026-06-27T05:20:00.000Z",
+        lastObservedAt: "2026-06-27T05:20:00.000Z",
+        activeCount: 1
+      }
+    },
+    events: [
+      { seq: 1, type: "tab_activated", sessionId: "oldWindow", tabId: 30, windowId: 1, at: "2026-06-27T05:00:00.000Z" },
+      { seq: 2, type: "window_focused", sessionId: "currentWindow", tabId: 31, windowId: 2, at: "2026-06-27T05:20:00.000Z" }
+    ]
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "today" }, now: NOW }
+  );
+  const oldWindow = input.pages.find((page) => page.title === "旧窗口研究页");
+  const currentWindow = input.pages.find((page) => page.title === "当前窗口研究页");
+
+  assert.ok(oldWindow);
+  assert.ok(currentWindow);
+  assert.equal(oldWindow.activeSeconds, 20 * 60);
+  assert.equal(currentWindow.activeSeconds, 40 * 60);
+});
+
 test("time recap dwell does not extend inactive open sessions to the recap time", async () => {
   const chrome = createFakeChrome({
     windows: [
