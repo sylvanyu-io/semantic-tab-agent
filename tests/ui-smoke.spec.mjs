@@ -1354,7 +1354,7 @@ test("time recap error state does not leak into the organize setup surface", asy
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
-  await expect(page.locator(".recap-card")).toContainText("本机回顾已生成；稍后可重新生成补全表达。");
+  await expect(page.locator(".recap-card")).toContainText("回顾没有完成，请重新生成。");
   await expect(page.locator(".launch-panel")).toBeHidden();
 
   await page.getByRole("button", { name: "整理" }).click();
@@ -1735,6 +1735,7 @@ test("time recap fallback keeps raw AI errors out of the visible product copy", 
   await page.getByRole("button", { name: "生成回顾" }).click();
 
   await expect(page.locator(".recap-summary-card")).toContainText("已先根据本机线索完成回顾。");
+  await expect(page.locator(".recap-summary-card")).not.toContainText("回顾没有完成");
   await expect(page.locator(".recap-summary-card")).not.toContainText("timed out");
   await expect(page.locator(".recap-summary-card")).not.toContainText("300 seconds");
   await expect(page.locator("#recapDetailsText")).toContainText("已整理 65 个本机页面线索");
@@ -2132,13 +2133,13 @@ test("time recap error state does not resurrect the previous recap", async ({ pa
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 
   await page.getByRole("button", { name: "生成回顾" }).click();
-  await expect(page.locator(".recap-card")).toContainText("本机回顾已生成；稍后可重新生成补全表达。");
+  await expect(page.locator(".recap-card")).toContainText("回顾没有完成，请重新生成。");
   await expect(page.locator(".launch-panel")).toBeHidden();
   await expect(page.locator("#timeRecapPanel")).not.toContainText("第一次回顾结果");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator(".recap-card")).toContainText("Local recap is ready. Regenerate later for a fuller version.");
+  await expect(page.locator(".recap-card")).toContainText("Recap did not finish. Regenerate when ready.");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("第一次回顾结果");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 });

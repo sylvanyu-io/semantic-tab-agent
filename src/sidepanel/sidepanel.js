@@ -105,6 +105,7 @@ const UI_COPY = Object.freeze({
     "status.recapCanceled": "已停止生成回顾。",
     "status.recapReady": "回顾已生成",
     "status.recapAiUnavailable": "本机回顾已生成；稍后可重新生成补全表达。",
+    "status.recapFailed": "回顾没有完成，请重新生成。",
     "status.recapRangeInvalid": "请选择有效的开始和结束日期。",
     "scope.label": "范围",
     "scope.currentWindow": "当前窗口",
@@ -383,6 +384,7 @@ const UI_COPY = Object.freeze({
     "status.recapCanceled": "Recap generation stopped.",
     "status.recapReady": "Recap ready",
     "status.recapAiUnavailable": "Local recap is ready. Regenerate later for a fuller version.",
+    "status.recapFailed": "Recap did not finish. Regenerate when ready.",
     "status.recapRangeInvalid": "Choose a valid start and end date.",
     "scope.label": "Scope",
     "scope.currentWindow": "Current window",
@@ -1898,7 +1900,7 @@ function normalizeTimeRecapError(error) {
   }
   const rawMessage = String(error?.message || error || "").trim();
   if (/AI gateway time recap timed out/i.test(rawMessage)) {
-    return { key: "status.recapAiUnavailable", text: "" };
+    return { key: "status.recapFailed", text: "" };
   }
   return { key: "", text: friendlyErrorMessage(error) || t("status.previousFailed") };
 }
@@ -2076,7 +2078,7 @@ function friendlyErrorMessage(error) {
   if (/Cannot apply an invalid plan/i.test(message)) return t("status.invalidPlan");
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
   if (/AI 增强未完成|AI enhancement did not finish/i.test(message)) return t("status.recapAiUnavailable");
-  if (/AI gateway time recap timed out/i.test(message)) return t("status.recapAiUnavailable");
+  if (/AI gateway time recap timed out/i.test(message)) return t("status.recapFailed");
   if (/AI gateway .* timed out/i.test(message)) return gatewayStatus("status.gatewayTimeout");
   if (
     /(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API).*?(?:不支持.*模型|model.*(?:not available|unsupported)|model_not_allowed)|(?:model_not_allowed|planner_model_not_allowed|recap_model_not_allowed).*?(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API)/i.test(
@@ -2152,7 +2154,7 @@ function timeRecapFallbackReasonText(result = {}) {
   if (!result?.error) return "";
   const rawMessage = String(result.error?.message || result.error || "").trim();
   const message = friendlyErrorMessage(result.error);
-  if (!message || message === t("status.default") || message === t("status.recapAiUnavailable")) return "";
+  if (!message || message === t("status.default") || message === t("status.recapAiUnavailable") || message === t("status.recapFailed")) return "";
   if (isGenericDefaultGatewayFallbackMessage(message)) return "";
   if (message === rawMessage && !isProductSafeGatewayMessage(message)) return "";
   return message;
