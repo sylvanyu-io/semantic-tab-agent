@@ -34,6 +34,14 @@ test("README image assets are referenced by the README or its generator", async 
   }
 });
 
+test("README asset mock copy avoids raw implementation field names", async () => {
+  const generator = await readFile("scripts/generate-readme-assets.mjs", "utf8");
+  const rawFieldStringLiteral =
+    /["'][^"'\n]*(?:activeCount|active_count|ageDays|age-days|idleDays|nearbyIds|activationFlow|dwellSeconds|returnedToCount|fromId|toId|tab_ids|page_id|sample_able)[^"'\n]*["']/i;
+
+  assert.doesNotMatch(generator, rawFieldStringLiteral);
+});
+
 test("dist cleanup removes stale release and stress artifacts", async () => {
   const cleanScript = await readFile("scripts/clean-dist.mjs", "utf8");
 

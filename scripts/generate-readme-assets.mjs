@@ -490,7 +490,7 @@ async function installChromeMock(page, mockOptions = {}) {
             activeCount: 0,
             priority: "medium",
             reason: "这是一次较泛的搜索结果页，后面已经打开了更具体的渲染学习内容。",
-            evidence: ["搜索结果页", "同组已有更具体页面", "activeCount 为0"]
+            evidence: ["搜索结果页", "后面已有更具体页面", "最近没有再打开"]
           },
           {
             tabId: 302,
