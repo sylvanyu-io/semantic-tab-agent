@@ -252,6 +252,11 @@ Post-release hardening verification:
   passed, `npm run test:ui` passed `54/54`, `npm test` passed `354/354`,
   dev/store extension builds succeeded, `npm run scan:secrets` found no secret
   patterns, and `npm run audit:release-artifacts` passed.
+- `2026-07-09 12:40` Asia/Shanghai: full local `npm run release:check` passed
+  after the recap-theme hardening commits. The gate rebuilt icons, ran clean
+  dist, passed `354/354` Node and Worker tests, passed `54/54` Playwright UI
+  smoke tests, passed current and history secret scans, rebuilt both dev and
+  store packages, and passed release artifact audit.
 - `2026-07-09 07:13` Asia/Shanghai: the live release gate components passed on
   the same code path. The latest `release:check:live` run reached and passed the
   240-tab stress phase (`dist/stress/sta-stress-mrcowcwu.json`), which means the
