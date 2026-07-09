@@ -248,7 +248,7 @@ For a public release, the built-in gateway path may use a public client token, b
 
 ## Technical Risks
 
-1. Service worker lifetime: long LLM calls can exceed Manifest V3 service worker timing expectations. Persist state after every step and make calls resumable so the popup can close and reopen safely.
+1. Service worker lifetime: long LLM calls can exceed Manifest V3 service worker timing expectations. Persist state after every step so the side panel can refresh, switch modes, or reopen without losing the latest known job state.
 2. Token pressure: hundreds of tabs cannot be handled as one naive prompt. Use batching, compact descriptors, and context sampling.
 3. LLM instability: enforce JSON schema, validate all tab IDs, and show preview before applying.
 4. Native tab groups are window-scoped: cross-window native grouping only works by moving tabs or groups into one normal window.
@@ -282,13 +282,13 @@ MVP should not implement:
 - history/bookmark ingestion;
 - full-page content upload by default;
 - multi-browser sync;
-- public hosted backend.
+- a general-purpose hosted backend beyond the narrow AI gateway relay.
 
 ## Later Versions
 
 - Optional content sampling for ambiguous tabs.
 - Consolidate-to-topic-windows mode.
-- Virtual cross-window groups in the popup.
+- Virtual cross-window groups in the side panel.
 - User feedback memory: "these domains usually belong together".
 - Embedding cache for cheaper clustering before LLM labeling.
 - Local model or Chrome built-in AI adapter.
