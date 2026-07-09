@@ -156,12 +156,34 @@
             <div id="recapCustomRange" class="recap-date-range">
               <div class="date-field">
                 <label for="recapFromDate">开始日期</label>
-                <input id="recapFromDate" type="datetime-local" />
+                <div class="date-input-shell">
+                  <input id="recapFromDate" type="datetime-local" />
+                  <span class="date-input-display" data-date-display-for="recapFromDate" aria-hidden="true">
+                    <span class="date-input-value">----</span>
+                    <svg viewBox="0 0 20 20" focusable="false">
+                      <rect x="4" y="5.5" width="12" height="10.5" rx="1.8" />
+                      <path d="M7 3.5v4" />
+                      <path d="M13 3.5v4" />
+                      <path d="M4 8.5h12" />
+                    </svg>
+                  </span>
+                </div>
               </div>
               <span class="date-range-separator" aria-hidden="true">-</span>
               <div class="date-field">
                 <label for="recapToDate">结束日期</label>
-                <input id="recapToDate" type="datetime-local" />
+                <div class="date-input-shell">
+                  <input id="recapToDate" type="datetime-local" />
+                  <span class="date-input-display" data-date-display-for="recapToDate" aria-hidden="true">
+                    <span class="date-input-value">----</span>
+                    <svg viewBox="0 0 20 20" focusable="false">
+                      <rect x="4" y="5.5" width="12" height="10.5" rx="1.8" />
+                      <path d="M7 3.5v4" />
+                      <path d="M13 3.5v4" />
+                      <path d="M4 8.5h12" />
+                    </svg>
+                  </span>
+                </div>
               </div>
             </div>
             <p id="recapRangeHint" class="recap-range-hint" hidden></p>

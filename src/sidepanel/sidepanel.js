@@ -676,6 +676,7 @@ const nodes = {
   recapDetailsRoot: document.querySelector("#recapDetailsRoot"),
   recapDetailsText: document.querySelector("#recapDetailsText"),
   recapRangeHint: document.querySelector("#recapRangeHint"),
+  recapDateDisplays: document.querySelectorAll("[data-date-display-for]"),
   recapQuickButtons: document.querySelectorAll("[data-recap-preset]")
 };
 
@@ -1089,12 +1090,14 @@ function setRecapPreset(preset, options = {}) {
     fields.recapFromDate.value = dateInputValue(range.from);
     fields.recapToDate.value = dateInputValue(range.to);
   }
+  syncRecapDateDisplays();
   syncRecapRangeUi();
   if (!options.silent) fields.recapRangePreset?.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function markRecapRangeCustom() {
   if (fields.recapRangePreset) fields.recapRangePreset.value = "custom";
+  syncRecapDateDisplays();
   syncRecapRangeUi();
 }
 
@@ -1143,6 +1146,21 @@ function dateInputValue(date) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function syncRecapDateDisplays() {
+  for (const display of nodes.recapDateDisplays || []) {
+    const input = document.getElementById(display.dataset.dateDisplayFor || "");
+    const valueNode = display.querySelector(".date-input-value") || display;
+    valueNode.textContent = dateInputDisplayValue(input?.value || "");
+  }
+}
+
+function dateInputDisplayValue(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return "----";
+  const [, year, month, day, hour, minute] = match;
+  return `${year}/${month}/${day} ${hour}:${minute}`;
 }
 
 function createClientOperationId(prefix) {

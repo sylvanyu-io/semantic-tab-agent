@@ -603,7 +603,27 @@ h2 {
   font-weight: 820;
 }
 
+.date-input-shell {
+  position: relative;
+  min-width: 0;
+}
+
 .date-field input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-input-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   width: 100%;
   min-width: 0;
   min-height: 38px;
@@ -614,6 +634,30 @@ h2 {
   border-radius: 999px;
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--line) 9%, transparent);
   font-weight: 790;
+}
+
+.date-input-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date-input-display svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.date-input-shell:focus-within .date-input-display {
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--line));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 9%, transparent);
 }
 
 .date-range-separator {
