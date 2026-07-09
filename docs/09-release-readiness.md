@@ -213,7 +213,9 @@ Post-release hardening verification:
 - `npm run audit:release-artifacts`: passed and confirmed the store manifest
   has no optional extension permissions while keeping optional host permissions
   for explicitly configured custom AI API origins.
-- `npm test`: `340/340` Node and Worker tests passed.
+- `npm test`: `345/345` Node and Worker tests passed.
+- `npm run test:worker`: `35/35` Worker tests passed.
+- `npm run scan:secrets:history`: no secret patterns found in git history.
 - `npm run test:ui`: `51/51` Playwright UI smoke tests passed, covering recap
   progress/cancellation, organize and recap parallel generation, page-summary
   permission controls, custom provider model/ping errors, store content-access
