@@ -58,6 +58,35 @@ const STOP_WORDS = new Set([
   "教程"
 ]);
 
+const GENERIC_RECAP_THEME_TITLES = new Set([
+  "待分类",
+  "待确认",
+  "待整理",
+  "未分类",
+  "未整理",
+  "其他",
+  "杂项",
+  "综合",
+  "一般",
+  "通用",
+  "默认分组",
+  "general",
+  "general workbench",
+  "general workspace",
+  "workbench",
+  "uncategorized",
+  "unsorted",
+  "unclassified",
+  "needs review",
+  "to review",
+  "review",
+  "pending review",
+  "misc",
+  "miscellaneous",
+  "other",
+  "inbox"
+]);
+
 export async function generateTimeRecap(chromeApi, rawSettings = {}, options = {}) {
   const settings = normalizeSettings(rawSettings);
   const input = await buildTimeRecapInput(chromeApi, settings, options);
@@ -458,7 +487,7 @@ function normalizeTimeRecap(parsed, input, settings) {
       pageIds: ids,
       evidence: asArray(theme?.evidence).map((item) => text(item, 120)).filter(Boolean).slice(0, 4)
     };
-  }).filter((theme) => theme.title && (theme.description || theme.pageIds.length));
+  }).filter((theme) => theme.title && !isGenericRecapThemeTitle(theme.title) && (theme.description || theme.pageIds.length));
 
   const timeline = asArray(source.timeline).slice(0, 8).map((item) => ({
     label: text(item?.label || "", 80),
@@ -868,6 +897,16 @@ function uniqueNumbers(values) {
 
 function normalizeConfidence(value) {
   return ["high", "medium", "low"].includes(value) ? value : "medium";
+}
+
+function isGenericRecapThemeTitle(title) {
+  const normalized = String(title || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[「」『』“”"'`]/g, "")
+    .replace(/\s+/g, " ");
+  if (!normalized) return true;
+  return GENERIC_RECAP_THEME_TITLES.has(normalized);
 }
 
 function asArray(value) {

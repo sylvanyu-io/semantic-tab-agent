@@ -722,6 +722,66 @@ test("time recap gateway request parses fenced JSON and keeps page references va
   assert.equal("reviewCandidates" in result.recap, false);
 });
 
+test("time recap drops generic existing-group theme names from AI output", async () => {
+  const chrome = seededRecapChrome();
+  const fetchImpl = async () =>
+    new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                schema: "tab_recap_time_recap_v1",
+                language: "zh-CN",
+                headline: "这周主要在推进扩展发布。",
+                summary: "主要围绕发布检查、权限研究和侧边栏体验展开。",
+                themes: [
+                  {
+                    title: "待分类",
+                    description: "模型误把现有浏览器分组当成主要方向。",
+                    confidence: "high",
+                    ids: [1, 2],
+                    evidence: ["待分类"]
+                  },
+                  {
+                    title: "扩展发布与权限研究",
+                    description: "页面标题、摘要和活动记录都指向发布检查与权限讨论。",
+                    confidence: "high",
+                    ids: [1, 2],
+                    evidence: ["发布检查", "权限讨论"]
+                  }
+                ],
+                timeline: [{ label: "本周", description: "集中处理扩展发布。", ids: [1] }],
+                coverageNote: "已结合本地活动线索。"
+              })
+            }
+          }
+        ]
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1",
+      gatewayApiKey: "test-key",
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      fetchImpl
+    }
+  );
+
+  assert.equal(result.source, "ai");
+  assert.equal(result.recap.themes.some((theme) => theme.title === "待分类"), false);
+  assert.equal(result.recap.themes[0].title, "扩展发布与权限研究");
+});
+
 test("time recap model copy is normalized away from implementation field names", async () => {
   const chrome = seededRecapChrome();
   const fetchImpl = async () =>
