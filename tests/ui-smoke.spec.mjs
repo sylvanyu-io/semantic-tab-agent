@@ -1202,6 +1202,70 @@ test("time recap and organize generation can run in parallel", async ({ page }) 
     .toEqual({ recap: 1, analyze: 1 });
 });
 
+test("time recap error state does not leak into the organize setup surface", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      languageMode: "auto",
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "activity:generateTimeRecap") {
+            return { ok: false, error: "AI gateway time recap timed out after 300 seconds." };
+          }
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+  await expect(page.locator(".recap-card")).toContainText("已先生成本机回顾；AI 增强可稍后重试。");
+  await expect(page.locator(".launch-panel")).toBeHidden();
+
+  await page.getByRole("button", { name: "整理" }).click();
+  await expect(page.locator("#timeRecapPanel")).toBeHidden();
+  await expect(page.locator("#previewSection")).toBeHidden();
+  await expect(page.locator(".launch-panel")).toBeVisible();
+  await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
+  await expect(page.locator("#statusText")).toHaveText("AI 标签页整理与回顾");
+  await expect(page.locator(".recap-card")).toBeHidden();
+  await expect(page.locator(".error-panel")).toHaveCount(0);
+});
+
 test("stale organize runs do not overwrite a newer preview after cancel and restart", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
