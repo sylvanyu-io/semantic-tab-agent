@@ -725,6 +725,29 @@ function normalizePanelMode(mode) {
   return mode === PANEL_MODE_RECAP ? PANEL_MODE_RECAP : PANEL_MODE_ORGANIZE;
 }
 
+const persistGatewayEndpointSettings = debounce(async () => {
+  if (!shouldPersistGatewayEndpointSettings()) return;
+  await persistSettings();
+}, 500);
+
+function shouldPersistGatewayEndpointSettings() {
+  if (fields.gatewayProviderMode.value !== GATEWAY_PROVIDER_MODES.CUSTOM) return false;
+  const baseUrl = fields.gatewayBaseUrl.value.trim();
+  const apiKey = fields.gatewayApiKey.value.trim();
+  if (baseUrl && !isCompleteHttpUrl(baseUrl)) return false;
+  if (apiKey && !fields.rememberProviderKeys.checked) return false;
+  return true;
+}
+
+function isCompleteHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 init().catch((error) => setErrorStatus(error));
 
 async function init() {
@@ -774,6 +797,8 @@ function bindEvents() {
   fields.gatewayCustomAuxiliaryModel.addEventListener("input", debounce(persistSettings, 250));
   fields.gatewayBaseUrl.addEventListener("input", updateConditionalUi);
   fields.gatewayApiKey.addEventListener("input", updateConditionalUi);
+  fields.gatewayBaseUrl.addEventListener("input", persistGatewayEndpointSettings);
+  fields.gatewayApiKey.addEventListener("input", persistGatewayEndpointSettings);
   fields.pageContextMode.addEventListener("change", updateConditionalUi);
   fields.organizeMode.addEventListener("change", updateConditionalUi);
   fields.plannerProvider.addEventListener("change", updateConditionalUi);

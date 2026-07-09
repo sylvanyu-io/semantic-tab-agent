@@ -3189,6 +3189,100 @@ test("custom provider can use the default model when the model field is blank", 
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomAuxiliaryModel)).toBe("glm-5.2");
 });
 
+test("custom provider endpoint fields persist while typing", async ({ page }) => {
+  await page.addInitScript(() => {
+    let settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      analyzeGrouping: true,
+      analyzeCleanup: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      groupingGranularity: "balanced",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayProviderMode: "builtin",
+      gatewayBaseUrl: "",
+      gatewayModel: "gpt-5.4",
+      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayCustomModel: "",
+      gatewayCustomAuxiliaryModel: "",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.__savedSettings = [];
+    window.chrome = {
+      permissions: {
+        contains: async () => true,
+        request: async () => true
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") {
+            settings = message.settings;
+            window.__savedSettings.push(settings);
+            return { ok: true, result: settings };
+          }
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.getByText("更多选项").click();
+  await page.locator("#gatewayProviderMode").selectOption("custom");
+  await page.locator("#gatewayBaseUrl").fill("https://api.deepseek.com/v1");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.__savedSettings.some(
+          (settings) =>
+            settings.gatewayProviderMode === "custom" &&
+            settings.gatewayBaseUrl === "https://api.deepseek.com/v1"
+        )
+      )
+    )
+    .toBe(true);
+
+  await page.locator("#gatewayApiKey").fill("sk-test");
+  await page.waitForTimeout(650);
+  await expect(page.locator("#gatewayApiKey")).toHaveValue("sk-test");
+  await expect
+    .poll(() => page.evaluate(() => window.__savedSettings.some((settings) => settings.gatewayApiKey === "sk-test")))
+    .toBe(false);
+  await expect(page.locator("#rememberProviderKeys")).toBeEnabled();
+  await page.locator("#rememberProviderKeys").check();
+  await page.locator("#gatewayApiKey").fill("sk-test-final");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.__savedSettings.some(
+          (settings) =>
+            settings.gatewayProviderMode === "custom" &&
+            settings.rememberProviderKeys === true &&
+            settings.gatewayApiKey === "sk-test-final"
+        )
+      )
+    )
+    .toBe(true);
+});
+
 test("current-window generation without sourceWindowId uses the focused normal window", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
