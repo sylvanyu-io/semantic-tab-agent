@@ -1078,7 +1078,7 @@ test("time recap runtime message returns local fallback without mutating tabs", 
   assert.equal((await chrome.tabs.query({})).length, 3);
 });
 
-test("time recap runtime message honors explicit timeout and falls back locally", async () => {
+test("time recap runtime message maps custom provider timeout to product copy", async () => {
   const chrome = seededRecapChrome();
   const originalFetch = globalThis.fetch;
   let requested = false;
@@ -1106,7 +1106,7 @@ test("time recap runtime message honors explicit timeout and falls back locally"
 
     assert.equal(requested, true);
     assert.equal(result.source, "local_fallback");
-    assert.equal(result.error, "AI 增强未完成，已先生成本机回顾。");
+    assert.equal(result.error, "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
     assert.doesNotMatch(JSON.stringify(result), /AI gateway time recap timed out|timed out/);
     assert.doesNotMatch(result.recap.coverageNote, /AI 增强|AI 回顾暂时不可用|timed out/);
     assert.match(result.recap.coverageNote, /本机页面线索/);
@@ -1114,6 +1114,29 @@ test("time recap runtime message honors explicit timeout and falls back locally"
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("time recap built-in provider timeout keeps local fallback generic", async () => {
+  const chrome = seededRecapChrome();
+
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      languageMode: "zh-CN"
+    },
+    {
+      range: { preset: "7d" },
+      now: NOW,
+      timeoutMs: 25,
+      fetchImpl: async () => new Promise(() => {})
+    }
+  );
+
+  assert.equal(result.source, "local_fallback");
+  assert.equal(result.error, "AI 增强未完成，已先生成本机回顾。");
+  assert.doesNotMatch(JSON.stringify(result), /AI gateway time recap timed out|timed out/);
 });
 
 test("time recap fallback redacts raw gateway errors before returning state", async () => {

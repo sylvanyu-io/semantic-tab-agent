@@ -1,4 +1,4 @@
-import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shared/settings.js";
+import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, isCustomGatewayProvider, normalizeSettings } from "../shared/settings.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
 import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
@@ -99,8 +99,10 @@ function safeTimeRecapFallbackError(error, settings) {
   const message = sanitizeTimeRecapErrorDetail(error?.message || error || "");
   if (!message) return genericTimeRecapFallbackError(settings);
 
-  if (/AI gateway time recap timed out/i.test(message)) {
-    return genericTimeRecapFallbackError(settings);
+  if (/AI gateway time recap timed out|timed out/i.test(message)) {
+    return isCustomGatewayProvider(settings)
+      ? customTimeRecapTimeoutError(settings)
+      : genericTimeRecapFallbackError(settings);
   }
   if (
     /默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务拒绝访问|The default AI service|The custom API|The AI service/i.test(message) ||
@@ -117,6 +119,14 @@ function genericTimeRecapFallbackError(settings) {
     settings.languageMode,
     "AI 增强未完成，已先生成本机回顾。",
     "AI enhancement did not finish; local recap is ready."
+  );
+}
+
+function customTimeRecapTimeoutError(settings) {
+  return localizedText(
+    settings.languageMode,
+    "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
+    "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again."
   );
 }
 
