@@ -4,7 +4,7 @@ Date: 2026-06-26
 
 ## Question
 
-Tab Tidy previously used the hierarchical coarse/refine path only at 100+ tabs.
+TabRecap previously used the hierarchical coarse/refine path only at 100+ tabs.
 The user called out that small-session optimizations had become slower in some
 runs, so this decision must be based on measured accuracy and latency, not on a
 generic belief that "more stages are faster."
@@ -25,7 +25,7 @@ orchestrator-worker direction:
 - Microsoft's AutoGen documents mixture-of-agents as layered workers plus a
   single orchestrator.
 
-Tab Tidy should keep borrowing the pattern, not the framework weight: compact
+TabRecap should keep borrowing the pattern, not the framework weight: compact
 coarse routing, bounded refinement workers, deterministic local merge,
 validation, preview, and undo.
 

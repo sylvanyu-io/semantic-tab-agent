@@ -58,7 +58,7 @@ This report evaluates synthetic benchmark outputs against known topic slugs embe
 
 ## Reading The Numbers
 
-- Pair precision answers: when Tab Tidy puts two tabs in the same group, how often do they share the synthetic ground-truth topic?
-- Pair recall answers: among tabs that share a ground-truth topic, how often did Tab Tidy keep them together?
+- Pair precision answers: when TabRecap puts two tabs in the same group, how often do they share the synthetic ground-truth topic?
+- Pair recall answers: among tabs that share a ground-truth topic, how often did TabRecap keep them together?
 - Coverage is not accuracy. Higher review counts can improve safety but reduce automatic organization completeness.
 - These are synthetic metadata-only fixtures. They are useful for regression testing planner behavior, not a substitute for real browsing-session review.

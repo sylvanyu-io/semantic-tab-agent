@@ -18,8 +18,8 @@ This report evaluates synthetic benchmark outputs against explicit fixture truth
 
 ## Reading The Numbers
 
-- Topic precision answers: when Tab Tidy puts two tabs in the same group, how often do they share the fine-grained synthetic topic?
-- Topic recall answers: among tabs that share a fine-grained synthetic topic, how often did Tab Tidy keep them together?
+- Topic precision answers: when TabRecap puts two tabs in the same group, how often do they share the fine-grained synthetic topic?
+- Topic recall answers: among tabs that share a fine-grained synthetic topic, how often did TabRecap keep them together?
 - Family F1 is a coarser workflow-level score. It helps distinguish useful broad grouping from genuinely wrong mixed groups.
 - Coverage is not accuracy. Higher review counts can improve safety but reduce automatic organization completeness.
 - New benchmark files can carry explicit `benchmarkTruth.topicByTabId`; older files fall back to URL path inference.

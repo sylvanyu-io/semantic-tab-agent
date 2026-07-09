@@ -11,7 +11,7 @@ reducing wall-clock latency and request count.
 Do not ship this experiment.
 
 The experiment improved speed, but it reduced automatic organization quality on
-the synthetic benchmark. Tab Tidy's product premise depends on semantic grouping
+the synthetic benchmark. TabRecap's product premise depends on semantic grouping
 quality, so speed improvements that lower grouping recall are not acceptable as
 the default planner behavior.
 

@@ -2,7 +2,7 @@
 
 Date: 2026-06-26
 
-This document records the measurable outcome of changing Tab Tidy's gateway
+This document records the measurable outcome of changing TabRecap's gateway
 planner from serial hierarchical refinement to bounded parallel refinement with
 medium-effort bucket workers.
 
@@ -80,7 +80,7 @@ Keep the parallel refinement change because the product pain is concentrated in
 large tab piles. A 120-tab case that already finishes is less important than a
 400-tab case that previously could not produce a preview.
 
-Do not use this data to claim that Tab Tidy is faster for every workload.
+Do not use this data to claim that TabRecap is faster for every workload.
 
 ## Follow-Up Measurements
 
