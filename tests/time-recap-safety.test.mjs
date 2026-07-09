@@ -80,6 +80,8 @@ test("recap safety strips keep-open and later-review wording", () => {
     [
       "主要在研究回顾布局。",
       "这个页面未必需要一直挂着。",
+      "这几个页面没必要继续开着。",
+      "这个旧页不用开着。",
       "这些旧页回头判断是不是还要保留。",
       "后面可以收掉这几个标签页。",
       "That page is not worth keeping open.",
@@ -91,6 +93,8 @@ test("recap safety strips keep-open and later-review wording", () => {
   assert.equal(cleaned.includes("主要在研究回顾布局"), true);
   assert.equal(cleaned.includes("Work focused on timeline layout"), true);
   assert.equal(cleaned.includes("未必需要一直挂着"), false);
+  assert.equal(cleaned.includes("没必要继续开着"), false);
+  assert.equal(cleaned.includes("不用开着"), false);
   assert.equal(cleaned.includes("是不是还要保留"), false);
   assert.equal(cleaned.includes("收掉这几个标签页"), false);
   assert.equal(cleaned.includes("worth keeping open"), false);
