@@ -3934,9 +3934,8 @@ function mockCleanupPreview(grouping = true) {
         priority: "medium",
         reason: "activationFlow 显示 nearbyIds 很近，returnedToCount=0，dwellSeconds 很短。",
         evidence: [
-          "active_count 为0",
-          "age-days 约22",
-          "nearbyIds [31,32] and fromId 31 toId 32",
+          "transitionCount=2",
+          "dwellSeconds=45",
           "page_id 32",
           "tab_ids [31,32]",
           "sample_able false",
