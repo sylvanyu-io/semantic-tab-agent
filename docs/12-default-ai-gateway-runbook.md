@@ -218,6 +218,21 @@ npm test:
 Full Playwright UI smoke:
 51/51 passed
 
+npm run test:worker:
+35/35 passed
+
+npm run scan:secrets:
+No secret patterns found.
+
+npm run scan:secrets:history:
+No secret patterns found in git history.
+
+npm run build:
+Built dist/tab-recap-0.2.6.zip
+
+npm run audit:release-artifacts:
+Release artifact audit passed.
+
 Covered in this verification:
 - Worker/monitor tests for 530/1033 tunnel failures, retries, alert email state, recovery mail, and redaction;
 - gateway smoke helper tests for health, readiness, monitor status, and required-monitor gating;
