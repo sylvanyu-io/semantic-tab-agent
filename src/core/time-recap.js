@@ -117,8 +117,8 @@ function safeTimeRecapFallbackError(error, settings) {
 function genericTimeRecapFallbackError(settings) {
   return localizedText(
     settings.languageMode,
-    "AI 增强未完成，已先生成本机回顾。",
-    "AI enhancement did not finish; local recap is ready."
+    "本机回顾已生成；稍后可重新生成补全表达。",
+    "Local recap is ready. Regenerate later for a fuller version."
   );
 }
 

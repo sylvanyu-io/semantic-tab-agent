@@ -1354,7 +1354,7 @@ test("time recap error state does not leak into the organize setup surface", asy
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
-  await expect(page.locator(".recap-card")).toContainText("已先生成本机回顾；AI 增强可稍后重试。");
+  await expect(page.locator(".recap-card")).toContainText("本机回顾已生成；稍后可重新生成补全表达。");
   await expect(page.locator(".launch-panel")).toBeHidden();
 
   await page.getByRole("button", { name: "整理" }).click();
@@ -1814,7 +1814,7 @@ test("time recap fallback does not surface default service outages as recap cont
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
 
-  await expect(page.locator("#statusText")).toHaveText("已先生成本机回顾；AI 增强可稍后重试。");
+  await expect(page.locator("#statusText")).toHaveText("本机回顾已生成；稍后可重新生成补全表达。");
   await expect(page.locator(".recap-summary-card")).toContainText("已先根据本机线索完成回顾。");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("默认 AI 服务暂时不可用");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("recap_down_123");
@@ -1964,7 +1964,7 @@ test("time recap fallback hides unknown raw gateway errors even when they mentio
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
 
-  await expect(page.locator("#statusText")).toHaveText("已先生成本机回顾；AI 增强可稍后重试。");
+  await expect(page.locator("#statusText")).toHaveText("本机回顾已生成；稍后可重新生成补全表达。");
   await expect(page.locator(".recap-summary-card")).toContainText("已先根据本机线索完成回顾。");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("AI gateway upstream panic");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("SECRET123");
@@ -2132,13 +2132,13 @@ test("time recap error state does not resurrect the previous recap", async ({ pa
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 
   await page.getByRole("button", { name: "生成回顾" }).click();
-  await expect(page.locator(".recap-card")).toContainText("已先生成本机回顾；AI 增强可稍后重试。");
+  await expect(page.locator(".recap-card")).toContainText("本机回顾已生成；稍后可重新生成补全表达。");
   await expect(page.locator(".launch-panel")).toBeHidden();
   await expect(page.locator("#timeRecapPanel")).not.toContainText("第一次回顾结果");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator(".recap-card")).toContainText("Local recap is ready. You can retry AI enhancement later.");
+  await expect(page.locator(".recap-card")).toContainText("Local recap is ready. Regenerate later for a fuller version.");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("第一次回顾结果");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("300 seconds");
 });

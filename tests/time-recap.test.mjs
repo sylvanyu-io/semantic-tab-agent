@@ -1135,7 +1135,7 @@ test("time recap built-in provider timeout keeps local fallback generic", async 
   );
 
   assert.equal(result.source, "local_fallback");
-  assert.equal(result.error, "AI 增强未完成，已先生成本机回顾。");
+  assert.equal(result.error, "本机回顾已生成；稍后可重新生成补全表达。");
   assert.doesNotMatch(JSON.stringify(result), /AI gateway time recap timed out|timed out/);
 });
 
@@ -1169,7 +1169,7 @@ test("time recap fallback redacts raw gateway errors before returning state", as
   const serialized = JSON.stringify(result);
 
   assert.equal(result.source, "local_fallback");
-  assert.equal(result.error, "AI 增强未完成，已先生成本机回顾。");
+  assert.equal(result.error, "本机回顾已生成；稍后可重新生成补全表达。");
   assert.equal(serialized.includes(bearerToken), false);
   assert.equal(serialized.includes(fakeSkKey), false);
   assert.equal(serialized.includes("cliproxy-origin.sylvanyu.io/v1/chat/completions"), false);
