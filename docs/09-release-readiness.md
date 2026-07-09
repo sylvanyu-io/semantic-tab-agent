@@ -243,6 +243,15 @@ Post-release hardening verification:
   and read `4/4` active-tab samples. Key timings: all-window fake analyze
   `14.9s`, UI-authorized full page sampling `4.6s`. The gateway branch was
   skipped because `GATEWAY_API_KEY` was not set.
+- `2026-07-09 12:33` Asia/Shanghai: recap theme hardening recheck after
+  `92c4726`, `7927eaf`, and `261153e`. The code now filters generic existing
+  browser group names such as `待分类`, `General Workbench`, `page`, and `网页`
+  both while normalizing new AI recap output and while rendering older stored
+  recap results. Verification:
+  `node --test --test-reporter=dot tests/time-recap-safety.test.mjs tests/time-recap.test.mjs`
+  passed, `npm run test:ui` passed `54/54`, `npm test` passed `354/354`,
+  dev/store extension builds succeeded, `npm run scan:secrets` found no secret
+  patterns, and `npm run audit:release-artifacts` passed.
 - `2026-07-09 07:13` Asia/Shanghai: the live release gate components passed on
   the same code path. The latest `release:check:live` run reached and passed the
   240-tab stress phase (`dist/stress/sta-stress-mrcowcwu.json`), which means the
