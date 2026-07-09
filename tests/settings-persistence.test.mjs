@@ -4,6 +4,7 @@ import { getSettings, saveSettings } from "../src/core/controller.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import {
   createSettingsExport,
+  BUILTIN_GATEWAY_BASE_URL,
   DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
   GATEWAY_PROVIDER_MODES,
@@ -98,6 +99,23 @@ test("AI gateway settings normalize safely", () => {
     normalizeSettings({ ...DEFAULT_SETTINGS, gatewayBaseUrl: "https://cliproxy.sylvanyu.io/v1/" }).gatewayBaseUrl,
     ""
   );
+  const legacyBuiltinUrlInCustomProvider = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+    gatewayBaseUrl: `${BUILTIN_GATEWAY_BASE_URL}/`,
+    gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+    gatewayCustomModel: "deepseek-v4",
+    gatewayCustomAuxiliaryModel: "glm-5.2",
+    gatewayApiKey: "old-key",
+    rememberProviderKeys: true
+  });
+  assert.equal(legacyBuiltinUrlInCustomProvider.gatewayProviderMode, GATEWAY_PROVIDER_MODES.BUILTIN);
+  assert.equal(legacyBuiltinUrlInCustomProvider.gatewayBaseUrl, "");
+  assert.equal(legacyBuiltinUrlInCustomProvider.gatewayModel, DEFAULT_SETTINGS.gatewayModel);
+  assert.equal(legacyBuiltinUrlInCustomProvider.gatewayCustomModel, "");
+  assert.equal(legacyBuiltinUrlInCustomProvider.gatewayCustomAuxiliaryModel, "");
+  assert.equal(legacyBuiltinUrlInCustomProvider.gatewayApiKey, "");
+  assert.equal(legacyBuiltinUrlInCustomProvider.rememberProviderKeys, false);
   assert.equal(
     normalizeSettings({ ...DEFAULT_SETTINGS, gatewayBaseUrl: "https://api.openai.com/v1" }).gatewayBaseUrl,
     "https://api.openai.com/v1"

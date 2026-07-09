@@ -187,7 +187,11 @@ export function normalizeSettings(input = {}) {
   merged.maxTabsPerGroup = Math.max(1, Number.parseInt(merged.maxTabsPerGroup, 10) || DEFAULT_SETTINGS.maxTabsPerGroup);
   merged.languageMode = normalizeLanguageMode(merged.languageMode);
   merged.customPrompt = String(merged.customPrompt || "").slice(0, 4000);
+  const hadLegacyDefaultGatewayBaseUrl = isLegacyDefaultGatewayBaseUrl(merged.gatewayBaseUrl);
   merged.gatewayBaseUrl = normalizeOptionalBaseUrl(merged.gatewayBaseUrl);
+  if (hadLegacyDefaultGatewayBaseUrl) {
+    merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.BUILTIN;
+  }
   merged.gatewayCustomModel = normalizeGatewayCustomModel(merged.gatewayCustomModel);
   merged.gatewayCustomAuxiliaryModel = normalizeGatewayCustomModel(merged.gatewayCustomAuxiliaryModel);
   merged.gatewayModel = normalizeGatewayModel(merged.gatewayModel);
@@ -255,6 +259,15 @@ function clampNumber(value, min, max, fallback) {
 }
 
 function normalizeOptionalBaseUrl(value) {
+  const normalized = normalizeHttpBaseUrl(value);
+  return LEGACY_DEFAULT_GATEWAY_BASE_URLS.has(normalized) ? "" : normalized;
+}
+
+function isLegacyDefaultGatewayBaseUrl(value) {
+  return LEGACY_DEFAULT_GATEWAY_BASE_URLS.has(normalizeHttpBaseUrl(value));
+}
+
+function normalizeHttpBaseUrl(value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) return "";
 
@@ -264,8 +277,7 @@ function normalizeOptionalBaseUrl(value) {
     url.hash = "";
     url.search = "";
     url.pathname = url.pathname.replace(/\/+$/, "");
-    const normalized = url.toString().replace(/\/$/, "");
-    return LEGACY_DEFAULT_GATEWAY_BASE_URLS.has(normalized) ? "" : normalized;
+    return url.toString().replace(/\/$/, "");
   } catch {
     return "";
   }
