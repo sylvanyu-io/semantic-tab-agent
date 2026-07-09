@@ -162,6 +162,9 @@ const enumValues = {
 };
 
 export function normalizeSettings(input = {}) {
+  const rawInput = input && typeof input === "object" ? input : {};
+  const hadExplicitBuiltinGatewayProviderMode =
+    rawInput.gatewayProviderMode === GATEWAY_PROVIDER_MODES.BUILTIN;
   const merged = { ...DEFAULT_SETTINGS, ...(input || {}) };
 
   for (const [key, values] of Object.entries(enumValues)) {
@@ -195,13 +198,15 @@ export function normalizeSettings(input = {}) {
   merged.gatewayCustomModel = normalizeGatewayCustomModel(merged.gatewayCustomModel);
   merged.gatewayCustomAuxiliaryModel = normalizeGatewayCustomModel(merged.gatewayCustomAuxiliaryModel);
   merged.gatewayModel = normalizeGatewayModel(merged.gatewayModel);
-  if (shouldUseCustomGatewayProvider(merged)) {
+  if (shouldUseCustomGatewayProvider(merged, { allowBaseUrlFallback: !hadExplicitBuiltinGatewayProviderMode })) {
     merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.CUSTOM;
     merged.gatewayAuxiliaryModel = "same_as_primary";
     if (shouldPreferManualGatewayModel(merged)) {
       merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
     }
   } else {
+    merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.BUILTIN;
+    merged.gatewayBaseUrl = "";
     if (merged.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE) {
       merged.gatewayModel = DEFAULT_SETTINGS.gatewayModel;
     }
@@ -307,8 +312,9 @@ function shouldPreferManualGatewayModel(settings = {}) {
   return settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE || Boolean(settings.gatewayCustomModel);
 }
 
-function shouldUseCustomGatewayProvider(settings = {}) {
-  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl);
+function shouldUseCustomGatewayProvider(settings = {}, options = {}) {
+  const allowBaseUrlFallback = options.allowBaseUrlFallback !== false;
+  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || (allowBaseUrlFallback && Boolean(settings.gatewayBaseUrl));
 }
 
 function usesManualGatewayModel(settings = {}) {
@@ -316,7 +322,9 @@ function usesManualGatewayModel(settings = {}) {
 }
 
 export function isCustomGatewayProvider(settings = DEFAULT_SETTINGS) {
-  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || Boolean(settings.gatewayBaseUrl);
+  if (settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM) return true;
+  if (settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.BUILTIN) return false;
+  return Boolean(settings.gatewayBaseUrl);
 }
 
 export function resolveGatewayAuxiliaryModel(settings = DEFAULT_SETTINGS) {

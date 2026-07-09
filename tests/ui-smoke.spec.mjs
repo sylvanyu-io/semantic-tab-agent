@@ -3438,6 +3438,32 @@ test("custom provider endpoint fields persist while typing", async ({ page }) =>
       )
     )
     .toBe(true);
+
+  await page.locator("#gatewayProviderMode").selectOption("builtin");
+  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
+  await expect(page.locator("#gatewayApiKey")).toBeHidden();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const saved = window.__savedSettings.at(-1);
+        return {
+          providerMode: saved?.gatewayProviderMode,
+          baseUrl: saved?.gatewayBaseUrl,
+          customModel: saved?.gatewayCustomModel,
+          customAuxiliaryModel: saved?.gatewayCustomAuxiliaryModel,
+          apiKey: saved?.gatewayApiKey,
+          rememberProviderKeys: saved?.rememberProviderKeys
+        };
+      })
+    )
+    .toEqual({
+      providerMode: "builtin",
+      baseUrl: "",
+      customModel: "",
+      customAuxiliaryModel: "",
+      apiKey: "",
+      rememberProviderKeys: false
+    });
 });
 
 test("current-window generation without sourceWindowId uses the focused normal window", async ({ page }) => {

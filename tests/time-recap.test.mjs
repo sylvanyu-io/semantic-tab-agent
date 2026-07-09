@@ -3,7 +3,7 @@ import test from "node:test";
 import { handleRuntimeMessage } from "../src/core/controller.js";
 import { buildLocalTimeRecap, buildTimeRecapInput, generateTimeRecap, normalizeTimeRecapRange } from "../src/core/time-recap.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
-import { DEFAULT_SETTINGS, PLANNER_PROVIDERS, URL_PRIVACY_MODES } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS, GATEWAY_PROVIDER_MODES, PLANNER_PROVIDERS, URL_PRIVACY_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
 
 const NOW = Date.parse("2026-06-27T06:00:00.000Z");
@@ -697,6 +697,7 @@ test("time recap gateway request parses fenced JSON and keeps page references va
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "en-US"
@@ -766,6 +767,7 @@ test("time recap drops generic existing-group theme names from AI output", async
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -840,6 +842,7 @@ test("time recap model copy is normalized away from implementation field names",
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -921,6 +924,7 @@ test("time recap ignores AI follow-ups because recap is recap-only", async () =>
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -985,6 +989,7 @@ test("time recap strips cleanup recommendations from recap body fields", async (
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -1012,6 +1017,7 @@ test("time recap does not replace filtered cleanup follow-ups with local continu
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key"
     },
@@ -1088,6 +1094,7 @@ test("time recap runtime message honors explicit timeout and falls back locally"
       settings: {
         ...DEFAULT_SETTINGS,
         plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+        gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
         gatewayBaseUrl: "http://127.0.0.1:8317/v1",
         gatewayApiKey: "test-key",
         languageMode: "zh-CN"
@@ -1121,6 +1128,7 @@ test("time recap fallback redacts raw gateway errors before returning state", as
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -1156,6 +1164,7 @@ test("time recap fallback fully redacts URLs inside known product errors", async
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -1240,6 +1249,7 @@ test("time recap runtime message can be canceled while AI is running", async () 
       settings: {
         ...DEFAULT_SETTINGS,
         plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+        gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
         gatewayBaseUrl: "http://127.0.0.1:8317/v1",
         gatewayApiKey: "test-key",
         languageMode: "zh-CN"
@@ -1299,6 +1309,7 @@ test("time recap cancellation is scoped per source window", async () => {
     const settings = {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"
@@ -1407,6 +1418,7 @@ test("time recap newer same-window requests replace stale ones", async () => {
     const settings = {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://127.0.0.1:8317/v1",
       gatewayApiKey: "test-key",
       languageMode: "zh-CN"

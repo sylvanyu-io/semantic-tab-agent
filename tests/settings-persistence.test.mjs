@@ -92,7 +92,11 @@ test("blank numeric settings fall back instead of becoming zero", () => {
 
 test("AI gateway settings normalize safely", () => {
   assert.equal(
-    normalizeSettings({ ...DEFAULT_SETTINGS, gatewayBaseUrl: "http://127.0.0.1:8317/v1/" }).gatewayBaseUrl,
+    normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+      gatewayBaseUrl: "http://127.0.0.1:8317/v1/"
+    }).gatewayBaseUrl,
     "http://127.0.0.1:8317/v1"
   );
   assert.equal(
@@ -117,7 +121,11 @@ test("AI gateway settings normalize safely", () => {
   assert.equal(legacyBuiltinUrlInCustomProvider.gatewayApiKey, "");
   assert.equal(legacyBuiltinUrlInCustomProvider.rememberProviderKeys, false);
   assert.equal(
-    normalizeSettings({ ...DEFAULT_SETTINGS, gatewayBaseUrl: "https://api.openai.com/v1" }).gatewayBaseUrl,
+    normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+      gatewayBaseUrl: "https://api.openai.com/v1"
+    }).gatewayBaseUrl,
     "https://api.openai.com/v1"
   );
   assert.equal(
@@ -170,6 +178,7 @@ test("AI gateway settings normalize safely", () => {
   );
   const manualCustomGateway = normalizeSettings({
     ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
     gatewayBaseUrl: "https://api.deepseek.com/v1",
     gatewayModel: "gpt-5.4",
     gatewayCustomModel: "deepseek-v4"
@@ -179,6 +188,7 @@ test("AI gateway settings normalize safely", () => {
   assert.equal(resolveGatewayModel(manualCustomGateway), "deepseek-v4");
   const baseOnlyCustomGateway = normalizeSettings({
     ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
     gatewayBaseUrl: "https://proxy.example.test/v1",
     gatewayModel: "gpt-5.4"
   });
@@ -188,6 +198,7 @@ test("AI gateway settings normalize safely", () => {
   assert.equal(resolveGatewayAuxiliaryModel(baseOnlyCustomGateway), "gpt-5.4");
   const baseOnlyCustomGatewayWithAuxiliary = normalizeSettings({
     ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
     gatewayBaseUrl: "https://proxy.example.test/v1",
     gatewayModel: "gpt-5.4",
     gatewayCustomAuxiliaryModel: "glm-5.2"
@@ -213,6 +224,30 @@ test("AI gateway settings normalize safely", () => {
   });
   assert.equal(resolveGatewayModel(explicitCustomGatewayWithAuxiliary), "glm-5.2");
   assert.equal(resolveGatewayAuxiliaryModel(explicitCustomGatewayWithAuxiliary), "deepseek-v4");
+  const legacyBaseOnlyCustomGateway = normalizeSettings({
+    gatewayBaseUrl: "https://legacy-proxy.example.test/v1",
+    gatewayCustomModel: "deepseek-v4"
+  });
+  assert.equal(legacyBaseOnlyCustomGateway.gatewayProviderMode, GATEWAY_PROVIDER_MODES.CUSTOM);
+  assert.equal(legacyBaseOnlyCustomGateway.gatewayBaseUrl, "https://legacy-proxy.example.test/v1");
+  assert.equal(resolveGatewayModel(legacyBaseOnlyCustomGateway), "deepseek-v4");
+  const explicitBuiltinWithStaleCustomGateway = normalizeSettings({
+    ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.BUILTIN,
+    gatewayBaseUrl: "https://stale-custom.example.test/v1",
+    gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+    gatewayCustomModel: "deepseek-v4",
+    gatewayCustomAuxiliaryModel: "glm-5.2",
+    gatewayApiKey: "stale-key",
+    rememberProviderKeys: true
+  });
+  assert.equal(explicitBuiltinWithStaleCustomGateway.gatewayProviderMode, GATEWAY_PROVIDER_MODES.BUILTIN);
+  assert.equal(explicitBuiltinWithStaleCustomGateway.gatewayBaseUrl, "");
+  assert.equal(explicitBuiltinWithStaleCustomGateway.gatewayModel, DEFAULT_SETTINGS.gatewayModel);
+  assert.equal(explicitBuiltinWithStaleCustomGateway.gatewayCustomModel, "");
+  assert.equal(explicitBuiltinWithStaleCustomGateway.gatewayCustomAuxiliaryModel, "");
+  assert.equal(explicitBuiltinWithStaleCustomGateway.gatewayApiKey, "");
+  assert.equal(explicitBuiltinWithStaleCustomGateway.rememberProviderKeys, false);
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, gatewayModel: "gpt-5.4" }).gatewayModel, "gpt-5.4");
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, gatewayModel: "gpt-5.4-mini" }).gatewayModel, "gpt-5.4-mini");
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, gatewayAuxiliaryModel: "gpt-5.3-codex-spark" }).gatewayAuxiliaryModel, "gpt-5.3-codex-spark");
@@ -225,6 +260,7 @@ test("gateway key is not persisted unless explicitly remembered", async () => {
 
   await saveSettings(chrome, {
     ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
     gatewayBaseUrl: "http://localhost:8317/v1",
     gatewayApiKey: "gateway-test-key",
     rememberProviderKeys: false
@@ -234,6 +270,7 @@ test("gateway key is not persisted unless explicitly remembered", async () => {
 
   await saveSettings(chrome, {
     ...DEFAULT_SETTINGS,
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
     gatewayBaseUrl: "http://localhost:8317/v1",
     gatewayApiKey: "gateway-test-key",
     rememberProviderKeys: true

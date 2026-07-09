@@ -162,6 +162,7 @@ test("custom gateway base URLs use compatible JSON prompting without OpenAI-only
   assert.equal(
     shouldRequestJsonResponseFormat({
       ...DEFAULT_SETTINGS,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "https://proxy.example.test/v1"
     }),
     false
@@ -287,6 +288,7 @@ test("AI gateway planner posts a custom chat-completions JSON request", async ()
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US"
@@ -652,6 +654,7 @@ test("AI gateway planner returns cleanup candidates in the same full-detail plan
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US"
@@ -725,6 +728,7 @@ test("AI gateway planner normalizes cleanup copy away from implementation field 
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US"
@@ -801,6 +805,7 @@ test("AI gateway planner keeps a ranked cleanup checklist beyond the old 12-item
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US"
@@ -862,6 +867,7 @@ test("AI gateway planner fills cleanup checklist when the model returns too few 
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US"
@@ -929,6 +935,7 @@ test("AI gateway planner omits cleanup payload when cleanup analysis is disabled
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US",
@@ -995,6 +1002,7 @@ test("AI gateway planner supports cleanup-only analysis without creating groups"
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key",
       languageMode: "en-US",
@@ -1064,6 +1072,7 @@ test("AI gateway planner sends a custom model name to custom gateways", async ()
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "https://open.bigmodel.cn/api/paas/v4/",
       gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
       gatewayCustomModel: "glm-5.2",
@@ -1124,6 +1133,7 @@ test("AI gateway planner prefers manual model names when a custom base URL is se
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "https://api.deepseek.com/v1",
       gatewayModel: "gpt-5.4",
       gatewayCustomModel: "deepseek-v4",
@@ -1215,6 +1225,7 @@ test("AI gateway connection test sends a minimal custom API ping", async () => {
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "https://api.deepseek.com/v1/",
       gatewayModel: "gpt-5.4",
       gatewayCustomModel: "deepseek-v4",
@@ -1398,6 +1409,7 @@ test("AI gateway payload omits excluded tab titles", async () => {
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: "gateway-test-key"
     },
@@ -1731,6 +1743,7 @@ test("AI gateway planner can call a no-key custom gateway with the default model
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: ""
     },
@@ -1845,6 +1858,7 @@ test("AI gateway planner surfaces auth failures as product copy", async () => {
         {
           ...DEFAULT_SETTINGS,
           plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
           gatewayBaseUrl: "http://localhost:8317/v1",
           gatewayApiKey: "bad-key"
         },
@@ -1870,6 +1884,7 @@ test("AI gateway planner surfaces infrastructure failures as product copy", asyn
         {
           ...DEFAULT_SETTINGS,
           plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
           gatewayBaseUrl: "http://localhost:8317/v1",
           gatewayApiKey: "test-key"
         },
@@ -2038,6 +2053,7 @@ test("AI gateway planner accepts common non-infrastructure string error payloads
         {
           ...DEFAULT_SETTINGS,
           plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
           gatewayBaseUrl: "http://localhost:8317/v1",
           gatewayApiKey: "test-key"
         },
@@ -2135,6 +2151,7 @@ test("AI gateway planner redacts custom provider error details before surfacing 
         {
           ...DEFAULT_SETTINGS,
           plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
           gatewayBaseUrl: "http://localhost:8317/v1",
           gatewayApiKey: "test-key"
         },
@@ -2174,6 +2191,7 @@ test("AI gateway planner caps custom provider error details before surfacing the
         {
           ...DEFAULT_SETTINGS,
           plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+          gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
           gatewayBaseUrl: "http://localhost:8317/v1",
           gatewayApiKey: "test-key"
         },
@@ -3380,6 +3398,7 @@ test("AI gateway planner reports a friendly error when the gateway returns an em
       {
         ...DEFAULT_SETTINGS,
         plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+        gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
         gatewayBaseUrl: "http://localhost:8317/v1",
         gatewayApiKey: "gateway-test-key"
       },
