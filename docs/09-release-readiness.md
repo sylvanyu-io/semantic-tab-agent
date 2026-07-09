@@ -200,6 +200,16 @@ Latest patch release and live-gateway evidence:
 
 Post-release hardening verification:
 
+- `2026-07-09` Asia/Shanghai: `npm run release:check` passed again after the
+  custom AI gateway settings and recap fallback display hardening. The gate
+  covered clean build output, icon generation, `348/348` Node and Worker tests,
+  `53/53` Playwright UI smoke tests, current and history secret scans,
+  dev/store packaging, and release artifact audit.
+- The latest UI smoke coverage includes regression checks that legacy built-in
+  gateway URLs cannot leave the UI stuck in custom-provider mode, custom API
+  endpoint edits persist safely while typing without storing keys unless
+  requested, and local recap fallback does not surface default-service outage
+  copy as recap content.
 - `2026-07-09` Asia/Shanghai: `npm run release:check:full` passed on `main`
   after the store permission boundary and stress harness were tightened.
 - `npm run release:check`: passed end to end, including clean build output,
@@ -213,10 +223,10 @@ Post-release hardening verification:
 - `npm run audit:release-artifacts`: passed and confirmed the store manifest
   has no optional extension permissions while keeping optional host permissions
   for explicitly configured custom AI API origins.
-- `npm test`: `347/347` Node and Worker tests passed.
+- `npm test`: `348/348` Node and Worker tests passed.
 - `npm run test:worker`: `36/36` Worker tests passed.
 - `npm run scan:secrets:history`: no secret patterns found in git history.
-- `npm run test:ui`: `51/51` Playwright UI smoke tests passed, covering recap
+- `npm run test:ui`: `53/53` Playwright UI smoke tests passed, covering recap
   progress/cancellation, organize and recap parallel generation, page-summary
   permission controls, custom provider model/ping errors, store content-access
   hiding, and stale generation cancellation behavior.

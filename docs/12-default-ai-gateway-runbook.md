@@ -209,14 +209,14 @@ TOTAL_TIME: 7.42s
 model: gpt-5.4
 ```
 
-Latest local code verification, 2026-07-09 08:56 CST:
+Latest local code verification, 2026-07-09 CST:
 
 ```text
 npm test:
-347/347 passed
+348/348 passed
 
 Full Playwright UI smoke:
-51/51 passed
+53/53 passed
 
 npm run test:worker:
 36/36 passed
@@ -236,7 +236,7 @@ Release artifact audit passed.
 Covered in this verification:
 - Worker/monitor tests for 530/1033 tunnel failures, retries, alert email state, recovery mail, and redaction;
 - gateway smoke helper tests for health, readiness, monitor status, and required-monitor gating;
-- side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, and custom provider ping errors.
+- side-panel UI tests for recap progress, cancellation, organize/recap parallel generation, stale organize run suppression, custom provider model errors, custom provider ping errors, safe custom endpoint persistence, and local recap fallback display.
 ```
 
 Latest live gateway smoke, 2026-07-09 05:39 CST:
