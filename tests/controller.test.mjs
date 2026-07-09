@@ -365,6 +365,15 @@ test("closing cleanup candidates is explicit and updates the stored plan preview
       ],
       excludedTabs: [],
       lockedGroups: [],
+      activationFlow: {
+        tabActivity: [
+          { id: 10, activeCount: 2, totalActiveSeconds: 120, maxActiveSeconds: 90, nearbyIds: [11] },
+          { id: 11, activeCount: 1, totalActiveSeconds: 45, maxActiveSeconds: 45, nearbyIds: [10] }
+        ],
+        runs: [{ windowId: 1, ids: [10, 11], dwellSeconds: [120], repeatedIds: [] }],
+        transitions: [{ fromId: 10, toId: 11, count: 1, avgDwellSeconds: 120, maxDwellSeconds: 120 }],
+        evidence: [{ ids: [10, 11], strength: 0.7, count: 1, clues: ["same activation run"] }]
+      },
       pageSamples: []
     },
     plan: {
@@ -428,6 +437,12 @@ test("closing cleanup candidates is explicit and updates the stored plan preview
   assert.equal(result.preview.cleanup.candidateCount, 0);
   const stored = await getLastJob(chrome, 1);
   assert.deepEqual(stored.plan.groups[0].tabRefs.map((ref) => ref.tabId), [11]);
+  assert.equal(stored.inventory.windows[0].tabCount, 1);
+  assert.deepEqual(stored.inventory.activationFlow.tabActivity.map((activity) => activity.id), [11]);
+  assert.deepEqual(stored.inventory.activationFlow.tabActivity[0].nearbyIds, []);
+  assert.deepEqual(stored.inventory.activationFlow.runs, []);
+  assert.deepEqual(stored.inventory.activationFlow.transitions, []);
+  assert.deepEqual(stored.inventory.activationFlow.evidence, []);
   assert.equal(stored.validation.ok, true);
 });
 

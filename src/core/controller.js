@@ -489,18 +489,48 @@ function removeTabsFromStoredJob(job, tabIds) {
 
 function filterInventoryTabs(inventory = {}, removeIds) {
   const keepTab = (tab) => !removeIds.has(tab?.tabId);
+  const tabs = (inventory.tabs || []).filter(keepTab);
+  const plannerTabs = (inventory.plannerTabs || []).filter(keepTab);
+  const excludedTabs = (inventory.excludedTabs || []).filter(keepTab);
+  const windowTabCounts = new Map();
+  for (const tab of [...tabs, ...excludedTabs]) {
+    windowTabCounts.set(tab.windowId, (windowTabCounts.get(tab.windowId) || 0) + 1);
+  }
   return {
     ...inventory,
-    tabs: (inventory.tabs || []).filter(keepTab),
-    plannerTabs: (inventory.plannerTabs || []).filter(keepTab),
-    excludedTabs: (inventory.excludedTabs || []).filter(keepTab),
+    windows: (inventory.windows || []).map((window) => ({
+      ...window,
+      tabCount: windowTabCounts.get(window.windowId) || 0
+    })),
+    tabs,
+    plannerTabs,
+    excludedTabs,
     lockedGroups: (inventory.lockedGroups || [])
       .map((group) => ({
         ...group,
         tabIds: (group.tabIds || []).filter((tabId) => !removeIds.has(tabId))
       }))
       .filter((group) => group.tabIds.length),
+    activationFlow: filterActivationFlowTabs(inventory.activationFlow, removeIds),
     pageSamples: (inventory.pageSamples || []).filter((sample) => !removeIds.has(sample.tabId))
+  };
+}
+
+function filterActivationFlowTabs(activationFlow = {}, removeIds) {
+  return {
+    tabActivity: (activationFlow.tabActivity || [])
+      .filter((activity) => !removeIds.has(activity.id))
+      .map((activity) => ({
+        ...activity,
+        nearbyIds: (activity.nearbyIds || []).filter((id) => !removeIds.has(id))
+      })),
+    runs: (activationFlow.runs || []).filter((run) => (run.ids || []).every((id) => !removeIds.has(id))),
+    transitions: (activationFlow.transitions || []).filter(
+      (transition) => !removeIds.has(transition.fromId) && !removeIds.has(transition.toId)
+    ),
+    evidence: (activationFlow.evidence || []).filter(
+      (evidence) => Array.isArray(evidence.ids) && evidence.ids.every((id) => !removeIds.has(id))
+    )
   };
 }
 
