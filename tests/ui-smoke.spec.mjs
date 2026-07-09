@@ -646,6 +646,12 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
                       description: "这个旧页没必要继续开着。",
                       pageIds: [2],
                       evidence: ["低价值标签页"]
+                    },
+                    {
+                      title: "待分类",
+                      description: "旧缓存里的浏览器占位分组，不应该成为回顾主线。",
+                      pageIds: [2],
+                      evidence: ["旧分组"]
                     }
                   ],
                   timeline: [
@@ -702,6 +708,8 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
   await expect(page.locator(".recap-result")).not.toContainText("Review whether");
   await expect(page.locator(".recap-result")).not.toContainText("stale tabs");
   await expect(page.locator(".recap-result")).not.toContainText("回头处理");
+  await expect(page.locator(".recap-result")).not.toContainText("待分类");
+  await expect(page.locator(".recap-result")).not.toContainText("旧缓存里的浏览器占位分组");
   await expect(page.locator(".recap-topic-grid .recap-card")).toHaveCount(1);
   await expect(page.locator(".recap-timeline-row")).toHaveCount(1);
   await expect(page.locator("#recapDetailsText")).not.toContainText("Old cleanup note");

@@ -11,7 +11,7 @@ import { normalizeModelProductText } from "../shared/model-copy.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { redactSensitiveText } from "../shared/redaction.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
-import { stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
+import { isGenericRecapThemeTitle, stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 
 const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
@@ -1767,7 +1767,7 @@ function safeRecapForDisplay(recap = {}) {
     title: text(theme?.title),
     description: text(theme?.description || theme?.summary),
     evidence: asArray(theme?.evidence).map(text).filter(Boolean)
-  })).filter((theme) => theme.title || theme.description);
+  })).filter((theme) => (theme.title || theme.description) && !isGenericRecapThemeTitle(theme.title));
   const timeline = asArray(recap.timeline).map((item) => ({
     ...item,
     label: text(item?.label),

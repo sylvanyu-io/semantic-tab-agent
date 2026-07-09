@@ -3,7 +3,7 @@ import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
 import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
 import { redactSensitiveText } from "../shared/redaction.js";
-import { stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
+import { isGenericRecapThemeTitle, stripCleanupRecommendationsFromRecapText } from "../shared/time-recap-safety.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import {
   applyThinkingIntensity,
@@ -56,35 +56,6 @@ const STOP_WORDS = new Set([
   "页面",
   "文档",
   "教程"
-]);
-
-const GENERIC_RECAP_THEME_TITLES = new Set([
-  "待分类",
-  "待确认",
-  "待整理",
-  "未分类",
-  "未整理",
-  "其他",
-  "杂项",
-  "综合",
-  "一般",
-  "通用",
-  "默认分组",
-  "general",
-  "general workbench",
-  "general workspace",
-  "workbench",
-  "uncategorized",
-  "unsorted",
-  "unclassified",
-  "needs review",
-  "to review",
-  "review",
-  "pending review",
-  "misc",
-  "miscellaneous",
-  "other",
-  "inbox"
 ]);
 
 export async function generateTimeRecap(chromeApi, rawSettings = {}, options = {}) {
@@ -897,16 +868,6 @@ function uniqueNumbers(values) {
 
 function normalizeConfidence(value) {
   return ["high", "medium", "low"].includes(value) ? value : "medium";
-}
-
-function isGenericRecapThemeTitle(title) {
-  const normalized = String(title || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[「」『』“”"'`]/g, "")
-    .replace(/\s+/g, " ");
-  if (!normalized) return true;
-  return GENERIC_RECAP_THEME_TITLES.has(normalized);
 }
 
 function asArray(value) {

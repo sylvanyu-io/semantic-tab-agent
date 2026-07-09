@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { stripCleanupRecommendationsFromRecapText } from "../src/shared/time-recap-safety.js";
+import { isGenericRecapThemeTitle, stripCleanupRecommendationsFromRecapText } from "../src/shared/time-recap-safety.js";
 
 test("recap safety strips cleanup recommendations without removing evidence wording", () => {
   const cleaned = stripCleanupRecommendationsFromRecapText(
@@ -13,6 +13,12 @@ test("recap safety strips cleanup recommendations without removing evidence word
   assert.equal(cleaned.includes("Continue the release checklist"), true);
   assert.equal(cleaned.includes("可以关闭"), false);
   assert.equal(cleaned.includes("Review whether"), false);
+});
+
+test("recap safety detects generic browser group names as invalid theme titles", () => {
+  assert.equal(isGenericRecapThemeTitle("待分类"), true);
+  assert.equal(isGenericRecapThemeTitle("「General Workbench」"), true);
+  assert.equal(isGenericRecapThemeTitle("AI 编程代理工具调研"), false);
 });
 
 test("recap safety strips cleanup clauses without dropping useful recap clauses", () => {

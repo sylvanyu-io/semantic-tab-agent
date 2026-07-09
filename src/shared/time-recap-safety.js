@@ -29,6 +29,35 @@ const RECAP_CLEANUP_RECOMMENDATION_PATTERN = new RegExp(
   "i"
 );
 
+const GENERIC_RECAP_THEME_TITLES = new Set([
+  "待分类",
+  "待确认",
+  "待整理",
+  "未分类",
+  "未整理",
+  "其他",
+  "杂项",
+  "综合",
+  "一般",
+  "通用",
+  "默认分组",
+  "general",
+  "general workbench",
+  "general workspace",
+  "workbench",
+  "uncategorized",
+  "unsorted",
+  "unclassified",
+  "needs review",
+  "to review",
+  "review",
+  "pending review",
+  "misc",
+  "miscellaneous",
+  "other",
+  "inbox"
+]);
+
 export function stripCleanupRecommendationsFromRecapText(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -36,6 +65,16 @@ export function stripCleanupRecommendationsFromRecapText(value) {
   const kept = pieces.filter((piece) => !RECAP_CLEANUP_RECOMMENDATION_PATTERN.test(piece));
   if (kept.length === pieces.length) return text;
   return cleanupRecapSafetyText(kept.join(""));
+}
+
+export function isGenericRecapThemeTitle(title) {
+  const normalized = String(title || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[「」『』“”"'`]/g, "")
+    .replace(/\s+/g, " ");
+  if (!normalized) return true;
+  return GENERIC_RECAP_THEME_TITLES.has(normalized);
 }
 
 function splitRecapSafetyPieces(text) {
