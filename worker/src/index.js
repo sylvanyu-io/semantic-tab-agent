@@ -154,14 +154,14 @@ export async function handleRequest(request, env = {}, ctx = {}, options = {}) {
     return jsonError(validation.message, 400, validation.code, {}, request, requestId);
   }
 
-  const rateLimit = await checkRateLimits(request, env, limits);
-  if (!rateLimit.ok) {
-    return jsonError(rateLimit.message, 429, rateLimit.code, rateLimit.headers, request, requestId);
-  }
-
   const upstream = upstreamConfig(env);
   if (!upstream.ok) {
     return jsonError(upstream.message, 503, "upstream_not_configured", {}, request, requestId);
+  }
+
+  const rateLimit = await checkRateLimits(request, env, limits);
+  if (!rateLimit.ok) {
+    return jsonError(rateLimit.message, 429, rateLimit.code, rateLimit.headers, request, requestId);
   }
 
   const fetchImpl = options.fetchImpl || fetch;

@@ -437,9 +437,22 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
 });
 
 test("worker rejects chat requests without a rate limit store", async () => {
-  const response = await handle(chatRequest());
+  const response = await handle(chatRequest(), {
+    UPSTREAM_BASE_URL: "https://raw-llm.example/v1",
+    UPSTREAM_API_KEY: "upstream-secret"
+  });
   assert.equal(response.status, 429);
   assert.match((await response.json()).error.code, /rate_limit_store_missing/);
+});
+
+test("worker does not consume quota when the upstream is not configured", async () => {
+  const kv = new MemoryKv();
+  const response = await handle(chatRequest(), { RATE_LIMIT_KV: kv });
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.error.code, "upstream_not_configured");
+  assert.equal(kv.values.size, 0);
 });
 
 test("worker validates models and token caps before forwarding", async () => {

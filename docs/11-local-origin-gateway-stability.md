@@ -138,6 +138,14 @@ This avoids the observed QUIC failure mode where `cloudflared` stays alive but r
    the real LLM probe, so it does not spend model usage without a working alert
    channel.
 
+7. Quota is charged only after upstream config exists
+
+   Chat requests are still validated before any gateway work, but the Worker now
+   checks `UPSTREAM_BASE_URL` and `UPSTREAM_API_KEY` before incrementing request
+   quotas. If the default service is misconfigured, users receive
+   `upstream_not_configured` without consuming their install, IP, global, or page
+   summary quota.
+
 ## Worker Vars
 
 ```toml

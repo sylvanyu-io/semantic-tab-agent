@@ -213,7 +213,7 @@ Latest local code verification, 2026-07-09 08:16 CST:
 
 ```text
 npm test:
-345/345 passed
+347/347 passed
 
 Full Playwright UI smoke:
 51/51 passed
