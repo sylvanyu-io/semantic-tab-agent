@@ -224,6 +224,15 @@ Post-release hardening verification:
   windows after the stress harness was updated to follow scoped stored jobs. The
   run validated all-window apply/undo, current-window apply/undo, risk-gated
   sampling, UI-driven page sampling `240/240`, and active-tab sampling `4/4`.
+- `2026-07-09 09:04` Asia/Shanghai: local full-path stress was re-run after the
+  release verification count refresh. Artifact:
+  `dist/stress/sta-stress-mrcsxi3h.json`. It passed with `240` tabs across `4`
+  windows, restored all `240` tabs through all-window undo, restored the active
+  `60`-tab window through current-window undo, blocked `60/60` samples before
+  explicit risk acknowledgement, read `240/240` pages after UI authorization,
+  and read `4/4` active-tab samples. Key timings: all-window fake analyze
+  `14.9s`, UI-authorized full page sampling `4.6s`. The gateway branch was
+  skipped because `GATEWAY_API_KEY` was not set.
 - `2026-07-09 07:13` Asia/Shanghai: the live release gate components passed on
   the same code path. The latest `release:check:live` run reached and passed the
   240-tab stress phase (`dist/stress/sta-stress-mrcowcwu.json`), which means the

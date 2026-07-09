@@ -341,6 +341,22 @@ reviewTabsCount: 0
 excludedTabsCount: 0
 ```
 
+Latest local stress-only verification, 2026-07-09 09:04 CST:
+
+```text
+npm run stress:extension:
+stress artifact: dist/stress/sta-stress-mrcsxi3h.json
+stress status: passed
+stress scope: 240 tabs across 4 windows
+all-window apply/undo: 6 groups, restored 240 tabs
+current-window apply/undo: 6 groups for 60 tabs
+page-summary risk gate: blocked 60/60
+UI-driven page sampling: 240/240
+active-tab page sampling: 4/4
+key timings: all-window fake analyze 14.9s, full page sampling 4.6s
+gateway branch: skipped because GATEWAY_API_KEY is not set
+```
+
 This verification followed a transient 2026-07-09 06:30 CST monitor outage.
 Cloudflared logs showed edge disconnects and TLS handshake failures around the
 scheduled check. The local stack and tunnel were healthy again after the
