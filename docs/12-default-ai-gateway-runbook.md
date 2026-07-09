@@ -1,6 +1,6 @@
 # Default AI Gateway Runbook
 
-Status: current production path as of 2026-07-09 07:05 CST.
+Status: current production path as of 2026-07-09 08:17 CST.
 
 This document records the public TabRecap AI gateway setup so it can be
 debugged, migrated, or rebuilt later without relying on memory. It intentionally
@@ -340,6 +340,33 @@ debugging if alerts say the public AI service is unavailable.
 
 The service is usable, but it is still a Mac-hosted free service, not a managed
 cloud SLA.
+
+Latest helper validation, 2026-07-09 08:17 CST:
+
+```text
+manage-cliroxyapi-service.sh status:
+main local 8317: 200
+proxy local 18317: 200
+public origin health: 200
+public origin models: 200
+public main health: 200
+public main ready: 200
+
+launchd:
+com.router-for-me.cliproxyapi: not_loaded
+com.router-for-me.cliproxyapi-v1-proxy: not_loaded
+com.cloudflare.cloudflared.cliproxyapi: not_loaded
+
+screen fallback:
+cliroxy-main: running
+cliroxy-v1-proxy: running
+cliroxy-tunnel: running
+
+manage-cliroxyapi-service.sh smoke:
+HTTP_STATUS: 200
+TOTAL_TIME: 7.33s
+model: gpt-5.4
+```
 
 ## Worker
 
