@@ -35,6 +35,59 @@ Important distinction:
   not `https://cliproxy.sylvanyu.io/v1`, otherwise the Worker can call itself
   recursively.
 
+## Fast Triage When The Extension Says AI Is Unavailable
+
+Use this order before changing prompts, models, or extension code.
+
+1. Check the current live chain without spending model usage:
+
+   ```bash
+   /Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh status
+   curl -sS https://cliproxy.sylvanyu.io/readyz
+   ```
+
+   `cliproxy.sylvanyu.io/healthz` can be 200 while the actual local origin is
+   down. Treat `/readyz`, the helper `status`, or a real smoke request as the
+   source of truth.
+
+2. Read the latest scheduled monitor snapshot without spending model usage:
+
+   ```bash
+   TOKEN="$(cat /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-secrets/cliproxy-monitor-token)"
+   curl -sS -H "x-monitor-token: $TOKEN" https://cliproxy.sylvanyu.io/monitor/status
+   ```
+
+   This tells whether the 30-minute Cron monitor last saw `readyz` and
+   `llm-readyz` as healthy, and whether alert email is configured.
+
+3. If the live chain is healthy but the monitor still says down, wait for the
+   next 30-minute Cron or run ordinary smoke:
+
+   ```bash
+   npm run smoke:gateway
+   ```
+
+   The scheduled monitor can lag after manual recovery. Use
+   `GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway` only for release gates.
+
+4. If current `/readyz` fails, restart the local stack and Tunnel:
+
+   ```bash
+   /Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh restart
+   /Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh status
+   ```
+
+5. If `/readyz` passes but chat, organize, or recap still fails, run one real
+   smoke and correlate with logs by `x-tab-recap-request-id`:
+
+   ```bash
+   /Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh smoke
+   npx wrangler tail --config worker/wrangler.toml
+   ```
+
+   This is the path that catches model availability, upstream auth, timeout, or
+   JSON/output problems.
+
 ## Public Hostnames
 
 | Hostname | Role | Owner |
