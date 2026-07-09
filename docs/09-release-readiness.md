@@ -183,9 +183,9 @@ Latest full release gates:
 Latest patch release and live-gateway evidence:
 
 - `2026-07-08` Asia/Shanghai: released `v0.2.6` from `main` at `9ce1116`.
-- Local standard release gate passed for `0.2.6`: 250 Node/Worker tests, 36
-  Playwright UI smoke tests, current and history secret scans, dev plus store
-  builds, and release artifact audit.
+- Local standard release gate passed for `0.2.6` at release time: 250
+  Node/Worker tests, 36 Playwright UI smoke tests, current and history secret
+  scans, dev plus store builds, and release artifact audit.
 - Local packages produced by the gate:
   `dist/tab-recap-0.2.6.zip` and `dist/tab-recap-0.2.6-store.zip`.
 - GitHub Actions push CI passed on the same commit:
