@@ -101,6 +101,16 @@ test("recap safety strips keep-open and later-review wording", () => {
   assert.equal(cleaned.includes("whether to keep"), false);
 });
 
+test("recap safety strips short cleanup-only labels", () => {
+  assert.equal(stripCleanupRecommendationsFromRecapText("回头处理"), "");
+  assert.equal(stripCleanupRecommendationsFromRecapText("稍后复查"), "");
+  assert.equal(stripCleanupRecommendationsFromRecapText("后面检查"), "");
+
+  const useful = stripCleanupRecommendationsFromRecapText("后面处理告警系统故障，继续验证恢复邮件。");
+  assert.equal(useful.includes("后面处理告警系统故障"), true);
+  assert.equal(useful.includes("恢复邮件"), true);
+});
+
 test("recap safety strips direct English tab review and keep recommendations", () => {
   const cleaned = stripCleanupRecommendationsFromRecapText(
     [

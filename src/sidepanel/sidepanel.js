@@ -1741,12 +1741,12 @@ function safeRecapForDisplay(recap = {}) {
     title: text(theme?.title),
     description: text(theme?.description || theme?.summary),
     evidence: asArray(theme?.evidence).map(text).filter(Boolean)
-  })).filter((theme) => theme.title || theme.description || asArray(theme.pageIds || theme.ids).length);
+  })).filter((theme) => theme.title || theme.description);
   const timeline = asArray(recap.timeline).map((item) => ({
     ...item,
     label: text(item?.label),
     description: text(item?.description || item?.summary)
-  })).filter((item) => item.label || item.description || asArray(item.pageIds || item.ids).length);
+  })).filter((item) => item.label || item.description);
   return {
     ...recap,
     headline: text(recap.headline),

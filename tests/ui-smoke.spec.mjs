@@ -640,6 +640,12 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
                       description: "权限、发布和回顾体验是主线。Old cleanup note 是否保留可以回头判断。这个入口不用开着。",
                       pageIds: [1],
                       evidence: ["发布检查", "建议关闭旧页面"]
+                    },
+                    {
+                      title: "关闭旧标签页",
+                      description: "这个旧页没必要继续开着。",
+                      pageIds: [2],
+                      evidence: ["低价值标签页"]
                     }
                   ],
                   timeline: [
@@ -647,6 +653,11 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
                       label: "周末",
                       description: "集中做发布验证。Review whether to keep stale tabs.",
                       pageIds: [1]
+                    },
+                    {
+                      label: "回头处理",
+                      description: "Old cleanup note 可以关闭。",
+                      pageIds: [2]
                     }
                   ],
                   followUps: [
@@ -690,6 +701,9 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
   await expect(page.locator(".recap-result")).not.toContainText("建议关闭");
   await expect(page.locator(".recap-result")).not.toContainText("Review whether");
   await expect(page.locator(".recap-result")).not.toContainText("stale tabs");
+  await expect(page.locator(".recap-result")).not.toContainText("回头处理");
+  await expect(page.locator(".recap-topic-grid .recap-card")).toHaveCount(1);
+  await expect(page.locator(".recap-timeline-row")).toHaveCount(1);
   await expect(page.locator("#recapDetailsText")).not.toContainText("Old cleanup note");
 });
 
