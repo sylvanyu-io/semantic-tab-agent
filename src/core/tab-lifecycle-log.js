@@ -372,7 +372,11 @@ function isFreshSession(session, now) {
 }
 
 function getLifecycleStatsFromLog(log, now, options = {}) {
-  const sessions = Object.values(log.sessions).filter((session) => options.includeIncognitoTabs || !session.incognito);
+  const rawSessions = Object.values(log.sessions);
+  const sessions = rawSessions.filter((session) => options.includeIncognitoTabs || !session.incognito);
+  const hasHiddenSessions = rawSessions.length !== sessions.length;
+  const sessionIds = new Set(sessions.map((session) => session.id));
+  const events = filterLifecycleEventsForStats(log.events || [], sessionIds, options);
   const openSessions = sessions.filter((session) => !session.closedAt);
   const closedSessions = sessions.filter((session) => session.closedAt);
   const inferredClosed = closedSessions.filter((session) => session.closeReason === "missing_after_reconcile").length;
@@ -381,9 +385,9 @@ function getLifecycleStatsFromLog(log, now, options = {}) {
     openSessions: openSessions.length,
     closedSessions: closedSessions.length,
     inferredClosed,
-    events: log.events.length,
+    events: events.length,
     lastReconciledAt: log.lastReconciledAt || "",
-    reconcileStats: log.reconcileStats || null,
+    reconcileStats: options.includeIncognitoTabs || !hasHiddenSessions ? log.reconcileStats || null : visibleReconcileStats(log.reconcileStats, sessions),
     olderOpenTabs: openSessions
       .map((session) => ({
         sessionId: session.id,
@@ -400,6 +404,26 @@ function getLifecycleStatsFromLog(log, now, options = {}) {
       }))
       .sort((left, right) => right.ageMs - left.ageMs)
       .slice(0, 50)
+  };
+}
+
+function filterLifecycleEventsForStats(events, visibleSessionIds, options = {}) {
+  if (options.includeIncognitoTabs) return events;
+  return (events || []).filter((event) => {
+    if (event.sessionId) return visibleSessionIds.has(event.sessionId);
+    return event.type === RECONCILE_EVENT;
+  });
+}
+
+function visibleReconcileStats(stats, sessions) {
+  if (!stats) return null;
+  const openSessions = sessions.filter((session) => !session.closedAt).length;
+  const inferredClosed = sessions.filter((session) => session.closedAt && session.closeReason === "missing_after_reconcile").length;
+  return {
+    observed: openSessions,
+    inferredOpened: 0,
+    inferredClosed,
+    checkedAt: stats.checkedAt || ""
   };
 }
 

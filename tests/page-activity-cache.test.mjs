@@ -144,10 +144,12 @@ test("activity overview hides saved private activity when incognito is excluded"
   assert.equal(excluded.openTabs.tracked, 1);
   assert.equal(excluded.recap.recentPages.some((page) => page.title === "Private investor research"), false);
   assert.equal(excluded.lifecycle.olderOpenTabs.some((tab) => tab.tabId === 12), false);
+  assert.equal(excluded.lifecycle.events, 1);
   assert.equal(included.cache.entries, 2);
   assert.equal(included.openTabs.total, 3);
   assert.equal(included.recap.recentPages.some((page) => page.title === "Private investor research"), true);
   assert.equal(included.lifecycle.olderOpenTabs.some((tab) => tab.tabId === 12), true);
+  assert.equal(included.lifecycle.events, 2);
 });
 
 test("batch activity remember writes storage once and keeps recently active old pages in range", async () => {
