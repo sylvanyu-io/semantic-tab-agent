@@ -29,6 +29,7 @@ import { validatePlan } from "./plan-validator.js";
 
 const activeAnalyses = new Map();
 const activeTimeRecaps = new Map();
+const activeJobTransitionQueues = new Map();
 let analysisStartQueue = Promise.resolve();
 let browserMutationQueue = Promise.resolve();
 const GLOBAL_ANALYSIS_SCOPE = "all_windows";
@@ -85,6 +86,29 @@ async function getScopedLocal(chromeApi, baseKey, windowId, fallback = null) {
   return getLocal(chromeApi, scopedStorageKey(baseKey, resolvedWindowId), fallback);
 }
 
+async function getScopedSession(chromeApi, baseKey, windowId, fallback = null) {
+  const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
+  if (!Number.isInteger(resolvedWindowId)) return fallback;
+  const key = scopedStorageKey(baseKey, resolvedWindowId);
+  const result = await chromeApi.storage.session.get(key);
+  return result[key] ?? fallback;
+}
+
+async function setScopedSession(chromeApi, baseKey, windowId, value) {
+  const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
+  if (!Number.isInteger(resolvedWindowId)) {
+    throw new Error("Unable to resolve the current window for this operation.");
+  }
+  await chromeApi.storage.session.set({ [scopedStorageKey(baseKey, resolvedWindowId)]: value });
+  return value;
+}
+
+async function removeScopedSession(chromeApi, baseKey, windowId) {
+  const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
+  if (!Number.isInteger(resolvedWindowId)) return;
+  await chromeApi.storage.session.remove(scopedStorageKey(baseKey, resolvedWindowId));
+}
+
 async function setScopedLocal(chromeApi, baseKey, windowId, value) {
   const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
   if (!Number.isInteger(resolvedWindowId)) {
@@ -116,7 +140,7 @@ export async function handleRuntimeMessage(chromeApi, message) {
     case "tabs:clearAnalysisState":
       return clearAnalysisState(chromeApi, message.windowId);
     case "tabs:cancelActiveJob":
-      return cancelActiveJob(chromeApi, message.windowId);
+      return cancelActiveJob(chromeApi, message.windowId, message.operationId);
     case "progressCopy:generate":
       return generateProgressCopy(chromeApi, message);
     case "gateway:testConnection":
@@ -179,9 +203,10 @@ function isActiveJobStorageKey(key) {
 }
 
 async function getDiagnosticsSnapshot(chromeApi) {
-  const [settings, storage] = await Promise.all([
+  const [settings, storage, sessionStorage] = await Promise.all([
     getSettings(chromeApi),
-    chromeApi.storage.local.get(null)
+    chromeApi.storage.local.get(null),
+    chromeApi.storage.session.get(null)
   ]);
   const manifest = chromeApi.runtime?.getManifest?.();
   return {
@@ -195,7 +220,7 @@ async function getDiagnosticsSnapshot(chromeApi) {
     jobs: {
       active: summarizeScopedStoredItems(storage, STORAGE_KEYS.activeJob, summarizeStoredJob),
       last: summarizeScopedStoredItems(storage, STORAGE_KEYS.lastJob, summarizeStoredJob),
-      rollback: summarizeScopedStoredItems(storage, STORAGE_KEYS.lastRollback, summarizeRollback)
+      rollback: summarizeScopedStoredItems({ ...storage, ...sessionStorage }, STORAGE_KEYS.lastRollback, summarizeRollback)
     },
     storage: summarizeStorageKeys(storage)
   };
@@ -442,6 +467,27 @@ async function closeCleanupCandidatesLocked(chromeApi, message = {}) {
   const allowedIds = requestedIds.filter((tabId) => candidateIds.has(tabId));
   if (!allowedIds.length) {
     throw new Error(localizedText(message.languageMode || "zh-CN", "这些标签页不在清理建议里，请重新生成。", "These tabs are not in the cleanup suggestions. Regenerate the plan."));
+  }
+
+  assertNoConflictingAnalysisForWindows(
+    job.settings,
+    resolvedWindowId,
+    job.inventory?.scope?.windowIds || [resolvedWindowId]
+  );
+  const latestInventory = await collectTabInventory(chromeApi, job.settings, invocationForApply(job));
+  const originalById = new Map((job.inventory?.tabs || []).map((tab) => [tab.tabId, tab]));
+  const latestById = new Map((latestInventory?.tabs || []).map((tab) => [tab.tabId, tab]));
+  const changedIds = allowedIds.filter((tabId) => {
+    const original = originalById.get(tabId);
+    const latest = latestById.get(tabId);
+    return original && latest && hasTabContentChanged(original, latest);
+  });
+  if (changedIds.length) {
+    throw new Error(localizedText(
+      message.languageMode || "zh-CN",
+      "标签页内容已变化。为避免误关，请重新生成清理建议。",
+      "Tab content changed. Regenerate cleanup suggestions to avoid closing the wrong page."
+    ));
   }
 
   const existingIds = [];
@@ -732,16 +778,19 @@ async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId
       preview
     };
 
-    const storedJob = sanitizeJobForStorage(job);
-    await setScopedLocal(chromeApi, STORAGE_KEYS.lastJob, resolvedWindowId, storedJob);
-    await reportProgress({
-      status: "complete",
-      phase: "complete",
-      progress: 100,
-      message: validation?.ok ? "方案好了，可以先检查" : "方案需要检查",
-      finishedAt: new Date().toISOString()
+    return commitCompletedAnalysis(chromeApi, {
+      operationId,
+      windowId: resolvedWindowId,
+      abortController,
+      job,
+      completion: {
+        status: "complete",
+        phase: "complete",
+        progress: 100,
+        message: validation?.ok ? "方案好了，可以先检查" : "方案需要检查",
+        finishedAt: new Date().toISOString()
+      }
     });
-    return storedJob;
   } catch (error) {
     const canceled = abortController.signal.aborted;
     const message = canceled ? "已停止生成。" : error.message;
@@ -798,25 +847,34 @@ export async function getActiveJob(chromeApi, windowId = null) {
   return job;
 }
 
-export async function cancelActiveJob(chromeApi, windowId = null) {
+export async function cancelActiveJob(chromeApi, windowId = null, operationId = "") {
   const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
-  const job = await getScopedLocal(chromeApi, STORAGE_KEYS.activeJob, resolvedWindowId);
-  if (!job || ACTIVE_JOB_TERMINAL_STATUSES.has(job.status)) {
-    return { canceled: false, job: job || null };
-  }
+  return withActiveJobTransitionLock(resolvedWindowId, async () => {
+    const job = await getScopedLocal(chromeApi, STORAGE_KEYS.activeJob, resolvedWindowId);
+    if (!job || ACTIVE_JOB_TERMINAL_STATUSES.has(job.status)) {
+      return { canceled: false, job: job || null };
+    }
+    if (operationId && job.operationId !== operationId) {
+      return { canceled: false, job };
+    }
 
-  const controller = activeAnalyses.get(normalizeWindowScope(resolvedWindowId))?.abortController;
-  const nextJob = await writeActiveJob(chromeApi, {
-    ...job,
-    status: "canceled",
-    phase: "canceled",
-    message: "已停止生成。",
-    error: "",
-    finishedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }, resolvedWindowId);
-  controller?.abort();
-  return { canceled: Boolean(controller), job: nextJob };
+    const active = activeAnalyses.get(normalizeWindowScope(resolvedWindowId));
+    if (active && active.operationId !== job.operationId) {
+      return { canceled: false, job };
+    }
+    const nextJob = await writeActiveJob(chromeApi, {
+      ...job,
+      status: "canceled",
+      phase: "canceled",
+      message: "已停止生成。",
+      error: "",
+      finishedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, resolvedWindowId);
+    active?.abortController?.abort();
+    if (active?.operationId) clearActiveAnalysis(active.operationId);
+    return { canceled: Boolean(active), job: nextJob };
+  });
 }
 
 export async function generateProgressCopy(chromeApi, request = {}) {
@@ -901,6 +959,11 @@ async function applyLastPlanLocked(chromeApi, options = {}) {
   if (job.settings?.organizeMode === ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW && !options.confirmMultiWindow) {
     return { requiresMultiWindowConfirmation: true };
   }
+  assertNoConflictingAnalysisForWindows(
+    job.settings,
+    resolvedWindowId,
+    job.inventory?.scope?.windowIds || [resolvedWindowId]
+  );
 
   const latestInventory = await collectTabInventory(chromeApi, job.settings, invocationForApply(job));
   let planForApply = job.plan;
@@ -931,8 +994,9 @@ async function applyLastPlanLocked(chromeApi, options = {}) {
     rebaseSummary = rebased.summary;
   }
 
+  await invalidateConflictingRollbacks(chromeApi, inventoryForApply);
   const rollbackSnapshot = await createRollbackSnapshot(chromeApi, inventoryForApply, job.settings);
-  await setScopedLocal(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId, rollbackSnapshot);
+  await setScopedSession(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId, rollbackSnapshot);
 
   const { rollback, result } = await applyValidatedPlan(
     chromeApi,
@@ -940,9 +1004,9 @@ async function applyLastPlanLocked(chromeApi, options = {}) {
     inventoryForApply,
     job.settings,
     rollbackSnapshot,
-    (nextRollback) => setScopedLocal(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId, nextRollback)
+    (nextRollback) => setScopedSession(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId, nextRollback)
   );
-  await setScopedLocal(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId, rollback);
+  await setScopedSession(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId, rollback);
   await removeScopedLocal(chromeApi, STORAGE_KEYS.lastJob, resolvedWindowId);
   return rebaseSummary ? { ...result, rebasedPlan: rebaseSummary } : result;
 }
@@ -1158,6 +1222,14 @@ function tabFingerprint(tab = {}) {
   ]);
 }
 
+function hasTabContentChanged(original = {}, latest = {}) {
+  if ((original.title || "") !== (latest.title || "")) return true;
+  if (original.urlKey && latest.urlKey) return original.urlKey !== latest.urlKey;
+  if (original.sanitizedUrl && latest.sanitizedUrl) return original.sanitizedUrl !== latest.sanitizedUrl;
+  if (original.hostname && latest.hostname) return original.hostname !== latest.hostname;
+  return false;
+}
+
 function rebaseConfirmationToken(summary = {}) {
   const payload = {
     removed: uniqueNumbers(summary.removedTabIds || []).sort((a, b) => a - b),
@@ -1294,17 +1366,48 @@ export async function undoLastApply(chromeApi, windowId = null) {
 
 async function undoLastApplyLocked(chromeApi, windowId = null) {
   const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
-  const rollback = await getScopedLocal(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId);
+  const rollback = await getScopedSession(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId);
   if (!rollback) throw new Error("No rollback snapshot is available.");
+  assertNoConflictingAnalysisForWindows(
+    { organizeMode: rollback.mode },
+    resolvedWindowId,
+    (rollback.sourceWindows || []).map((window) => window.windowId)
+  );
   const result = await undoFromRollback(chromeApi, rollback);
-  await removeScopedLocal(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId);
+  await removeScopedSession(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId);
   return result;
 }
 
 export async function canUndoLastApply(chromeApi, windowId = null) {
   const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
-  const rollback = await getScopedLocal(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId);
+  const rollback = await getScopedSession(chromeApi, STORAGE_KEYS.lastRollback, resolvedWindowId);
   return { canUndo: Boolean(rollback) };
+}
+
+async function invalidateConflictingRollbacks(chromeApi, inventory = {}) {
+  const storage = await chromeApi.storage.session.get(null);
+  const affectedTabIds = new Set((inventory.tabs || []).map((tab) => tab.tabId));
+  const keys = Object.entries(storage || {})
+    .filter(([key, rollback]) =>
+      key.startsWith(`${STORAGE_KEYS.lastRollback}:`) &&
+      (rollback?.tabs || []).some((tab) => affectedTabIds.has(tab.tabId))
+    )
+    .map(([key]) => key);
+  if (keys.length) await chromeApi.storage.session.remove(keys);
+}
+
+function assertNoConflictingAnalysisForWindows(settings, windowId, windowIds = []) {
+  if (activeAnalyses.has(GLOBAL_ANALYSIS_SCOPE)) {
+    throw new Error("正在生成整理方案，请等待完成或先停止生成。");
+  }
+  const normalized = normalizeSettings(settings || {});
+  if (normalized.organizeMode === ORGANIZE_MODES.CONSOLIDATE_ONE_WINDOW && activeAnalyses.size) {
+    throw new Error("正在生成整理方案，请等待完成或先停止生成。");
+  }
+  const scopes = new Set([windowId, ...windowIds].filter(Number.isInteger).map(normalizeWindowScope));
+  if ([...scopes].some((scope) => activeAnalyses.has(scope))) {
+    throw new Error("正在生成整理方案，请等待完成或先停止生成。");
+  }
 }
 
 function redactSettingsForJob(settings) {
@@ -1672,40 +1775,85 @@ function isValidInstallId(value) {
 }
 
 async function updateActiveJob(chromeApi, operationId, patch, windowId = null) {
-  const current = await getScopedLocal(chromeApi, STORAGE_KEYS.activeJob, windowId, {});
-  if (current?.operationId && current.operationId !== operationId) return current;
-  if (ACTIVE_JOB_TERMINAL_STATUSES.has(current?.status)) return current;
+  const resolvedWindowId = await resolveStateWindowId(chromeApi, windowId);
+  return withActiveJobTransitionLock(resolvedWindowId, async () => {
+    const current = await getScopedLocal(chromeApi, STORAGE_KEYS.activeJob, resolvedWindowId, {});
+    if (current?.operationId && current.operationId !== operationId) return current;
+    if (ACTIVE_JOB_TERMINAL_STATUSES.has(current?.status)) return current;
 
-  const nextPatch = { ...patch };
-  if (current?.status === "canceling") {
-    if (nextPatch.status === "complete") {
-      nextPatch.status = "canceled";
-      nextPatch.phase = "canceled";
-      nextPatch.message = "已停止生成。";
-      nextPatch.error = "";
-      nextPatch.finishedAt = nextPatch.finishedAt || new Date().toISOString();
-    } else if (!ACTIVE_JOB_TERMINAL_STATUSES.has(nextPatch.status)) {
-      nextPatch.status = "canceling";
-      nextPatch.phase = "canceling";
-      nextPatch.message = "正在停止生成";
+    const nextPatch = { ...patch };
+    if (current?.status === "canceling") {
+      if (nextPatch.status === "complete") {
+        nextPatch.status = "canceled";
+        nextPatch.phase = "canceled";
+        nextPatch.message = "已停止生成。";
+        nextPatch.error = "";
+        nextPatch.finishedAt = nextPatch.finishedAt || new Date().toISOString();
+      } else if (!ACTIVE_JOB_TERMINAL_STATUSES.has(nextPatch.status)) {
+        nextPatch.status = "canceling";
+        nextPatch.phase = "canceling";
+        nextPatch.message = "正在停止生成";
+      }
     }
-  }
-  if (
-    typeof current?.progress === "number" &&
-    typeof nextPatch.progress === "number" &&
-    nextPatch.progress < current.progress &&
-    !ACTIVE_JOB_TERMINAL_STATUSES.has(nextPatch.status)
-  ) {
-    nextPatch.progress = current.progress;
-  }
+    if (
+      typeof current?.progress === "number" &&
+      typeof nextPatch.progress === "number" &&
+      nextPatch.progress < current.progress &&
+      !ACTIVE_JOB_TERMINAL_STATUSES.has(nextPatch.status)
+    ) {
+      nextPatch.progress = current.progress;
+    }
 
-  return writeActiveJob(chromeApi, {
-    ...current,
-    operationId,
-    status: current?.status || "running",
-    ...nextPatch,
-    updatedAt: new Date().toISOString()
-  }, windowId);
+    return writeActiveJob(chromeApi, {
+      ...current,
+      operationId,
+      status: current?.status || "running",
+      ...nextPatch,
+      updatedAt: new Date().toISOString()
+    }, resolvedWindowId);
+  });
+}
+
+async function commitCompletedAnalysis(chromeApi, { operationId, windowId, abortController, job, completion }) {
+  return withActiveJobTransitionLock(windowId, async () => {
+    const current = await getScopedLocal(chromeApi, STORAGE_KEYS.activeJob, windowId, {});
+    if (
+      abortController.signal.aborted ||
+      current?.operationId !== operationId ||
+      ACTIVE_JOB_TERMINAL_STATUSES.has(current?.status)
+    ) {
+      throw new Error("已停止生成。");
+    }
+    const storedJob = sanitizeJobForStorage(job);
+    const completedJob = sanitizeActiveJob({
+      ...current,
+      operationId,
+      ...completion,
+      updatedAt: new Date().toISOString()
+    });
+    await chromeApi.storage.local.set({
+      [scopedStorageKey(STORAGE_KEYS.lastJob, windowId)]: storedJob,
+      [scopedStorageKey(STORAGE_KEYS.activeJob, windowId)]: completedJob
+    });
+    return storedJob;
+  });
+}
+
+async function withActiveJobTransitionLock(windowId, callback) {
+  const scope = normalizeWindowScope(windowId);
+  const previous = activeJobTransitionQueues.get(scope) || Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  activeJobTransitionQueues.set(scope, current);
+  await previous.catch(() => null);
+  try {
+    return await callback();
+  } finally {
+    release();
+    if (activeJobTransitionQueues.get(scope) === current) activeJobTransitionQueues.delete(scope);
+  }
 }
 
 async function writeActiveJob(chromeApi, job, windowId = null) {

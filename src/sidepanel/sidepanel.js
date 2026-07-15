@@ -702,6 +702,7 @@ let lastTimeRecapError = null;
 let lastCanApply = false;
 let canUndo = false;
 let activeAnalyzeRunId = null;
+let activeAnalyzeOperationId = null;
 const canceledAnalyzeRuns = new Set();
 let activeRecapOperationId = null;
 const canceledRecapOperations = new Set();
@@ -1476,7 +1477,13 @@ async function analyze() {
     if (shouldIgnoreAnalyzeRun(runId)) return;
     updateLocalProgress(t("status.startingBackground"), 16, PANEL_MODE_ORGANIZE);
     const started = await sendMessage({ type: "tabs:startAnalyze", settings, persistedSettings, windowId });
-    if (shouldIgnoreAnalyzeRun(runId)) return;
+    if (shouldIgnoreAnalyzeRun(runId)) {
+      if (started?.operationId) {
+        sendMessage({ type: "tabs:cancelActiveJob", windowId, operationId: started.operationId }).catch(() => {});
+      }
+      return;
+    }
+    activeAnalyzeOperationId = started?.operationId || null;
     const job = await waitForAnalysisCompletion(started?.operationId);
     if (shouldIgnoreAnalyzeRun(runId)) return;
     lastPreview = job.preview;
@@ -1500,6 +1507,7 @@ async function analyze() {
       stopProgressPolling();
       setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
       activeAnalyzeRunId = null;
+      activeAnalyzeOperationId = null;
     }
     canceledAnalyzeRuns.delete(runId);
   }
@@ -2181,8 +2189,17 @@ async function cancelAnalyze() {
   }
   setCancelDisabled(PANEL_MODE_ORGANIZE, true);
   setStatusKey("status.canceling", {}, false, { mode: PANEL_MODE_ORGANIZE });
+  if (!activeAnalyzeOperationId) {
+    stopProgressPolling();
+    setBusy(false, "", { mode: PANEL_MODE_ORGANIZE });
+    setStatusKey("status.canceled", {}, false, { mode: PANEL_MODE_ORGANIZE });
+    return;
+  }
   try {
-    const result = await sendMessage(scopedWindowMessage({ type: "tabs:cancelActiveJob" }));
+    const result = await sendMessage(scopedWindowMessage({
+      type: "tabs:cancelActiveJob",
+      operationId: activeAnalyzeOperationId || undefined
+    }));
     if (result?.job) updateProgressFromJob(result.job, PANEL_MODE_ORGANIZE);
     if (result?.job?.status === "complete") {
       await restoreCompletedJob(result.job);

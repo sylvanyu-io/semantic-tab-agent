@@ -3,6 +3,7 @@ export function createFakeChrome(seed = {}) {
     windows: new Map(),
     groups: new Map(),
     storage: {},
+    sessionStorage: {},
     grantedOrigins: new Set(seed.grantedOrigins || []),
     nextWindowId: seed.nextWindowId || 100,
     nextGroupId: seed.nextGroupId || 500
@@ -35,6 +36,24 @@ export function createFakeChrome(seed = {}) {
         },
         async remove(key) {
           for (const item of Array.isArray(key) ? key : [key]) delete state.storage[item];
+        }
+      },
+      session: {
+        async get(key) {
+          if (Array.isArray(key)) {
+            return Object.fromEntries(key.map((item) => [item, state.sessionStorage[item]]));
+          }
+          if (typeof key === "string") return { [key]: state.sessionStorage[key] };
+          if (key && typeof key === "object") {
+            return Object.fromEntries(Object.entries(key).map(([item, fallback]) => [item, state.sessionStorage[item] ?? fallback]));
+          }
+          return { ...state.sessionStorage };
+        },
+        async set(values) {
+          Object.assign(state.sessionStorage, structuredClone(values));
+        },
+        async remove(key) {
+          for (const item of Array.isArray(key) ? key : [key]) delete state.sessionStorage[item];
         }
       }
     },

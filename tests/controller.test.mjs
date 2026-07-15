@@ -423,6 +423,19 @@ test("closing cleanup candidates is explicit and updates the stored plan preview
   };
   await chrome.storage.local.set({ [`${STORAGE_KEYS.lastJob}:1`]: job });
 
+  await chrome.tabs.update(10, { title: "Important new page", url: "https://example.com/important" });
+  await assert.rejects(
+    () => handleRuntimeMessage(chrome, {
+      type: "tabs:closeCleanupCandidates",
+      windowId: 1,
+      tabIds: [10],
+      languageMode: "en-US"
+    }),
+    /Tab content changed/
+  );
+  assert.equal((await chrome.tabs.get(10)).title, "Important new page");
+  await chrome.tabs.update(10, { title: "Old docs", url: "https://example.com/old" });
+
   const result = await handleRuntimeMessage(chrome, {
     type: "tabs:closeCleanupCandidates",
     windowId: 1,
@@ -1061,6 +1074,26 @@ test("undo availability is hydrated from the stored rollback snapshot", async ()
   assert.equal((await canUndoLastApply(chrome)).canUndo, true);
   await undoLastApply(chrome);
   assert.equal((await canUndoLastApply(chrome)).canUndo, false);
+});
+
+test("undo snapshots expire with the browser session", async () => {
+  const chrome = createFakeChrome({
+    windows: [{
+      id: 1,
+      focused: true,
+      tabs: [
+        { id: 10, title: "GitHub pull request", url: "https://github.com/acme/repo/pull/1", active: true },
+        { id: 11, title: "OpenAI API docs", url: "https://platform.openai.com/docs" }
+      ]
+    }]
+  });
+
+  await analyzeTabs(chrome, FAKE_PLANNER_SETTINGS, { windowId: 1 });
+  await applyLastPlan(chrome);
+  assert.equal((await canUndoLastApply(chrome, 1)).canUndo, true);
+
+  for (const key of Object.keys(chrome.__state.sessionStorage)) delete chrome.__state.sessionStorage[key];
+  assert.equal((await canUndoLastApply(chrome, 1)).canUndo, false);
 });
 
 test("applying a plan keeps review-like groups after topic groups", async () => {
@@ -1998,6 +2031,38 @@ test("concurrent starts for the same window reserve the scope atomically", async
   }
 });
 
+test("a stale cancel operation cannot stop the next analysis", async () => {
+  const chrome = createFakeChrome({
+    windows: [{
+      id: 1,
+      focused: true,
+      tabs: [{ id: 10, title: "Window one docs", url: "https://example.com/window-one", active: true }]
+    }]
+  });
+  const originalFetch = globalThis.fetch;
+  const settings = { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" };
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+  });
+
+  try {
+    const first = await startAnalyzeTabs(chrome, settings, { windowId: 1 });
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === first.operationId && job.phase === "planning");
+    await cancelActiveJob(chrome, 1, first.operationId);
+
+    const second = await startAnalyzeTabs(chrome, settings, { windowId: 1 });
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === second.operationId && job.phase === "planning");
+    const staleCancel = await cancelActiveJob(chrome, 1, first.operationId);
+
+    assert.equal(staleCancel.canceled, false);
+    assert.equal((await getActiveJob(chrome, 1)).operationId, second.operationId);
+    assert.equal((await getActiveJob(chrome, 1)).status, "running");
+    await cancelActiveJob(chrome, 1, second.operationId);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("all-window analysis is blocked while a window analysis is running", async () => {
   const chrome = createFakeChrome({
     windows: [
@@ -2369,7 +2434,7 @@ test("canceling during preview cannot be overwritten by completion", async () =>
     const activeJob = items[activeJobKey] || items[STORAGE_KEYS.activeJob];
     if (activeJob?.phase === "preview" && !issuedCancel) {
       issuedCancel = true;
-      await cancelActiveJob(chrome);
+      queueMicrotask(() => cancelActiveJob(chrome, 1, activeJob.operationId));
     }
   };
 
