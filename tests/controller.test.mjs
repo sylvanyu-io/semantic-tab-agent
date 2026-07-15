@@ -1960,6 +1960,44 @@ test("running analyses are isolated per source window", async () => {
   }
 });
 
+test("concurrent starts for the same window reserve the scope atomically", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Window one docs", url: "https://example.com/window-one", active: true }]
+      }
+    ]
+  });
+  const originalFetch = globalThis.fetch;
+  const settings = { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" };
+  let fetchCount = 0;
+  globalThis.fetch = async (_url, options) => {
+    fetchCount += 1;
+    return new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("fetch aborted")));
+    });
+  };
+
+  try {
+    const [first, second] = await Promise.allSettled([
+      startAnalyzeTabs(chrome, settings, { windowId: 1 }),
+      startAnalyzeTabs(chrome, settings, { windowId: 1 })
+    ]);
+
+    assert.equal(first.status, "fulfilled");
+    assert.equal(second.status, "rejected");
+    assert.match(second.reason.message, /已有整理任务正在运行/);
+    await waitForWindowActiveJob(chrome, 1, (job) => job?.operationId === first.value.operationId && job.phase === "planning");
+    assert.equal(fetchCount, 1);
+
+    await cancelActiveJob(chrome, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("all-window analysis is blocked while a window analysis is running", async () => {
   const chrome = createFakeChrome({
     windows: [

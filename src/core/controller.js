@@ -29,6 +29,7 @@ import { validatePlan } from "./plan-validator.js";
 
 const activeAnalyses = new Map();
 const activeTimeRecaps = new Map();
+let analysisStartQueue = Promise.resolve();
 let browserMutationQueue = Promise.resolve();
 const GLOBAL_ANALYSIS_SCOPE = "all_windows";
 const ACTIVE_JOB_TERMINAL_STATUSES = new Set(["complete", "canceled", "error"]);
@@ -614,25 +615,46 @@ export async function startAnalyzeTabs(chromeApi, rawSettings, invocation = {}, 
 async function createActiveAnalysis(chromeApi, rawSettings, invocation = {}) {
   const windowId = await resolveStateWindowId(chromeApi, invocation.windowId);
   const settings = normalizeSettings(rawSettings);
-  await assertNoRunningAnalysis(chromeApi, windowId, settings);
-  const operationId = createOperationId();
-  const abortController = new AbortController();
-  const scopes = analysisScopesForRun(settings, windowId);
-  const activeAnalysis = { operationId, abortController, scopes };
-  for (const scope of scopes) activeAnalyses.set(scope, activeAnalysis);
-  await writeActiveJob(chromeApi, {
-    operationId,
-    status: "running",
-    phase: "starting",
-    progress: 1,
-    message: "正在准备整理",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    settings: redactSettingsForJob(settings),
-    invocation: { ...invocation, windowId }
-  }, windowId);
+  return withAnalysisStartLock(async () => {
+    await assertNoRunningAnalysis(chromeApi, windowId, settings);
+    const operationId = createOperationId();
+    const abortController = new AbortController();
+    const scopes = analysisScopesForRun(settings, windowId);
+    const activeAnalysis = { operationId, abortController, scopes };
+    for (const scope of scopes) activeAnalyses.set(scope, activeAnalysis);
+    try {
+      await writeActiveJob(chromeApi, {
+        operationId,
+        status: "running",
+        phase: "starting",
+        progress: 1,
+        message: "正在准备整理",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        settings: redactSettingsForJob(settings),
+        invocation: { ...invocation, windowId }
+      }, windowId);
+    } catch (error) {
+      clearActiveAnalysis(operationId);
+      throw error;
+    }
 
-  return { operationId, abortController, windowId };
+    return { operationId, abortController, windowId };
+  });
+}
+
+async function withAnalysisStartLock(callback) {
+  const previous = analysisStartQueue.catch(() => null);
+  let release;
+  analysisStartQueue = new Promise((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  try {
+    return await callback();
+  } finally {
+    release();
+  }
 }
 
 async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId, abortController, persistedSettings = null, windowId = null) {
