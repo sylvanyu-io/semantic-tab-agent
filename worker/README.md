@@ -46,6 +46,14 @@ includes both bindings and the `rate-limit-v1` migration in
 `worker/wrangler.toml.example` and fill in the KV namespace ID before the first
 deploy. Do not remove or rename an already-applied Durable Object migration.
 
+After `rate-limit-v1` has been applied, treat production fixes as forward-only.
+Cloudflare does not allow a Worker version rollback across a Durable Object
+migration, and storage resources are not restored with Worker code. Keep the
+binding and migration in every later deployment; test incompatible changes in a
+separate Wrangler environment, then deploy a compatible corrective version.
+See Cloudflare's [rollback limits](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/#limits)
+and [Durable Object migration guidance](https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/).
+
 The current production Worker service name is still `tab-tidy-gateway`. That is
 intentional deploy continuity from the earlier product name, not user-facing
 branding. Rename it only when intentionally migrating to a new Cloudflare Worker.
@@ -187,6 +195,13 @@ Resend HTTP API only when state changes:
 - first detected outage;
 - recovery after an outage;
 - reminder after `MONITOR_REMINDER_HOURS` while still down.
+
+This Cron runs inside the same Worker it monitors. It detects local origin,
+Tunnel, model, and email-delivery failures while the Worker is running, but it
+cannot send an alert if the Worker route, Cloudflare account, or Cron execution
+itself is completely unavailable. Use an independent uptime monitor against
+`/healthz` for that dead-man check; keep `/monitor/status` for inspecting the
+last internal probe after an alert.
 
 If `RESEND_API_KEY`, `ALERT_TO`, or `ALERT_FROM` is missing, the scheduled job
 returns early and does not run the real LLM probe, so it will not spend model

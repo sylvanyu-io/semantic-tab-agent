@@ -234,6 +234,20 @@ tail -n 50 /Users/yuyufeng/Projects/CLIProxyAPI/.runtime-logs/watchdog.out.log
 
 This setup is still bounded by local-machine availability. If the Mac sleeps, loses network, restarts, or `cloudflared` exits, the public AI service can fail. The implemented changes make failures diagnosable and less noisy; they do not turn a local Mac into a managed production service.
 
+The email Cron is also not an independent dead-man monitor: it runs inside the
+same Cloudflare Worker. It can report origin, Tunnel, model, and mail failures
+while the Worker executes, but it cannot report a total Worker route, account,
+or scheduler outage. Keep an external uptime check on `/healthz` if that failure
+class must page someone; use `/monitor/status` to inspect the most recent
+internal result without spending model tokens.
+
+Production Worker changes after the `rate-limit-v1` Durable Object migration
+should be repaired with a compatible forward deployment. Cloudflare does not
+permit version rollback across a Durable Object migration, and a code rollback
+does not restore bound storage. Do not remove the applied migration or
+`RATE_LIMIT_DO` binding from later configs. Validate incompatible storage or
+binding changes in a separate Wrangler environment first.
+
 ## Verification
 
 2026-06-30 02:50 Asia/Shanghai:
