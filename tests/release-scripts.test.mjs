@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { findSecretPatternMatches, matchesSecretPattern } from "../scripts/lib/secret-patterns.mjs";
+import { artifactZipName } from "../scripts/lib/release-artifacts.mjs";
 
 test("public release scripts include real extension stress and live gateway gates", async () => {
   const manifest = JSON.parse(await readFile("package.json", "utf8"));
@@ -118,6 +119,13 @@ test("extension build rejects unknown release channels", () => {
 
   assert.notEqual(result.status, 0);
   assert.match(`${result.stdout}\n${result.stderr}`, /Unknown extension channel: stroe/);
+});
+
+test("untagged extension packages include source identity", async () => {
+  const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
+  const name = artifactZipName(process.cwd(), manifest.version, "dev");
+
+  assert.match(name, new RegExp(`^tab-recap-${manifest.version.replaceAll(".", "\\.")}-dev-[a-f0-9]{12}(?:-dirty)?\\.zip$`));
 });
 
 test("release artifact audit rejects obsolete product names and legacy extension keys", async () => {
@@ -237,7 +245,7 @@ test("release artifact audit fails built artifacts that contain legacy product n
       pollutedScript,
       `${await readFile(pollutedScript, "utf8")}\n// TabTidy must not ship.\n// 开发版功能 must not ship.\n`
     );
-    const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${manifest.version}.zip`), "."], {
+    const zip = spawnSync("zip", ["-qr", join(tempDist, artifactZipName(process.cwd(), manifest.version, "dev")), "."], {
       cwd: extensionDir,
       encoding: "utf8"
     });
@@ -275,7 +283,7 @@ test("release artifact audit fails built artifacts that contain secret patterns"
     const pollutedScript = join(extensionDir, "src/sidepanel/sidepanel.js");
     const fakeGithubToken = ["ghp", "A".repeat(36)].join("_");
     await writeFile(pollutedScript, `${await readFile(pollutedScript, "utf8")}\n// ${fakeGithubToken}\n`);
-    const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${manifest.version}.zip`), "."], {
+    const zip = spawnSync("zip", ["-qr", join(tempDist, artifactZipName(process.cwd(), manifest.version, "dev")), "."], {
       cwd: extensionDir,
       encoding: "utf8"
     });
@@ -310,7 +318,7 @@ test("release artifact audit fails when zip contents drift from the unpacked ext
       assert.equal(build.status, 0, build.stderr || build.stdout);
     }
 
-    const zipPath = join(tempDist, `tab-recap-${manifest.version}.zip`);
+    const zipPath = join(tempDist, artifactZipName(process.cwd(), manifest.version, "dev"));
     const unzip = spawnSync("unzip", ["-q", zipPath, "-d", zipWork], { encoding: "utf8" });
     assert.equal(unzip.status, 0, unzip.stderr || unzip.stdout);
     const pollutedScript = join(zipWork, "src/sidepanel/sidepanel.js");
@@ -352,7 +360,7 @@ test("release artifact audit fails store artifacts with required content-reading
     const storeManifest = JSON.parse(await readFile(storeManifestPath, "utf8"));
     storeManifest.permissions = [...new Set([...(storeManifest.permissions || []), "scripting"])];
     await writeFile(storeManifestPath, `${JSON.stringify(storeManifest, null, 2)}\n`);
-    const zip = spawnSync("zip", ["-qr", join(tempDist, `tab-recap-${sourceManifest.version}-store.zip`), "."], {
+    const zip = spawnSync("zip", ["-qr", join(tempDist, artifactZipName(process.cwd(), sourceManifest.version, "store")), "."], {
       cwd: storeExtensionDir,
       encoding: "utf8"
     });

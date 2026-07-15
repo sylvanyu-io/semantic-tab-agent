@@ -4,6 +4,7 @@ import { join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { findSecretPatternMatches } from "./lib/secret-patterns.mjs";
+import { artifactZipName } from "./lib/release-artifacts.mjs";
 
 const defaultRootDir = fileURLToPath(new URL("..", import.meta.url));
 const rootDir = process.env.EXTENSION_ROOT_DIR ? resolve(process.env.EXTENSION_ROOT_DIR) : defaultRootDir;
@@ -15,12 +16,12 @@ const artifacts = [
   {
     channel: "dev",
     extensionDir: join(distDir, "extension"),
-    zipPath: join(distDir, `tab-recap-${rootManifest.version}.zip`)
+    zipPath: join(distDir, artifactZipName(rootDir, rootManifest.version, "dev"))
   },
   {
     channel: "store",
     extensionDir: join(distDir, "extension-store"),
-    zipPath: join(distDir, `tab-recap-${rootManifest.version}-store.zip`)
+    zipPath: join(distDir, artifactZipName(rootDir, rootManifest.version, "store"))
   }
 ];
 

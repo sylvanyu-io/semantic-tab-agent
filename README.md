@@ -151,7 +151,7 @@ npm run assets:readme
 npm run build:extension:store
 ```
 
-输出文件为 `dist/tab-recap-<version>-store.zip`，未打包目录为 `dist/extension-store`；本地调试继续使用 `dist/extension`。
+正式 tag 构建输出 `dist/tab-recap-<version>-store.zip`；未打 tag 的构建会在文件名中加入 `-dev-<commit>`（工作树未提交时再加 `-dirty`），避免与已发布版本混淆。未打包目录为 `dist/extension-store`；本地调试继续使用 `dist/extension`。
 
 ## 压力测试
 

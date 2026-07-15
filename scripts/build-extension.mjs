@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { artifactZipName } from "./lib/release-artifacts.mjs";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
@@ -13,7 +14,7 @@ if (!new Set(["dev", "store"]).has(channel)) {
   process.exit(1);
 }
 const extensionDir = join(distDir, channel === "store" ? "extension-store" : "extension");
-const zipName = `tab-recap-${manifest.version}${channel === "store" ? "-store" : ""}.zip`;
+const zipName = artifactZipName(rootDir, manifest.version, channel);
 const zipPath = join(distDir, zipName);
 const storeForbiddenPermissions = new Set(["activeTab", "scripting"]);
 const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
