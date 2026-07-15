@@ -110,8 +110,27 @@ accepts only the TabRecap request shapes used by:
 - short progress-copy requests from the extension.
 
 The Worker validates the model allowlist, `max_tokens`, JSON response mode,
-top-level fields, TabRecap schema names, compact field lists, and row shape
-before it injects the upstream key.
+top-level fields, exact task-contract markers, TabRecap schema names, compact
+field lists, row shape, nesting depth, row count, and string sizes before it
+injects the upstream key. These checks are an abuse brake for an open-source
+client, not account authentication: a determined caller can inspect and copy
+the public extension protocol.
+
+Request quotas use the `RATE_LIMIT_DO` SQLite Durable Object. Its transaction
+checks global, install, IP, and page-summary counters together before writing
+any of them, so concurrent requests cannot bypass a KV read-before-write race.
+`RATE_LIMIT_KV` remains in the deployment because the scheduled monitor stores
+its last status there; it is no longer the authoritative request quota store.
+
+The first deployment containing this quota implementation must include the
+`rate-limit-v1` Durable Object migration from `worker/wrangler.toml`. A deploy
+without `RATE_LIMIT_DO` fails closed for public chat requests with
+`rate_limit_store_missing`; it does not silently run without quotas. Validate
+the bindings before deployment with:
+
+```bash
+npx wrangler deploy --dry-run --config worker/wrangler.toml
+```
 
 ## Local Machine
 

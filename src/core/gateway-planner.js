@@ -1347,6 +1347,7 @@ function buildCoarseUserPrompt(inventory, settings) {
     "Software engineering task input: create broad semantic buckets for these browser tabs.",
     "Return compact coarse-bucket JSON only.",
     JSON.stringify({
+      schema: "tab_recap_coarse_v1",
       settings: payload.settings,
       scope: payload.scope,
       windowFields: payload.windowFields,

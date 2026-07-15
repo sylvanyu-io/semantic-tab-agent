@@ -1,6 +1,36 @@
 const PROGRESS_COPY_MODEL = "gpt-5.3-codex-spark";
-const PLANNER_INPUT_SCHEMAS = new Set(["tab_recap_compact_v1", "tab_recap_cleanup_ranking_v1"]);
+const PLANNER_INPUT_SCHEMAS = new Set(["tab_recap_compact_v1", "tab_recap_coarse_v1", "tab_recap_cleanup_ranking_v1"]);
 const TIME_RECAP_INPUT_SCHEMAS = new Set(["tab_recap_time_recap_input_v1", "tab_tidy_time_recap_input_v1"]);
+const RATE_LIMIT_OBJECT_NAME = "tab-recap-global-rate-limits-v1";
+const MAX_PAYLOAD_ROWS = 1500;
+const MAX_PAYLOAD_STRING_LENGTH = 4096;
+const MAX_PAYLOAD_NODES = 100_000;
+const MAX_PAYLOAD_DEPTH = 12;
+const PLANNER_ROOT_FIELDS = Object.freeze({
+  tab_recap_compact_v1: new Set([
+    "schema", "analysisFeatures", "settings", "scope", "windowFields", "windows", "tabFields", "tabs",
+    "pageSampleFields", "pageSampleSignalFields", "pageSampleSignals", "activationFlowActivityFields",
+    "activationFlowTabActivity", "activationFlowRunFields", "activationFlowRuns", "activationFlowTransitionFields",
+    "activationFlowTransitions", "activationFlowEvidenceFields", "activationFlowEvidence", "excludedFields", "excluded",
+    "lockedGroupFields", "lockedGroups", "pageSampleResultFields", "pageSampleResults", "cleanupInstructions",
+    "activityFields", "activity", "recap"
+  ]),
+  tab_recap_coarse_v1: new Set([
+    "schema", "settings", "scope", "windowFields", "windows", "tabFields", "tabs", "pageSampleFields",
+    "pageSampleSignalFields", "pageSampleSignals", "activationFlowActivityFields", "activationFlowTabActivity",
+    "activationFlowRunFields", "activationFlowRuns", "activationFlowTransitionFields", "activationFlowTransitions",
+    "activationFlowEvidenceFields", "activationFlowEvidence", "lockedGroupFields", "lockedGroups",
+    "pageSampleResultFields", "pageSampleResults"
+  ]),
+  tab_recap_cleanup_ranking_v1: new Set([
+    "schema", "settings", "cleanupInstructions", "scope", "tabFields", "tabs", "pageSampleSignalFields",
+    "pageSampleSignals", "activationFlowActivityFields", "activationFlowTabActivity", "activationFlowRunFields",
+    "activationFlowRuns", "activationFlowTransitionFields", "activationFlowTransitions", "activationFlowEvidenceFields",
+    "activationFlowEvidence", "activityFields", "activity", "recap", "proposedGroupFields", "proposedGroups", "review"
+  ])
+});
+const TIME_RECAP_ROOT_FIELDS = new Set(["schema", "languageMode", "range", "coverage", "pageFields", "pages"]);
+const PROGRESS_COPY_FIELDS = new Set(["schema", "languageMode", "phase", "tabCount", "windowCount", "style"]);
 const DEFAULT_ALLOWED_MODELS = [
   "gpt-5.5",
   "gpt-5.4",
@@ -50,6 +80,62 @@ export default {
     ctx.waitUntil(runScheduledMonitor(env, { scheduledTime: event.scheduledTime }));
   }
 };
+
+export class RateLimitCounter {
+  constructor(ctx) {
+    this.ctx = ctx;
+  }
+
+  async fetch(request) {
+    if (request.method !== "POST") {
+      return Response.json({ ok: false, code: "method_not_allowed" }, { status: 405 });
+    }
+
+    let payload;
+    try {
+      payload = await request.json();
+    } catch {
+      return Response.json({ ok: false, code: "invalid_json" }, { status: 400 });
+    }
+    const now = Number(payload?.now);
+    const checks = normalizeRateLimitChecks(payload?.checks);
+    if (!Number.isFinite(now) || !checks) {
+      return Response.json({ ok: false, code: "invalid_rate_limit_request" }, { status: 400 });
+    }
+
+    const result = await this.ctx.storage.transaction(async (transaction) => {
+      const records = await Promise.all(checks.map((check) => transaction.get(check.key)));
+      const writes = [];
+      for (const [index, check] of checks.entries()) {
+        const stored = records[index];
+        const count = stored && Number(stored.expiresAt) > now ? Number(stored.count) || 0 : 0;
+        if (count + 1 > check.limit) {
+          return { ok: false, kind: check.kind, retryAfter: check.retryAfter };
+        }
+        writes.push([check.key, { count: count + 1, expiresAt: check.expiresAt }]);
+      }
+      await Promise.all(writes.map(([key, value]) => transaction.put(key, value)));
+      return { ok: true };
+    });
+
+    if (result.ok) await scheduleRateLimitCleanup(this.ctx.storage, checks);
+    return Response.json(result);
+  }
+
+  async alarm() {
+    const now = Date.now();
+    const records = await this.ctx.storage.list();
+    const expired = [];
+    let nextExpiry = Infinity;
+    for (const [key, value] of records) {
+      if (!value || !Number.isFinite(Number(value.expiresAt))) continue;
+      if (Number(value.expiresAt) <= now) expired.push(key);
+      else nextExpiry = Math.min(nextExpiry, Number(value.expiresAt));
+    }
+    if (expired.length) await this.ctx.storage.delete(expired);
+    if (Number.isFinite(nextExpiry)) await this.ctx.storage.setAlarm(nextExpiry);
+  }
+}
 
 export function createWorkerHandler(options = {}) {
   return (request, env = {}, ctx = {}) => handleRequest(request, env, ctx, options);
@@ -323,13 +409,12 @@ function validatePlannerRequest(body, modelAllowlist, options = {}) {
   if (system?.role !== "system" || user?.role !== "user") {
     return { ok: false, code: "planner_shape_required", message: "Planner requests must include one system message and one user message." };
   }
-  if (!/Chrome tab organization extension|Chrome extension runtime|Chrome tab organization/i.test(systemText)) {
-    return { ok: false, code: "planner_shape_required", message: "Planner system prompt is not recognized as a TabRecap request." };
+  const payload = extractJsonPayload(userText);
+  const contract = plannerContract(payload?.schema);
+  if (!contract || !includesEvery(systemText, contract.systemMarkers) || !startsWithLines(userText, contract.userLines)) {
+    return { ok: false, code: "planner_shape_required", message: "Planner request does not match a supported TabRecap contract." };
   }
-  if (!/browser tabs|browser tab inventory|tab inventory|broad semantic buckets/i.test(userText)) {
-    return { ok: false, code: "planner_shape_required", message: "Planner user payload is not recognized as a TabRecap request." };
-  }
-  return validatePlannerPayload(userText);
+  return validatePlannerPayload(payload, contract.schema);
 }
 
 function isProgressCopyRequest(body) {
@@ -360,13 +445,17 @@ function validateTimeRecapRequest(body, modelAllowlist, options = {}) {
   if (system?.role !== "system" || user?.role !== "user") {
     return { ok: false, code: "recap_shape_required", message: "Recap requests must include one system message and one user message." };
   }
-  if (!/TabRecap|time recap writer|work recap/i.test(systemText)) {
-    return { ok: false, code: "recap_shape_required", message: "Recap system prompt is not recognized as a TabRecap request." };
+  if (
+    !includesEvery(systemText, [
+      "You are a JSON-only time recap writer for a consumer Chrome tab organization product.",
+      "Return exactly one JSON object. Do not include markdown, prose, comments, or explanations outside JSON.",
+      "This feature is recap-only; cleanup recommendations belong to the organizer flow."
+    ]) ||
+    !startsWithLines(userText, ["TabRecap local time-recap input follows. Page rows are already privacy-reduced."])
+  ) {
+    return { ok: false, code: "recap_shape_required", message: "Recap request does not match the TabRecap contract." };
   }
-  if (!/tab_recap_time_recap_input_v1|tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText)) {
-    return { ok: false, code: "recap_payload_required", message: "Recap payload is not recognized as a TabRecap request." };
-  }
-  return validateTimeRecapPayload(userText);
+  return validateTimeRecapPayload(extractJsonPayload(userText));
 }
 
 function validateProgressCopyRequest(body) {
@@ -382,8 +471,12 @@ function validateProgressCopyRequest(body) {
   if (system?.role !== "system" || user?.role !== "user") {
     return { ok: false, code: "spark_shape_required", message: "Progress copy requests must include one system message and one user message." };
   }
-  if (!/AI browser-tab organization extension|loading captions/i.test(systemText)) {
-    return { ok: false, code: "spark_shape_required", message: "Progress copy system prompt is not recognized as a TabRecap request." };
+  if (!includesEvery(systemText, [
+    "Return strict JSON only: {\"messages\":[\"...\"]}.",
+    "Write short loading captions for an AI browser-tab organization extension.",
+    "Do not claim real internal thoughts, exact work already completed, or user-private content."
+  ])) {
+    return { ok: false, code: "spark_shape_required", message: "Progress copy request does not match the TabRecap contract." };
   }
   let payload;
   try {
@@ -391,9 +484,20 @@ function validateProgressCopyRequest(body) {
   } catch {
     return { ok: false, code: "spark_payload_required", message: "Progress copy user payload must be JSON." };
   }
-  if (!payload || typeof payload !== "object" || !("languageMode" in payload) || !("phase" in payload)) {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    payload.schema !== "tab_recap_progress_copy_v1" ||
+    !hasOnlyKeys(payload, PROGRESS_COPY_FIELDS) ||
+    !["zh-CN", "en-US"].includes(payload.languageMode) ||
+    !/^[a-z][a-z0-9_]{0,39}$/i.test(String(payload.phase || "")) ||
+    !("languageMode" in payload) ||
+    !("phase" in payload)
+  ) {
     return { ok: false, code: "spark_payload_required", message: "Progress copy payload must include TabRecap progress fields." };
   }
+  const bounds = validatePayloadBounds(payload);
+  if (!bounds.ok) return { ok: false, code: "spark_payload_required", message: bounds.message };
   return { ok: true };
 }
 
@@ -405,17 +509,21 @@ function messageText(message) {
   return "";
 }
 
-function validatePlannerPayload(userText) {
-  const payload = extractJsonPayload(userText);
+function validatePlannerPayload(payload, expectedSchema) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, code: "planner_payload_required", message: "Planner payload must include compact TabRecap JSON." };
   }
-  if (!PLANNER_INPUT_SCHEMAS.has(payload.schema)) {
+  if (!PLANNER_INPUT_SCHEMAS.has(payload.schema) || payload.schema !== expectedSchema) {
     return { ok: false, code: "planner_payload_required", message: "Planner payload schema is not recognized." };
   }
+  if (!hasOnlyKeys(payload, PLANNER_ROOT_FIELDS[payload.schema])) {
+    return { ok: false, code: "planner_payload_required", message: "Planner payload contains unsupported fields." };
+  }
+  const bounds = validatePayloadBounds(payload);
+  if (!bounds.ok) return { ok: false, code: "planner_payload_required", message: bounds.message };
   const fields = payload.tabFields;
   const rows = payload.tabs;
-  if (!validFieldList(fields, ["id", "windowId", "index", "title"]) || !Array.isArray(rows)) {
+  if (!validFieldList(fields, ["id", "windowId", "index", "title"]) || !Array.isArray(rows) || rows.length > MAX_PAYLOAD_ROWS) {
     return { ok: false, code: "planner_payload_required", message: "Planner payload must include compact TabRecap tab fields." };
   }
   if (!rows.every((row) => validDataRow(row, fields, ["id", "windowId", "index", "title"]))) {
@@ -424,26 +532,111 @@ function validatePlannerPayload(userText) {
   return { ok: true };
 }
 
-function validateTimeRecapPayload(userText) {
-  const payload = extractJsonPayload(userText);
+function validateTimeRecapPayload(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload must include compact TabRecap JSON." };
   }
   if (!TIME_RECAP_INPUT_SCHEMAS.has(payload.schema)) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload schema is not recognized." };
   }
+  if (!hasOnlyKeys(payload, TIME_RECAP_ROOT_FIELDS)) {
+    return { ok: false, code: "recap_payload_required", message: "Recap payload contains unsupported fields." };
+  }
+  const bounds = validatePayloadBounds(payload);
+  if (!bounds.ok) return { ok: false, code: "recap_payload_required", message: bounds.message };
   const fields = payload.pageFields;
   const rows = payload.pages;
   if (!payload.coverage || typeof payload.coverage !== "object" || Array.isArray(payload.coverage)) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload must include coverage metadata." };
   }
-  if (!validFieldList(fields, ["id", "title", "firstSeenAt", "lastSeenAt"]) || !Array.isArray(rows)) {
+  if (!validFieldList(fields, ["id", "title", "firstSeenAt", "lastSeenAt"]) || !Array.isArray(rows) || rows.length > MAX_PAYLOAD_ROWS) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload must include compact TabRecap page fields." };
   }
   if (!rows.every((row) => validDataRow(row, fields, ["id", "title"]))) {
     return { ok: false, code: "recap_payload_required", message: "Recap payload contains invalid page rows." };
   }
   return { ok: true };
+}
+
+function plannerContract(schema) {
+  if (schema === "tab_recap_compact_v1") {
+    return {
+      schema,
+      systemMarkers: [
+        "This is a software engineering task: produce the planning JSON used by a Chrome extension runtime.",
+        "You are a JSON-only planner for a Chrome tab organization extension.",
+        "Do not close, discard, navigate, execute, or mutate tabs. You only produce recommendations."
+      ],
+      userLines: [
+        "Software engineering task input: classify this browser tab inventory for a Chrome extension runtime.",
+        "Return the JSON action plan only."
+      ]
+    };
+  }
+  if (schema === "tab_recap_coarse_v1") {
+    return {
+      schema,
+      systemMarkers: [
+        "This is a fast first-pass software engineering task for a Chrome tab organization extension.",
+        "This is a coarse pass: mixed or large buckets are acceptable because a second pass will refine them.",
+        "Every eligible tab id must appear exactly once, either in buckets[].tabIds or reviewTabIds."
+      ],
+      userLines: [
+        "Software engineering task input: create broad semantic buckets for these browser tabs.",
+        "Return compact coarse-bucket JSON only."
+      ]
+    };
+  }
+  if (schema === "tab_recap_cleanup_ranking_v1") {
+    return {
+      schema,
+      systemMarkers: [
+        "You are a JSON-only cleanup ranking planner for a Chrome tab organization extension.",
+        "This is a manual review checklist, not an automatic close command.",
+        "Do not recommend closing pinned tabs as high priority unless evidence is very strong."
+      ],
+      userLines: [
+        "Software engineering task input: rank browser tabs for manual cleanup review.",
+        "Return compact cleanup JSON only."
+      ]
+    };
+  }
+  return null;
+}
+
+function includesEvery(text, markers) {
+  return markers.every((marker) => String(text || "").includes(marker));
+}
+
+function hasOnlyKeys(value, allowedKeys) {
+  return Boolean(allowedKeys && value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).every((key) => allowedKeys.has(key)));
+}
+
+function startsWithLines(text, lines) {
+  return String(text || "").startsWith(lines.join("\n"));
+}
+
+function validatePayloadBounds(payload) {
+  let nodes = 0;
+  const visit = (value, depth) => {
+    nodes += 1;
+    if (nodes > MAX_PAYLOAD_NODES) return false;
+    if (depth > MAX_PAYLOAD_DEPTH) return false;
+    if (typeof value === "string") return value.length <= MAX_PAYLOAD_STRING_LENGTH;
+    if (Array.isArray(value)) {
+      if (value.length > MAX_PAYLOAD_ROWS * 2) return false;
+      return value.every((entry) => visit(entry, depth + 1));
+    }
+    if (value && typeof value === "object") {
+      const entries = Object.entries(value);
+      if (entries.length > 120) return false;
+      return entries.every(([key, entry]) => key.length <= 120 && visit(entry, depth + 1));
+    }
+    return value === null || ["number", "boolean"].includes(typeof value);
+  };
+  return visit(payload, 0)
+    ? { ok: true }
+    : { ok: false, message: "TabRecap payload exceeds the supported structure or field limits." };
 }
 
 function extractJsonPayload(text) {
@@ -502,7 +695,7 @@ function forwardedChatBody(body) {
 }
 
 async function checkRateLimits(request, env, limits) {
-  if (!env.RATE_LIMIT_KV) {
+  if (!env.RATE_LIMIT_DO) {
     if (String(env.ALLOW_UNMETERED || "").toLowerCase() === "true") return { ok: true };
     return { ok: false, code: "rate_limit_store_missing", message: "Free gateway rate limit store is not configured." };
   }
@@ -519,38 +712,88 @@ async function checkRateLimits(request, env, limits) {
     request.headers.get("x-tab-recap-page-summary") === "1" ||
     request.headers.get("x-tab-tidy-page-summary") === "1";
   const checks = [
-    ["global", `global:${day}`, limits.globalDailyRequests, secondsUntilNextUtcDay(now) + 3600],
-    ["install", `install:${installId}:${day}`, limits.installDailyRequests, secondsUntilNextUtcDay(now) + 3600],
-    ["ip", `ip:${ipKey}:${hour}`, limits.ipHourlyRequests, secondsUntilNextUtcHour(now) + 600]
+    rateLimitCheck("global", `global:${day}`, limits.globalDailyRequests, secondsUntilNextUtcDay(now), 3600, now),
+    rateLimitCheck("install", `install:${installId}:${day}`, limits.installDailyRequests, secondsUntilNextUtcDay(now), 3600, now),
+    rateLimitCheck("ip", `ip:${ipKey}:${hour}`, limits.ipHourlyRequests, secondsUntilNextUtcHour(now), 600, now)
   ];
   if (pageSummary) {
-    checks.push([
+    checks.push(rateLimitCheck(
       "page_summary",
       `page-summary:${installId}:${day}`,
       limits.installDailyPageSummaryRequests,
-      secondsUntilNextUtcDay(now) + 3600
-    ]);
+      secondsUntilNextUtcDay(now),
+      3600,
+      now
+    ));
   }
 
-  const currentValues = await Promise.all(checks.map(([, key]) => env.RATE_LIMIT_KV.get(key)));
-  const currentCounts = [];
-  for (const [position, [kind, key, limit, ttlSeconds]] of checks.entries()) {
-    const current = Number(currentValues[position]) || 0;
-    if (current + 1 > limit) {
-      return {
-        ok: false,
-        code: `${kind}_rate_limited`,
-        message: "The default AI service is temporarily rate limited. Please try later or use a custom AI gateway.",
-        headers: { "retry-after": String(Math.min(ttlSeconds, 3600)) }
-      };
+  try {
+    const id = env.RATE_LIMIT_DO.idFromName(RATE_LIMIT_OBJECT_NAME);
+    const response = await env.RATE_LIMIT_DO.get(id).fetch("https://rate-limit.internal/check", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ now: now.getTime(), checks })
+    });
+    const result = await response.json();
+    if (!response.ok || typeof result?.ok !== "boolean") throw new Error("Invalid rate limit response.");
+    if (result.ok) return { ok: true };
+    return {
+      ok: false,
+      code: `${result.kind || "gateway"}_rate_limited`,
+      message: "The default AI service is temporarily rate limited. Please try later or use a custom AI gateway.",
+      headers: { "retry-after": String(Math.min(positiveInteger(result.retryAfter, 3600), 3600)) }
+    };
+  } catch {
+    return {
+      ok: false,
+      code: "rate_limit_store_unavailable",
+      message: "The default AI service is temporarily unavailable. Please try later or use a custom AI gateway."
+    };
+  }
+}
+
+function rateLimitCheck(kind, key, limit, retryAfter, cleanupBuffer, now) {
+  return {
+    kind,
+    key,
+    limit,
+    retryAfter,
+    expiresAt: now.getTime() + (retryAfter + cleanupBuffer) * 1000
+  };
+}
+
+function normalizeRateLimitChecks(checks) {
+  if (!Array.isArray(checks) || !checks.length || checks.length > 8) return null;
+  const normalized = [];
+  for (const check of checks) {
+    const kind = String(check?.kind || "");
+    const key = String(check?.key || "");
+    const limit = Number(check?.limit);
+    const expiresAt = Number(check?.expiresAt);
+    const retryAfter = Number(check?.retryAfter);
+    if (
+      !/^[a-z_]{1,32}$/.test(kind) ||
+      !/^[a-z0-9:._-]{1,240}$/i.test(key) ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      !Number.isFinite(expiresAt) ||
+      !Number.isInteger(retryAfter) ||
+      retryAfter < 1
+    ) {
+      return null;
     }
-    currentCounts.push([key, current + 1, ttlSeconds]);
+    normalized.push({ kind, key, limit, expiresAt, retryAfter });
   }
+  return normalized;
+}
 
-  await Promise.all(
-    currentCounts.map(([key, next, ttlSeconds]) => env.RATE_LIMIT_KV.put(key, String(next), { expirationTtl: ttlSeconds }))
-  );
-  return { ok: true };
+async function scheduleRateLimitCleanup(storage, checks) {
+  if (typeof storage?.getAlarm !== "function" || typeof storage?.setAlarm !== "function") return;
+  const nextExpiry = Math.min(...checks.map((check) => check.expiresAt));
+  const currentAlarm = await storage.getAlarm();
+  if (!Number.isFinite(Number(currentAlarm)) || Number(currentAlarm) > nextExpiry) {
+    await storage.setAlarm(nextExpiry);
+  }
 }
 
 function upstreamConfig(env) {

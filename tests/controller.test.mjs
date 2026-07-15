@@ -2289,6 +2289,7 @@ test("progress copy generation uses spark without tab metadata", async () => {
     assert.equal(body.model, "gpt-5.3-codex-spark");
     assert.equal(body.max_tokens, 1200);
     assert.match(body.messages[0].content, /Return strict JSON only/);
+    assert.equal(JSON.parse(body.messages[1].content).schema, "tab_recap_progress_copy_v1");
     assert.doesNotMatch(options.body, /Chrome tabs API docs|https?:\/\//);
     assert.equal(options.headers["x-tab-recap-install-id"].startsWith("install_"), true);
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ messages }) } }] }), {

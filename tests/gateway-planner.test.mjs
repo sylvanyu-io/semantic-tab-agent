@@ -2383,6 +2383,7 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
   assert.match(requests[0].messages[0].content, /Write every user-facing string in English/);
   assert.match(requests[1].messages[0].content, /JSON-only planner/);
   const coarsePayload = JSON.parse(requests[0].messages[1].content.slice(requests[0].messages[1].content.indexOf("{")));
+  assert.equal(coarsePayload.schema, "tab_recap_coarse_v1");
   assert.deepEqual(coarsePayload.activationFlowTransitionFields, [
     "fromId",
     "toId",

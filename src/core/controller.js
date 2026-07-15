@@ -844,6 +844,7 @@ export async function generateProgressCopy(chromeApi, request = {}) {
       {
         role: "user",
         content: JSON.stringify({
+          schema: "tab_recap_progress_copy_v1",
           languageMode,
           phase,
           tabCount: Number(request.tabCount || activeJob?.tabCount || 0),

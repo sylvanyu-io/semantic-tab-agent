@@ -23,17 +23,21 @@ monitoring email, logs, and migration checklist, see
   rejected. Image models are intentionally excluded because this Worker only
   exposes `/v1/chat/completions`.
 - Request body size and `max_tokens` are capped before upstream forwarding.
-- KV counters limit global, IP, install-id, and page-summary usage.
+- A SQLite Durable Object applies global, IP, install-id, and page-summary
+  quotas atomically, so simultaneous requests cannot all pass a read-before-write
+  race. KV remains the monitor-state store.
 
 This is not account-grade billing control. It is a practical free-tier abuse
 brake for an open-source browser extension before login exists.
 
 ## Required Cloudflare Resources
 
-Create a Workers KV namespace and bind it as `RATE_LIMIT_KV`. This repository
-includes `worker/wrangler.toml` for the current public route. For another
-deployment, copy `worker/wrangler.toml.example` to your own config and fill in
-the KV namespace ID.
+Create a Workers KV namespace and bind it as `RATE_LIMIT_KV`, then bind the
+SQLite `RateLimitCounter` Durable Object as `RATE_LIMIT_DO`. This repository
+includes both bindings and the `rate-limit-v1` migration in
+`worker/wrangler.toml`. For another deployment, copy
+`worker/wrangler.toml.example` and fill in the KV namespace ID before the first
+deploy. Do not remove or rename an already-applied Durable Object migration.
 
 The current production Worker service name is still `tab-tidy-gateway`. That is
 intentional deploy continuity from the earlier product name, not user-facing
