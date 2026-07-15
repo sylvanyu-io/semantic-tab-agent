@@ -180,6 +180,53 @@ test("service worker records browser blur instead of leaving dwell active", asyn
   }
 });
 
+test("service worker refreshes lifecycle placement after tab moves", async () => {
+  const listeners = {};
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Research", url: "https://example.com/research", active: true }]
+      },
+      {
+        id: 2,
+        focused: false,
+        tabs: [{ id: 20, title: "Reference", url: "https://example.com/reference", active: true }]
+      }
+    ]
+  });
+  installServiceWorkerEventMocks(chrome, listeners);
+
+  globalThis.chrome = chrome;
+  try {
+    await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    listeners.tabCreated(await chrome.tabs.get(10));
+    await waitForCondition(() => lifecycleEvents(chrome).some((event) => event.type === "tab_created"), "Timed out waiting for creation.");
+
+    await chrome.tabs.move(10, { windowId: 2, index: 1 });
+    listeners.tabDetached(10, { oldWindowId: 1, oldPosition: 0 });
+    listeners.tabAttached(10, { newWindowId: 2, newPosition: 1 });
+    await waitForCondition(
+      () => lifecycleEvents(chrome).some((event) => event.type === "tab_attached" && event.windowId === 2),
+      "Timed out waiting for attached-tab lifecycle placement."
+    );
+
+    await chrome.tabs.move(10, { windowId: 2, index: 0 });
+    listeners.tabMoved(10, { windowId: 2, fromIndex: 1, toIndex: 0 });
+    await waitForCondition(
+      () => lifecycleEvents(chrome).some((event) => event.type === "tab_moved" && event.windowId === 2),
+      "Timed out waiting for moved-tab lifecycle placement."
+    );
+
+    const session = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).find((item) => item.tabId === 10);
+    assert.equal(session.windowId, 2);
+    assert.equal(session.index, 0);
+  } finally {
+    delete globalThis.chrome;
+  }
+});
+
 test("service worker disables background summaries when the manifest has no content access feature", async () => {
   const listeners = {};
   const alarmCreates = [];
@@ -318,6 +365,9 @@ function installServiceWorkerEventMocks(chrome, listeners) {
   chrome.tabs.onCreated = { addListener: (callback) => { listeners.tabCreated = callback; } };
   chrome.tabs.onRemoved = { addListener: (callback) => { listeners.tabRemoved = callback; } };
   chrome.tabs.onUpdated = { addListener: (callback) => { listeners.tabUpdated = callback; } };
+  chrome.tabs.onMoved = { addListener: (callback) => { listeners.tabMoved = callback; } };
+  chrome.tabs.onAttached = { addListener: (callback) => { listeners.tabAttached = callback; } };
+  chrome.tabs.onDetached = { addListener: (callback) => { listeners.tabDetached = callback; } };
   chrome.windows.WINDOW_ID_NONE = -1;
   chrome.windows.onFocusChanged = { addListener: (callback) => { listeners.windowFocusChanged = callback; } };
 }

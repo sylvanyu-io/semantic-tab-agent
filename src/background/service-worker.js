@@ -87,6 +87,19 @@ chrome.tabs.onUpdated?.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+chrome.tabs.onMoved?.addListener((tabId) => {
+  refreshTabLifecyclePlacement(tabId, "tab_moved");
+});
+
+chrome.tabs.onAttached?.addListener((tabId) => {
+  refreshTabLifecyclePlacement(tabId, "tab_attached");
+});
+
+chrome.tabs.onDetached?.addListener((tabId) => {
+  // Let the matching attach event settle before resolving the tab's new window.
+  setTimeout(() => refreshTabLifecyclePlacement(tabId, "tab_detached"), 0);
+});
+
 chrome.windows.onFocusChanged?.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     recordWindowBlur(chrome).catch((error) => logBackgroundError("window_blurred", error));
@@ -102,6 +115,13 @@ chrome.windows.onFocusChanged?.addListener((windowId) => {
 
 function configureSidePanel() {
   chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch((error) => logBackgroundError("side_panel_configure", error));
+}
+
+function refreshTabLifecyclePlacement(tabId, type) {
+  if (!Number.isInteger(tabId)) return;
+  chrome.tabs.get(tabId)
+    .then((tab) => rememberTabLifecycleWithSettings(type, tab))
+    .catch((error) => logBackgroundError(type, error));
 }
 
 function scheduleSummaryCapture(tabId) {
