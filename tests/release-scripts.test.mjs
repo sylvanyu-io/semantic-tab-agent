@@ -55,6 +55,31 @@ test("release version gate rejects reuse of a tag on newer source", async () => 
   }
 });
 
+test("release version gate rejects a tagged commit outside main", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "tab-recap-main-gate-"));
+  try {
+    await writeFile(join(tempRoot, "package.json"), JSON.stringify({ version: "1.2.3" }));
+    await writeFile(join(tempRoot, "manifest.json"), JSON.stringify({ version: "1.2.3" }));
+    runGit(tempRoot, ["init", "-q"]);
+    runGit(tempRoot, ["config", "user.email", "release-test@example.com"]);
+    runGit(tempRoot, ["config", "user.name", "Release Test"]);
+    runGit(tempRoot, ["checkout", "-qb", "main"]);
+    runGit(tempRoot, ["add", "."]);
+    runGit(tempRoot, ["commit", "-qm", "main release base"]);
+    runGit(tempRoot, ["checkout", "-qb", "unmerged-release"]);
+    await writeFile(join(tempRoot, "feature.txt"), "not merged to main");
+    runGit(tempRoot, ["add", "."]);
+    runGit(tempRoot, ["commit", "-qm", "unmerged release"]);
+    runGit(tempRoot, ["tag", "v1.2.3"]);
+
+    const result = runReleaseVersionGate(tempRoot, { REQUIRE_RELEASE_TAG: "1" });
+    assert.notEqual(result.status, 0);
+    assert.match(`${result.stdout}\n${result.stderr}`, /outside refs\/heads\/main/);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("README image assets are referenced by the README or its generator", async () => {
   const readme = await readFile("README.md", "utf8");
   const generator = await readFile("scripts/generate-readme-assets.mjs", "utf8");
@@ -83,6 +108,16 @@ test("dist cleanup removes stale release and stress artifacts", async () => {
   assert.match(cleanScript, /join\(distDir, "extension-store"\)/);
   assert.match(cleanScript, /join\(distDir, "stress"\)/);
   assert.match(cleanScript, /entry\.endsWith\("\.zip"\)/);
+});
+
+test("extension build rejects unknown release channels", () => {
+  const result = spawnSync(process.execPath, ["scripts/build-extension.mjs"], {
+    encoding: "utf8",
+    env: { ...process.env, EXTENSION_CHANNEL: "stroe" }
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}\n${result.stderr}`, /Unknown extension channel: stroe/);
 });
 
 test("release artifact audit rejects obsolete product names and legacy extension keys", async () => {
@@ -171,6 +206,8 @@ test("secret scanner success copy stays generic across secret provider types", a
 test("history secret scanner only allowlists exact known old fake secret fixtures", async () => {
   const historyScanner = await readFile("scripts/scan-secrets-history.mjs", "utf8");
 
+  assert.match(historyScanner, /--is-shallow-repository/);
+  assert.match(historyScanner, /Refusing to scan a shallow clone/);
   assert.match(historyScanner, /allowedHistoricalFixtureValues = new Set/);
   assert.match(historyScanner, /private-secret-token/);
   assert.match(historyScanner, /allowedHistoricalFixtureValues\.has\(value\)/);

@@ -26,6 +26,15 @@ if (githubTag && githubTag !== expectedTag) {
 if (requireTag && taggedCommit !== head) {
   fail(`Release tag ${expectedTag} must point to HEAD before publishing.`);
 }
+if (requireTag) {
+  const mainRef = resolveMainRef();
+  if (!mainRef) {
+    fail("Unable to verify the release commit against main. Fetch main before publishing.");
+  }
+  if (!gitSucceeds(["merge-base", "--is-ancestor", head, mainRef.commit])) {
+    fail(`Release tag ${expectedTag} points outside ${mainRef.name}; merge the release commit into main before publishing.`);
+  }
+}
 
 console.log(`Release version verified: ${version}${taggedCommit === head ? ` (${expectedTag})` : " (not tagged yet)"}.`);
 
@@ -36,6 +45,23 @@ function git(args, options = {}) {
     fail((result.stderr || result.stdout || `git ${args.join(" ")} failed`).trim());
   }
   return String(result.stdout || "").trim();
+}
+
+function gitSucceeds(args) {
+  return spawnSync("git", ["-C", root, ...args], { encoding: "utf8" }).status === 0;
+}
+
+function resolveMainRef() {
+  const candidates = [
+    String(process.env.RELEASE_MAIN_REF || "").trim(),
+    "refs/remotes/origin/main",
+    "refs/heads/main"
+  ].filter(Boolean);
+  for (const name of candidates) {
+    const commit = git(["rev-parse", "-q", "--verify", `${name}^{commit}`], { allowFailure: true });
+    if (commit) return { name, commit };
+  }
+  return null;
 }
 
 function fail(message) {

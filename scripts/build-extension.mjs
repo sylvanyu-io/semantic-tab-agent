@@ -7,7 +7,11 @@ import { fileURLToPath } from "node:url";
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const distDir = process.env.EXTENSION_DIST_DIR ? resolve(rootDir, process.env.EXTENSION_DIST_DIR) : join(rootDir, "dist");
 const manifest = JSON.parse(await readFile(join(rootDir, "manifest.json"), "utf8"));
-const channel = process.env.EXTENSION_CHANNEL === "store" ? "store" : "dev";
+const channel = String(process.env.EXTENSION_CHANNEL || "dev").trim();
+if (!new Set(["dev", "store"]).has(channel)) {
+  console.error(`Unknown extension channel: ${channel || "<empty>"}. Expected dev or store.`);
+  process.exit(1);
+}
 const extensionDir = join(distDir, channel === "store" ? "extension-store" : "extension");
 const zipName = `tab-recap-${manifest.version}${channel === "store" ? "-store" : ""}.zip`;
 const zipPath = join(distDir, zipName);

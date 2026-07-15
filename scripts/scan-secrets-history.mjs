@@ -6,6 +6,16 @@ const allowedHistoricalFixtureValues = new Set([
   ["sk", "private-secret-token"].join("-")
 ]);
 
+const shallowCheck = spawnSync("git", ["rev-parse", "--is-shallow-repository"], { encoding: "utf8" });
+if (shallowCheck.status !== 0) {
+  console.error(shallowCheck.stderr || "Unable to determine whether git history is complete.");
+  process.exit(shallowCheck.status || 1);
+}
+if (String(shallowCheck.stdout || "").trim() === "true") {
+  console.error("Refusing to scan a shallow clone. Fetch the full git history before running the release gate.");
+  process.exit(1);
+}
+
 const gitLog = spawnSync("git", ["log", "-p", "--all", "--", "."], {
   encoding: "utf8",
   maxBuffer: 64 * 1024 * 1024

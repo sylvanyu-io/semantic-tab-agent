@@ -12,6 +12,7 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /permissions:\n\s+contents: read/);
 
   assert.match(workflow, /uses: actions\/checkout@v7/);
+  assert.match(workflow, /fetch-depth: 0/);
   assert.match(workflow, /uses: actions\/setup-node@v6/);
   assert.match(workflow, /node-version: 22/);
   assert.match(workflow, /run: npm ci/);
