@@ -571,21 +571,23 @@ Safe deployment order:
 
 1. Restore upstream authentication and make the helper `smoke` request pass.
 2. Run `npm run test:worker` and `npx wrangler deploy --dry-run --config worker/wrangler.toml`.
-3. Record the current production version id shown above for rollback.
+3. Keep a ready-to-deploy corrective branch that retains `rate-limit-v1`,
+   `RATE_LIMIT_DO`, and the released-client compatibility tests. The first
+   production deployment of this migration is a forward-only change.
 4. Deploy the Worker, then immediately test `/readyz`, `/llm-readyz`, a current
    extension planner request, and the legacy protocol fixtures.
-5. Roll back to `0f0170a3-11a8-4044-a0f0-fe98a25b14ab` if the new deployment
-   breaks released clients. Do not publish a new extension until the Worker
-   protocol it needs is already live and verified.
+5. If the deployment breaks released clients, deploy a compatible forward fix;
+   do not attempt to roll back to
+   `0f0170a3-11a8-4044-a0f0-fe98a25b14ab`. Cloudflare blocks version rollback
+   across a Durable Object migration, and the old version predates the required
+   binding. Do not publish a new extension until the Worker protocol it needs
+   is already live and verified.
 
-Rollback command:
-
-```bash
-npx wrangler rollback 0f0170a3-11a8-4044-a0f0-fe98a25b14ab \
-  --config worker/wrangler.toml \
-  --message "restore pre-contract deployment" \
-  --yes
-```
+After the migration is established, Cloudflare version rollback remains
+available only between versions that do not cross a later Durable Object
+migration and whose bindings still exist. Confirm that condition in the
+Cloudflare deployment history before using `wrangler rollback`; otherwise use a
+forward corrective deployment.
 
 Worker secrets currently configured:
 
