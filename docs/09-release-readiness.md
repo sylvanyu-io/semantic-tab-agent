@@ -298,6 +298,23 @@ Recommended before public listing:
 - Expand adaptive planning beyond the AI gateway path if other providers become
   first-class large-session targets.
 
+### 2026-07-16 recap lifecycle review
+
+- Re-evaluated long recap requests against the MV3 service-worker lifecycle.
+  While the side panel remains open, recap now issues an operation-scoped
+  extension API heartbeat and stops it on success, failure, or cancellation.
+  Closing the side panel still cancels the product guarantee; the extension does
+  not promise to finish a request after its UI is closed.
+- Added `npm run smoke:long-recap`, which loads the built extension into a real
+  Chromium profile and uses a local OpenAI-compatible endpoint whose response is
+  delayed by 35 seconds. The recorded run completed in `35146 ms`, rendered the
+  expected AI recap, and made exactly one chat request.
+- The same smoke exposed a separate range bug: relative presets retained the
+  timestamp from when the panel opened. Rolling presets now refresh their end
+  time when generation starts; explicitly edited custom ranges remain fixed.
+- Completed-action status is now stored as a localization key plus parameters,
+  so apply/undo status relocalizes when the interface language changes.
+
 ## Provider Policy
 
 The extension uses a chat-completions-compatible AI gateway. The built-in service
