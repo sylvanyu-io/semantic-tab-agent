@@ -349,6 +349,83 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.getByRole("button", { name: "撤销" })).toBeVisible();
 });
 
+test("side panel stays within a 320px viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 680 });
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+
+  const expectNoHorizontalOverflow = async () => {
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <= window.innerWidth &&
+            document.body.scrollWidth <= window.innerWidth
+        )
+      )
+      .toBe(true);
+  };
+
+  await expectNoHorizontalOverflow();
+  await page.getByText("更多选项").click();
+  await expectNoHorizontalOverflow();
+
+  await page.getByRole("button", { name: "回顾" }).click();
+  await expect(page.getByRole("heading", { name: "看看最近主要在忙什么" })).toBeVisible();
+  await expectNoHorizontalOverflow();
+});
+
+test("settings changed back during an in-flight save are persisted", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__settingsState = { promptPreset: "conservative" };
+    window.__settingsSaves = [];
+    window.__releaseFirstSettingsSave = null;
+    window.chrome = {
+      windows: {
+        get: async (windowId) => ({ id: windowId, type: "normal" })
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: window.__settingsState };
+          if (message.type === "settings:save") {
+            window.__settingsSaves.push(structuredClone(message));
+            if (window.__settingsSaves.length === 1) {
+              await new Promise((resolve) => {
+                window.__releaseFirstSettingsSave = resolve;
+              });
+            }
+            for (const key of message.changedKeys || []) {
+              window.__settingsState[key] = message.settings[key];
+            }
+            return { ok: true, result: window.__settingsState };
+          }
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
+  await page.getByText("更多选项").click();
+  await page.locator("#promptPreset").selectOption("media_type");
+  await expect.poll(() => page.evaluate(() => window.__settingsSaves.length)).toBe(1);
+
+  await page.locator("#promptPreset").selectOption("conservative");
+  await page.evaluate(() => window.__releaseFirstSettingsSave?.());
+
+  await expect.poll(() => page.evaluate(() => window.__settingsSaves.length)).toBe(2);
+  await expect
+    .poll(() => page.evaluate(() => window.__settingsSaves.at(-1)?.settings?.promptPreset))
+    .toBe("conservative");
+  await page.waitForTimeout(100);
+  await expect.poll(() => page.evaluate(() => window.__settingsSaves.length)).toBe(2);
+  await expect
+    .poll(() => page.evaluate(() => window.__settingsSaves.map((message) => message.changedKeys)))
+    .toEqual([["promptPreset"], ["promptPreset"]]);
+  await expect(page.locator("#promptPreset")).toHaveValue("conservative");
+});
+
 test("settings import refreshes custom provider fields without restoring keys", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await page.getByText("更多选项").click();
@@ -1492,6 +1569,114 @@ test("stale organize runs do not overwrite a newer preview after cancel and rest
   await expect
     .poll(() => page.evaluate(() => window.__messages.filter((message) => message.type === "tabs:startAnalyze").length))
     .toBe(1);
+});
+
+test("hydrated organize progress survives a transient runtime message failure", async ({ page }) => {
+  await page.addInitScript(() => {
+    const activeJob = {
+      operationId: "restored_job",
+      status: "running",
+      phase: "planning",
+      progress: 55,
+      message: "正在生成 AI 方案"
+    };
+    const completedJob = {
+      ...activeJob,
+      status: "complete",
+      phase: "complete",
+      progress: 100,
+      message: "方案好了，可以先检查"
+    };
+    const lastJob = {
+      operationId: "restored_job",
+      settings: {},
+      validation: { ok: true, warnings: [] },
+      preview: {
+        requiresConfirmation: false,
+        groups: [{ title: "恢复后的方案", reason: "瞬时通信失败后继续读取。", tabCount: 2 }],
+        totalTabsCount: 2,
+        eligibleTabsCount: 2,
+        groupedTabsCount: 2,
+        reviewTabsCount: 0,
+        reviewGroupWillBeCreated: false,
+        excludedTabsCount: 0,
+        lockedGroupsCount: 0,
+        analysisFeatures: { grouping: true, cleanup: true },
+        cleanup: { summary: "", candidateCount: 0, candidates: [] },
+        warnings: []
+      }
+    };
+    window.__activeJobReads = 0;
+    window.chrome = {
+      windows: {
+        get: async (windowId) => ({ id: windowId, type: "normal" })
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: {} };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "tabs:getActiveJob") {
+            window.__activeJobReads += 1;
+            if (window.__activeJobReads === 1) return { ok: true, result: activeJob };
+            if (window.__activeJobReads === 2) throw new Error("The message port closed before a response was received.");
+            return { ok: true, result: completedJob };
+          }
+          if (message.type === "tabs:getLastJob") return { ok: true, result: lastJob };
+          if (message.type === "progressCopy:generate") return { ok: true, result: { messages: ["继续读取后台进度"] } };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
+
+  await expect(page.locator(".preview").getByText("恢复后的方案", { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__activeJobReads)).toBeGreaterThanOrEqual(3);
+  await expect(page.locator("#statusText")).toHaveText("方案好了，可以先检查");
+});
+
+test("canceling recap during permission preflight never starts the AI request", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__messages = [];
+    window.__releasePermission = null;
+    window.chrome = {
+      permissions: {
+        contains: async () =>
+          await new Promise((resolve) => {
+            window.__releasePermission = () => resolve(true);
+          }),
+        request: async () => true
+      },
+      windows: {
+        get: async (windowId) => ({ id: windowId, type: "normal" })
+      },
+      runtime: {
+        sendMessage: async (message) => {
+          window.__messages.push(message);
+          if (message.type === "settings:get") return { ok: true, result: {} };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          if (message.type === "activity:cancelTimeRecap") return { ok: true, result: { canceled: false } };
+          if (message.type === "activity:generateTimeRecap") throw new Error("recap should not start");
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=43`);
+  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: "生成回顾" }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__releasePermission))).toBe(true);
+
+  await page.getByRole("button", { name: "停止生成" }).click();
+  await page.evaluate(() => window.__releasePermission?.());
+
+  await expect(page.locator("#statusText")).toHaveText("已停止生成回顾。");
+  await expect
+    .poll(() => page.evaluate(() => window.__messages.some((message) => message.type === "activity:generateTimeRecap")))
+    .toBe(false);
 });
 
 test("time recap cancellation restores the shared bottom controls immediately", async ({ page }) => {

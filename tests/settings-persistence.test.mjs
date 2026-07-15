@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getSettings, saveSettings } from "../src/core/controller.js";
+import { getSettings, patchSettings, saveSettings } from "../src/core/controller.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import {
   createSettingsExport,
@@ -60,6 +60,19 @@ test("first-run privacy disclosure dismissal is persisted as a normal setting", 
   assert.equal(loaded.privacyDisclosureDismissed, true);
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, privacyDisclosureDismissed: "yes" }).privacyDisclosureDismissed, true);
   assert.equal(normalizeSettings({ ...DEFAULT_SETTINGS, privacyDisclosureDismissed: "" }).privacyDisclosureDismissed, false);
+});
+
+test("concurrent settings patches preserve changes from different side panels", async () => {
+  const chrome = createFakeChrome();
+
+  await Promise.all([
+    patchSettings(chrome, { promptPreset: PROMPT_PRESETS.MEDIA_TYPE }, ["promptPreset"]),
+    patchSettings(chrome, { groupingGranularity: GROUPING_GRANULARITIES.DETAILED }, ["groupingGranularity"])
+  ]);
+
+  const loaded = await getSettings(chrome);
+  assert.equal(loaded.promptPreset, PROMPT_PRESETS.MEDIA_TYPE);
+  assert.equal(loaded.groupingGranularity, GROUPING_GRANULARITIES.DETAILED);
 });
 
 test("prompt presets accept media type and reject removed preset values", () => {

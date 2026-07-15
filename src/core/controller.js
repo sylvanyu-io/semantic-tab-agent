@@ -32,6 +32,7 @@ const activeTimeRecaps = new Map();
 const activeJobTransitionQueues = new Map();
 let analysisStartQueue = Promise.resolve();
 let browserMutationQueue = Promise.resolve();
+let settingsWriteQueue = Promise.resolve();
 const GLOBAL_ANALYSIS_SCOPE = "all_windows";
 const ACTIVE_JOB_TERMINAL_STATUSES = new Set(["complete", "canceled", "error"]);
 const APPLY_REBASE_MAX_CHANGED_TABS = 25;
@@ -128,7 +129,9 @@ export async function handleRuntimeMessage(chromeApi, message) {
     case "settings:get":
       return getSettings(chromeApi);
     case "settings:save":
-      return saveSettings(chromeApi, message.settings);
+      return Array.isArray(message.changedKeys)
+        ? patchSettings(chromeApi, message.settings, message.changedKeys)
+        : saveSettings(chromeApi, message.settings);
     case "tabs:startAnalyze":
       return startAnalyzeTabs(chromeApi, message.settings, { windowId: message.windowId }, message.persistedSettings);
     case "tabs:analyze":
@@ -642,9 +645,35 @@ export async function getSettings(chromeApi) {
 }
 
 export async function saveSettings(chromeApi, nextSettings) {
-  const settings = normalizeSettings(nextSettings);
-  await setLocal(chromeApi, STORAGE_KEYS.settings, settingsForPersistence(settings));
-  return settings;
+  return enqueueSettingsWrite(async () => {
+    const settings = normalizeSettings(nextSettings);
+    await setLocal(chromeApi, STORAGE_KEYS.settings, settingsForPersistence(settings));
+    return settings;
+  });
+}
+
+export async function patchSettings(chromeApi, nextSettings, changedKeys = []) {
+  return enqueueSettingsWrite(async () => {
+    const current = await getSettings(chromeApi);
+    const patch = {};
+    for (const key of changedKeys) {
+      if (Object.hasOwn(DEFAULT_SETTINGS, key) && Object.hasOwn(nextSettings || {}, key)) {
+        patch[key] = nextSettings[key];
+      }
+    }
+    const settings = normalizeSettings({ ...current, ...patch });
+    await setLocal(chromeApi, STORAGE_KEYS.settings, settingsForPersistence(settings));
+    return settings;
+  });
+}
+
+function enqueueSettingsWrite(callback) {
+  const operation = settingsWriteQueue.then(callback, callback);
+  settingsWriteQueue = operation.then(
+    () => undefined,
+    () => undefined
+  );
+  return operation;
 }
 
 export async function analyzeTabs(chromeApi, rawSettings, invocation = {}, persistedSettings = null) {

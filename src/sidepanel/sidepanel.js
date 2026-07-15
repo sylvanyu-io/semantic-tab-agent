@@ -4,8 +4,10 @@ import {
   DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
   GATEWAY_PROVIDER_MODES,
+  normalizeSettings,
   readSettingsImportPayload
 } from "../shared/settings.js";
+import { STORAGE_KEYS } from "../core/storage.js";
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
 import { normalizeModelProductText } from "../shared/model-copy.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
@@ -635,6 +637,7 @@ const AI_WAIT_PHASES = new Set(["planning", "coarse_planning", "refining", "retr
 const AI_WAIT_RAMP_MS = 45000;
 const AI_WAIT_COPY_INTERVAL_SECONDS = 4;
 const ACTIVE_JOB_POLL_MS = 600;
+const ACTIVE_JOB_POLL_MAX_FAILURES = 20;
 const GENERATED_COPY_CACHE_LIMIT = 4;
 const CANCELED_OPERATION_TTL_MS = 5 * 60 * 1000;
 
@@ -709,12 +712,15 @@ const canceledRecapOperations = new Set();
 let pageSamplingOriginCache = { origins: [], refreshedAt: 0 };
 let pageSamplingOriginRefreshTimer = null;
 let progressPollTimer = null;
+let progressPollInFlight = false;
 let recapProgressTimer = null;
 let recapProgressJob = null;
 let mockActiveJob = null;
 let mockLastJob = null;
 let panelWindowId = null;
 let privacyDisclosureDismissed = false;
+let settingsBaseline = null;
+let settingsPersistQueue = Promise.resolve();
 const generatedCopyByOperation = new Map();
 const generatedCopyRequests = new Set();
 
@@ -761,6 +767,7 @@ async function init() {
   applyPanelMode();
   panelWindowId = await resolveInvocationWindowId();
   bindEvents();
+  bindSettingsStorageSync();
   bindSettingSwitches();
   bindChoiceGroups();
   syncInternalPlannerProviderOption();
@@ -1286,13 +1293,15 @@ async function enablePageSummaryEnhancement() {
   setStatusKey("status.pageSummaryEnabled");
 }
 
-function writeSettings(settings) {
-  privacyDisclosureDismissed = Boolean(settings.privacyDisclosureDismissed);
+function writeSettings(settings, options = {}) {
+  const normalizedSettings = normalizeSettings(settings || DEFAULT_SETTINGS);
+  if (options.updateBaseline !== false) settingsBaseline = { ...normalizedSettings };
+  privacyDisclosureDismissed = Boolean(normalizedSettings.privacyDisclosureDismissed);
   const displaySettings = {
-    ...settings,
+    ...normalizedSettings,
     targetWindowMode: "current_window",
     undoTargetWindowMode: "leave_empty_target_window",
-    pageContextMode: normalizePanelPageContextMode(settings.pageContextMode)
+    pageContextMode: normalizePanelPageContextMode(normalizedSettings.pageContextMode)
   };
   for (const [key, element] of Object.entries(fields)) {
     if (key === "ackSampling") {
@@ -1374,20 +1383,59 @@ function syncInternalPlannerProviderOption() {
   }
 }
 
-async function persistSettings() {
-  const settings = await sendMessage({ type: "settings:save", settings: readSettings() });
-  writeSettings(settings);
-  updateConditionalUi();
-  setStatusKey("status.saved");
+function persistSettings() {
+  const snapshot = normalizeSettings(readSettings());
+  const baseline = settingsBaseline || normalizeSettings(DEFAULT_SETTINGS);
+  const changedKeys = settingsChangedKeys(snapshot, baseline);
+  if (!changedKeys.length) return Promise.resolve(snapshot);
+
+  const operation = settingsPersistQueue.then(async () => {
+    const settings = await sendMessage({ type: "settings:save", settings: snapshot, changedKeys });
+    const saved = normalizeSettings(settings || snapshot);
+    const current = normalizeSettings(readSettings());
+    const editsSinceRequest = settingsPatch(current, snapshot);
+    settingsBaseline = { ...saved };
+    writeSettings({ ...saved, ...editsSinceRequest }, { updateBaseline: false });
+    updateConditionalUi();
+    setStatusKey("status.saved");
+    if (Object.keys(editsSinceRequest).length) {
+      void persistSettings().catch((error) => setErrorStatus(error));
+    }
+    return saved;
+  });
+  settingsPersistQueue = operation.catch(() => undefined);
+  return operation;
+}
+
+function settingsChangedKeys(left = {}, right = {}) {
+  return Object.keys(DEFAULT_SETTINGS).filter((key) => !Object.is(left[key], right[key]));
+}
+
+function settingsPatch(left = {}, right = {}) {
+  return Object.fromEntries(settingsChangedKeys(left, right).map((key) => [key, left[key]]));
+}
+
+function bindSettingsStorageSync() {
+  globalThis.chrome?.storage?.onChanged?.addListener?.((changes, areaName) => {
+    const change = changes?.[STORAGE_KEYS.settings];
+    if (areaName !== "local" || !change?.newValue) return;
+    const external = normalizeSettings(change.newValue);
+    const current = normalizeSettings(readSettings());
+    const localEdits = settingsBaseline ? settingsPatch(current, settingsBaseline) : {};
+    if (current.gatewayApiKey && !current.rememberProviderKeys) {
+      localEdits.gatewayApiKey = current.gatewayApiKey;
+    }
+    settingsBaseline = { ...external };
+    writeSettings({ ...external, ...localEdits }, { updateBaseline: false });
+    updateConditionalUi();
+  });
 }
 
 function updateConditionalUi() {
   const contentAccessAvailable = hasContentAccessFeature();
   nodes.appShell.dataset.contentAccess = contentAccessAvailable ? "on" : "off";
-  const samplingEnabled = contentAccessAvailable && (fields.ackSampling.checked || fields.pageContextMode.value !== "off");
   nodes.samplingRisk.hidden = !contentAccessAvailable;
-  nodes.hostPermissionField.hidden =
-    !samplingEnabled || fields.pageContextMode.value === "off";
+  nodes.hostPermissionField.hidden = true;
   const usesCustomGateway = fields.gatewayProviderMode.value === GATEWAY_PROVIDER_MODES.CUSTOM;
   if (!usesCustomGateway && fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE) {
     fields.gatewayModel.value = DEFAULT_SETTINGS.gatewayModel;
@@ -1416,13 +1464,7 @@ async function handlePrivacyDisclosureDismissClick() {
   privacyDisclosureDismissed = true;
   updatePrivacyDisclosure();
   try {
-    const settings = await sendMessage({
-      type: "settings:save",
-      settings: readSettings()
-    });
-    writeSettings(settings);
-    updateConditionalUi();
-    setStatusKey("status.saved");
+    await persistSettings();
   } catch (error) {
     privacyDisclosureDismissed = false;
     updatePrivacyDisclosure();
@@ -1528,7 +1570,9 @@ async function generateTimeRecap() {
   try {
     const settings = readEffectiveRunSettings();
     await ensureGatewayPermissionForRun(settings, 10, PANEL_MODE_RECAP);
+    if (shouldIgnoreRecapOperation(operationId)) return;
     await ensurePageSummaryPermissionsForRun(settings, 16, PANEL_MODE_RECAP);
+    if (shouldIgnoreRecapOperation(operationId)) return;
 
     updateLocalProgress(t("status.recapGenerating"), 28, PANEL_MODE_RECAP);
     startRecapProgress(operationId, settings);
@@ -1540,7 +1584,7 @@ async function generateTimeRecap() {
       range: readRecapRange(),
       timeoutMs: TIME_RECAP_GATEWAY_TIMEOUT_MS
     }));
-    if (canceledRecapOperations.has(operationId) || activeRecapOperationId !== operationId) return;
+    if (shouldIgnoreRecapOperation(operationId)) return;
     lastTimeRecap = result;
     lastTimeRecapError = null;
     renderTimeRecap(result);
@@ -1566,6 +1610,10 @@ async function generateTimeRecap() {
       setBusy(false, "", { mode: PANEL_MODE_RECAP });
     }
   }
+}
+
+function shouldIgnoreRecapOperation(operationId) {
+  return activeRecapOperationId !== operationId || canceledRecapOperations.has(operationId);
 }
 
 async function cancelTimeRecap() {
@@ -2988,6 +3036,8 @@ function stopProgressPolling() {
 }
 
 async function pollActiveJob() {
+  if (progressPollInFlight) return;
+  progressPollInFlight = true;
   try {
     const job = await sendMessage(scopedWindowMessage({ type: "tabs:getActiveJob" }));
     updateProgressFromJob(job, PANEL_MODE_ORGANIZE);
@@ -2998,14 +3048,32 @@ async function pollActiveJob() {
     } else if (!isLiveJob(job)) {
       stopProgressPolling();
     }
-  } catch {
-    stopProgressPolling();
+  } catch (error) {
+    if (!isTransientRuntimeMessageError(error)) {
+      stopProgressPolling();
+      setErrorStatus(error, friendlyErrorMessage(error), { mode: PANEL_MODE_ORGANIZE });
+    }
+  } finally {
+    progressPollInFlight = false;
   }
 }
 
 async function waitForAnalysisCompletion(operationId) {
+  let transientFailures = 0;
   while (true) {
-    const activeJob = await sendMessage(scopedWindowMessage({ type: "tabs:getActiveJob" }));
+    let activeJob;
+    try {
+      activeJob = await sendMessage(scopedWindowMessage({ type: "tabs:getActiveJob" }));
+      transientFailures = 0;
+    } catch (error) {
+      if (!isTransientRuntimeMessageError(error) || transientFailures >= ACTIVE_JOB_POLL_MAX_FAILURES) throw error;
+      transientFailures += 1;
+      if (activeAnalyzeRunId && canceledAnalyzeRuns.has(activeAnalyzeRunId)) {
+        throw new Error(t("status.canceled"));
+      }
+      await delay(ACTIVE_JOB_POLL_MS);
+      continue;
+    }
     updateProgressFromJob(activeJob, PANEL_MODE_ORGANIZE);
 
     if (!activeJob) {
@@ -3025,6 +3093,12 @@ async function waitForAnalysisCompletion(operationId) {
 
     await delay(ACTIVE_JOB_POLL_MS);
   }
+}
+
+function isTransientRuntimeMessageError(error) {
+  return /receiving end does not exist|message port closed|message channel closed|extension context invalidated|service worker/i.test(
+    String(error?.message || error || "")
+  );
 }
 
 function updateProgressFromJob(job, mode = PANEL_MODE_ORGANIZE) {
