@@ -505,7 +505,11 @@ function buildActivationFlowContext(log, tabs = [], options = {}) {
     } else if (Number.isInteger(focusedWindowId) && focusedWindowId !== event.windowId) {
       continue;
     }
-    if (!activationEventInScope(event, scope)) continue;
+    if (!activationEventInScope(event, scope)) {
+      appendActivationRun(runs, currentRunByWindow.get(event.windowId), maxDwellMs);
+      currentRunByWindow.delete(event.windowId);
+      continue;
+    }
     const at = Date.parse(event.at || "");
     if (!Number.isFinite(at)) continue;
     const normalizedEvent = { tabId: event.tabId, windowId: event.windowId, at, atIso: event.at };

@@ -181,10 +181,18 @@ test("tab inventory does not leak pre-navigation behavior into current pages", a
   const currentTab = inventory.tabs.find((tab) => tab.tabId === 10);
 
   assert.match(currentTab.urlKey, /^u_/);
-  assert.deepEqual(inventory.activationFlow.runs, []);
-  assert.deepEqual(payload.activationFlowRuns, []);
-  assert.deepEqual(payload.activationFlowTransitions, []);
-  assert.deepEqual(payload.activationFlowEvidence, []);
+  assert.deepEqual(
+    inventory.activationFlow.runs.map((run) => [run.startedAt, run.ids, run.dwellSeconds]),
+    [["2026-06-25T00:00:30.000Z", [11, 10], [30]]]
+  );
+  assert.deepEqual(
+    inventory.activationFlow.transitions.map((transition) => [transition.fromId, transition.toId]),
+    [[11, 10]]
+  );
+  assert.deepEqual(inventory.activationFlow.evidence.map((entry) => entry.ids), [[11, 10]]);
+  assert.equal(payload.activationFlowRuns.length, 1);
+  assert.equal(payload.activationFlowTransitions.length, 1);
+  assert.equal(payload.activationFlowEvidence.length, 1);
   assert.equal(payload.activationFlowTabActivity.find((row) => row[0] === 10)[1], 1);
   assert.equal(JSON.stringify(payload).includes("urlKey"), false);
 });
