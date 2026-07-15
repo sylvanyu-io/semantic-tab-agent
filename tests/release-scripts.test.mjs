@@ -14,12 +14,45 @@ test("public release scripts include real extension stress and live gateway gate
   assert.equal(scripts.build, "npm run build:extension");
   assert.match(scripts["release:check:full"], /npm run release:check/);
   assert.match(scripts["release:check:full"], /npm run stress:extension/);
+  assert.match(scripts["release:publish-check"], /verify-release-version\.mjs/);
+  assert.match(scripts["release:publish-check"], /release:check:full/);
 
   assert.match(scripts["release:check:live"], /node scripts\/require-monitor-token\.mjs/);
   assert.match(scripts["release:check:live"], /npm run release:check:full/);
   assert.match(scripts["release:check:live"], /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
 
   assert.equal(scripts["stress:summary"], "node scripts/summarize-stress-artifact.mjs");
+});
+
+test("release version gate rejects reuse of a tag on newer source", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "tab-recap-version-gate-"));
+  try {
+    await writeFile(join(tempRoot, "package.json"), JSON.stringify({ version: "1.2.3" }));
+    await writeFile(join(tempRoot, "manifest.json"), JSON.stringify({ version: "1.2.3" }));
+    runGit(tempRoot, ["init", "-q"]);
+    runGit(tempRoot, ["config", "user.email", "release-test@example.com"]);
+    runGit(tempRoot, ["config", "user.name", "Release Test"]);
+    runGit(tempRoot, ["add", "."]);
+    runGit(tempRoot, ["commit", "-qm", "release 1.2.3"]);
+    runGit(tempRoot, ["tag", "v1.2.3"]);
+
+    const tagged = runReleaseVersionGate(tempRoot);
+    assert.equal(tagged.status, 0, tagged.stderr || tagged.stdout);
+
+    await writeFile(join(tempRoot, "change.txt"), "new source");
+    runGit(tempRoot, ["add", "."]);
+    runGit(tempRoot, ["commit", "-qm", "new source"]);
+    const reused = runReleaseVersionGate(tempRoot);
+    assert.notEqual(reused.status, 0);
+    assert.match(`${reused.stdout}\n${reused.stderr}`, /already points to/);
+
+    await writeFile(join(tempRoot, "package.json"), JSON.stringify({ version: "1.2.4" }));
+    await writeFile(join(tempRoot, "manifest.json"), JSON.stringify({ version: "1.2.4" }));
+    const bumped = runReleaseVersionGate(tempRoot);
+    assert.equal(bumped.status, 0, bumped.stderr || bumped.stdout);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test("README image assets are referenced by the README or its generator", async () => {
@@ -398,6 +431,19 @@ test("real extension stress can find UI sampling jobs across scoped storage", as
   assert.match(stressScript, /createdAfterMs/);
   assert.match(stressScript, /key === lastJobBaseKey \|\| key\.startsWith\(`\$\{lastJobBaseKey\}:`\)/);
 });
+
+function runGit(cwd, args) {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result;
+}
+
+function runReleaseVersionGate(root, extraEnv = {}) {
+  return spawnSync(process.execPath, ["scripts/verify-release-version.mjs"], {
+    encoding: "utf8",
+    env: { ...process.env, RELEASE_ROOT_DIR: root, ...extraEnv }
+  });
+}
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

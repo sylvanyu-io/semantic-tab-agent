@@ -87,6 +87,9 @@ Blocking gates:
   uploads the generated extension zip artifacts.
 - `npm run release:check:full` passes before public release packaging. It adds
   the real-extension stress runner to the standard package gate.
+- `npm run release:publish-check` passes before creating a public tag. It
+  rejects package/manifest drift and refuses to reuse a version whose `vX.Y.Z`
+  tag already points to another commit.
 - The `CI` workflow can be manually dispatched with `full_gate` enabled to run
   the real-extension stress runner on GitHub's Ubuntu runner under `xvfb`.
 - The real-extension stress artifact includes both machine-readable JSON and a

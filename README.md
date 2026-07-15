@@ -123,6 +123,12 @@ npm run release:check
 npm run release:check:full
 ```
 
+正式创建 Release 前运行发布门禁。它会额外确认版本号未被旧 tag 使用，避免同一个版本号对应不同源码或安装包：
+
+```bash
+npm run release:publish-check
+```
+
 如果这次发布依赖内置默认 AI 服务，再运行 live gate。它会包含完整发布检查，并额外检查默认 AI 服务、隧道、告警配置和真实模型请求：
 
 ```bash

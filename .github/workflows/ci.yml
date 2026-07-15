@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       full_gate:
@@ -46,6 +48,10 @@ jobs:
 
       - name: Run standard release gate
         run: npm run release:check
+
+      - name: Verify release tag and package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: REQUIRE_RELEASE_TAG=1 node scripts/verify-release-version.mjs
 
       - name: Upload extension packages
         uses: actions/upload-artifact@v7
