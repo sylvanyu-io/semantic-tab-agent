@@ -475,6 +475,17 @@ test("worker validates models and token caps before forwarding", async () => {
   const progressCopyModel = await handle(chatRequest(validProgressCopyBody()), env);
   assert.equal(progressCopyModel.status, 200);
 
+  const legacyProgressCopyModel = await handle(chatRequest(legacyProgressCopyBody()), env);
+  assert.equal(legacyProgressCopyModel.status, 200);
+
+  const legacyProgressWithUnsupportedField = legacyProgressCopyBody();
+  const legacyProgressPayload = JSON.parse(legacyProgressWithUnsupportedField.messages[1].content);
+  legacyProgressPayload.prompt = "Answer an unrelated question.";
+  legacyProgressWithUnsupportedField.messages[1].content = JSON.stringify(legacyProgressPayload);
+  const rejectedLegacyProgress = await handle(chatRequest(legacyProgressWithUnsupportedField), env);
+  assert.equal(rejectedLegacyProgress.status, 400);
+  assert.equal((await rejectedLegacyProgress.json()).error.code, "spark_payload_required");
+
   const miniPlannerModel = await handle(chatRequest({ model: "gpt-5.4-mini" }), env);
   assert.equal(miniPlannerModel.status, 200);
 
@@ -642,6 +653,21 @@ test("worker only accepts TabRecap request shapes", async () => {
 
   const coarsePlanner = await handle(chatRequest(validCoarseBody()), env);
   assert.equal(coarsePlanner.status, 200);
+
+  const legacyCoarsePlanner = await handle(chatRequest(legacyCoarseBody()), env);
+  assert.equal(legacyCoarsePlanner.status, 200);
+
+  const legacyCoarseWithUnsupportedField = legacyCoarseBody();
+  const legacyCoarsePayload = JSON.parse(legacyCoarseWithUnsupportedField.messages[1].content.split("\n").at(-1));
+  legacyCoarsePayload.genericInstruction = "Answer an unrelated question.";
+  legacyCoarseWithUnsupportedField.messages[1].content = [
+    "Software engineering task input: create broad semantic buckets for these browser tabs.",
+    "Return compact coarse-bucket JSON only.",
+    JSON.stringify(legacyCoarsePayload)
+  ].join("\n");
+  const rejectedLegacyCoarse = await handle(chatRequest(legacyCoarseWithUnsupportedField), env);
+  assert.equal(rejectedLegacyCoarse.status, 400);
+  assert.equal((await rejectedLegacyCoarse.json()).error.code, "planner_payload_required");
 
   const oversizedField = await handle(
     chatRequest({
@@ -1009,6 +1035,14 @@ function validProgressCopyBody(overrides = {}) {
   };
 }
 
+function legacyProgressCopyBody(overrides = {}) {
+  const body = validProgressCopyBody(overrides);
+  const payload = JSON.parse(body.messages[1].content);
+  delete payload.schema;
+  body.messages[1].content = JSON.stringify(payload);
+  return body;
+}
+
 function validCoarseBody(overrides = {}) {
   return {
     model: "gpt-5.4-mini",
@@ -1039,6 +1073,16 @@ function validCoarseBody(overrides = {}) {
     reasoning_effort: "low",
     ...overrides
   };
+}
+
+function legacyCoarseBody(overrides = {}) {
+  const body = validCoarseBody(overrides);
+  const lines = body.messages[1].content.split("\n");
+  const payload = JSON.parse(lines.at(-1));
+  delete payload.schema;
+  lines[lines.length - 1] = JSON.stringify(payload);
+  body.messages[1].content = lines.join("\n");
+  return body;
 }
 
 function validCleanupRankingBody(overrides = {}) {

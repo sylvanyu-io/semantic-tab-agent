@@ -31,6 +31,7 @@ const PLANNER_ROOT_FIELDS = Object.freeze({
 });
 const TIME_RECAP_ROOT_FIELDS = new Set(["schema", "languageMode", "range", "coverage", "pageFields", "pages"]);
 const PROGRESS_COPY_FIELDS = new Set(["schema", "languageMode", "phase", "tabCount", "windowCount", "style"]);
+const LEGACY_PROGRESS_COPY_FIELDS = new Set(["languageMode", "phase", "tabCount", "windowCount", "style"]);
 const DEFAULT_ALLOWED_MODELS = [
   "gpt-5.5",
   "gpt-5.4",
@@ -410,11 +411,11 @@ function validatePlannerRequest(body, modelAllowlist, options = {}) {
     return { ok: false, code: "planner_shape_required", message: "Planner requests must include one system message and one user message." };
   }
   const payload = extractJsonPayload(userText);
-  const contract = plannerContract(payload?.schema);
+  const contract = detectPlannerContract(payload, systemText, userText);
   if (!contract || !includesEvery(systemText, contract.systemMarkers) || !startsWithLines(userText, contract.userLines)) {
     return { ok: false, code: "planner_shape_required", message: "Planner request does not match a supported TabRecap contract." };
   }
-  return validatePlannerPayload(payload, contract.schema);
+  return validatePlannerPayload(payload, contract.schema, { allowMissingSchema: contract.allowMissingSchema });
 }
 
 function isProgressCopyRequest(body) {
@@ -484,11 +485,14 @@ function validateProgressCopyRequest(body) {
   } catch {
     return { ok: false, code: "spark_payload_required", message: "Progress copy user payload must be JSON." };
   }
+  const isLegacyPayload = payload?.schema === undefined;
+  const allowedFields = isLegacyPayload ? LEGACY_PROGRESS_COPY_FIELDS : PROGRESS_COPY_FIELDS;
   if (
     !payload ||
     typeof payload !== "object" ||
-    payload.schema !== "tab_recap_progress_copy_v1" ||
-    !hasOnlyKeys(payload, PROGRESS_COPY_FIELDS) ||
+    Array.isArray(payload) ||
+    (!isLegacyPayload && payload.schema !== "tab_recap_progress_copy_v1") ||
+    !hasOnlyKeys(payload, allowedFields) ||
     !["zh-CN", "en-US"].includes(payload.languageMode) ||
     !/^[a-z][a-z0-9_]{0,39}$/i.test(String(payload.phase || "")) ||
     !("languageMode" in payload) ||
@@ -509,14 +513,15 @@ function messageText(message) {
   return "";
 }
 
-function validatePlannerPayload(payload, expectedSchema) {
+function validatePlannerPayload(payload, expectedSchema, options = {}) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, code: "planner_payload_required", message: "Planner payload must include compact TabRecap JSON." };
   }
-  if (!PLANNER_INPUT_SCHEMAS.has(payload.schema) || payload.schema !== expectedSchema) {
+  const hasSchema = typeof payload.schema === "string";
+  if ((!hasSchema && !options.allowMissingSchema) || (hasSchema && (!PLANNER_INPUT_SCHEMAS.has(payload.schema) || payload.schema !== expectedSchema))) {
     return { ok: false, code: "planner_payload_required", message: "Planner payload schema is not recognized." };
   }
-  if (!hasOnlyKeys(payload, PLANNER_ROOT_FIELDS[payload.schema])) {
+  if (!hasOnlyKeys(payload, PLANNER_ROOT_FIELDS[expectedSchema])) {
     return { ok: false, code: "planner_payload_required", message: "Planner payload contains unsupported fields." };
   }
   const bounds = validatePayloadBounds(payload);
@@ -600,6 +605,21 @@ function plannerContract(schema) {
         "Return compact cleanup JSON only."
       ]
     };
+  }
+  return null;
+}
+
+function detectPlannerContract(payload, systemText, userText) {
+  const explicit = plannerContract(payload?.schema);
+  if (explicit) return explicit;
+
+  const legacyCoarse = plannerContract("tab_recap_coarse_v1");
+  if (
+    payload?.schema === undefined &&
+    includesEvery(systemText, legacyCoarse.systemMarkers) &&
+    startsWithLines(userText, legacyCoarse.userLines)
+  ) {
+    return { ...legacyCoarse, allowMissingSchema: true };
   }
   return null;
 }

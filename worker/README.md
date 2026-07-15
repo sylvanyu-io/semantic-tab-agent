@@ -7,6 +7,13 @@ The Worker validates the request, applies coarse anti-abuse limits, injects the
 real upstream API key on the server side, and forwards only to the configured
 upstream base URL.
 
+The validator intentionally retains a narrow compatibility path for the
+published `v0.2.6` extension. That release omitted the input `schema` field on
+coarse-planner and progress-copy payloads. The Worker accepts those two legacy
+shapes only when their exact TabRecap prompt markers, root fields, row types,
+and payload bounds still match. Missing-schema generic chat remains rejected.
+Remove this path only after support for `v0.2.6` is deliberately ended.
+
 For the current production hostnames, local Mac origin, Cloudflare Tunnel,
 monitoring email, logs, and migration checklist, see
 [`docs/12-default-ai-gateway-runbook.md`](../docs/12-default-ai-gateway-runbook.md).

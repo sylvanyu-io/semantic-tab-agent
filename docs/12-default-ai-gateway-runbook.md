@@ -1,6 +1,6 @@
 # Default AI Gateway Runbook
 
-Status: current production path as of 2026-07-09 08:17 CST.
+Status: current production path as of 2026-07-16 CST.
 
 This document records the public TabRecap AI gateway setup so it can be
 debugged, migrated, or rebuilt later without relying on memory. It intentionally
@@ -474,6 +474,52 @@ TOTAL_TIME: 7.33s
 model: gpt-5.4
 ```
 
+Current incident snapshot, 2026-07-16 CST:
+
+```text
+local main 8317: 200
+local proxy 18317: 200
+public origin health: 200
+public origin models: 200
+public Worker health: 200
+public Worker ready: 200
+real public chat: 401 auth_unavailable
+upstream message: authentication token has been invalidated
+```
+
+This combination means the Worker, Tunnel, local proxy, and CLIProxyAPI process
+are reachable, but the upstream Codex account must be authenticated again. The
+credential file can still contain a future expiry timestamp after the provider
+has invalidated the token, so file expiry alone is not a readiness signal.
+
+Re-authenticate from the CLIProxyAPI project, then restart and smoke-test the
+stack:
+
+```bash
+cd /Users/yuyufeng/Projects/CLIProxyAPI
+./bin/cli-proxy-api -codex-login -config ./config.yaml
+/Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh restart
+/Users/yuyufeng/.codex/skills/cliroxyapi-service/scripts/manage-cliroxyapi-service.sh smoke
+```
+
+Use `-codex-device-login` instead of `-codex-login` when browser callback login
+is inconvenient. Authentication files are stored under the configured local
+`./auths` directory and must never be committed.
+
+Local verification completed while the upstream login was still blocked:
+
+```text
+npm test: 359/359 passed
+npm run test:ui: 57/57 passed
+npm run test:worker: 37/37 passed
+npm run scan:secrets: passed
+npm run scan:secrets:history: passed
+npx wrangler deploy --dry-run: passed with RATE_LIMIT_DO and RATE_LIMIT_KV bound
+```
+
+These results validate local code and packaging contracts. They do not replace
+the real public smoke request, which remains the final upstream-auth check.
+
 ## Worker
 
 Worker config lives in the TabRecap repo:
@@ -503,16 +549,42 @@ Cron trigger:
 crons = ["*/30 * * * *"]
 ```
 
-Current deployed Worker code version:
+Current deployed Worker code version, verified with `wrangler deployments list`
+on 2026-07-16:
 
 ```text
-a87a141e-6018-481c-a412-2233a4bd3f0c
+0f0170a3-11a8-4044-a0f0-fe98a25b14ab
 ```
 
-Current effective Worker version after the Resend secret change:
+Do not infer deployed code from the newest local commit. The production Worker
+above predates the local strict-contract, timeout, redaction, and atomic Durable
+Object quota changes.
 
-```text
-989a82f5-31e2-4581-b88b-9f2f9d48512f
+The published extension tag is currently `v0.2.6`. Its coarse-planner and
+progress-copy requests do not send the newer `tab_recap_coarse_v1` and
+`tab_recap_progress_copy_v1` schema fields. Local Worker code therefore keeps a
+strict compatibility branch for only those exact legacy requests. Before every
+Worker deploy, run the Worker tests that cover both current and `v0.2.6`
+payloads; do not replace this branch with a generic missing-schema allowance.
+
+Safe deployment order:
+
+1. Restore upstream authentication and make the helper `smoke` request pass.
+2. Run `npm run test:worker` and `npx wrangler deploy --dry-run --config worker/wrangler.toml`.
+3. Record the current production version id shown above for rollback.
+4. Deploy the Worker, then immediately test `/readyz`, `/llm-readyz`, a current
+   extension planner request, and the legacy protocol fixtures.
+5. Roll back to `0f0170a3-11a8-4044-a0f0-fe98a25b14ab` if the new deployment
+   breaks released clients. Do not publish a new extension until the Worker
+   protocol it needs is already live and verified.
+
+Rollback command:
+
+```bash
+npx wrangler rollback 0f0170a3-11a8-4044-a0f0-fe98a25b14ab \
+  --config worker/wrangler.toml \
+  --message "restore pre-contract deployment" \
+  --yes
 ```
 
 Worker secrets currently configured:
