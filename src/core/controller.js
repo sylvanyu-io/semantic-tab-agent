@@ -163,6 +163,9 @@ export async function handleRuntimeMessage(chromeApi, message) {
       return generateTimeRecapForMessage(chromeApi, message);
     case "activity:cancelTimeRecap":
       return cancelTimeRecap(chromeApi, message);
+    case "task:keepAlive":
+      await chromeApi.runtime?.getPlatformInfo?.();
+      return { alive: true };
     case "activity:focusTab":
       return focusActivityTab(chromeApi, message);
     case "tabs:closeCleanupCandidates":

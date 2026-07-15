@@ -34,6 +34,24 @@ const FAKE_PLANNER_SETTINGS = Object.freeze({
   plannerProvider: PLANNER_PROVIDERS.FAKE
 });
 
+test("long-task heartbeat calls a harmless extension API", async () => {
+  let calls = 0;
+  const result = await handleRuntimeMessage(
+    {
+      runtime: {
+        getPlatformInfo: async () => {
+          calls += 1;
+          return { os: "mac" };
+        }
+      }
+    },
+    { type: "task:keepAlive" }
+  );
+
+  assert.deepEqual(result, { alive: true });
+  assert.equal(calls, 1);
+});
+
 test("analyze/apply/undo groups only the current window by default", async () => {
   const chrome = createFakeChrome({
     windows: [

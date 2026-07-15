@@ -1106,6 +1106,9 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
   await expect(page.locator(".actions #progressBar")).toBeVisible();
   await expect(page.getByRole("button", { name: "停止生成" })).toBeVisible();
   await expect(page.locator("#progressPercent")).not.toHaveText("0%");
+  await expect
+    .poll(() => page.evaluate(() => window.__recapMessages.some((message) => message.type === "task:keepAlive")))
+    .toBe(true);
 
   await page.evaluate(() => {
     window.__resolveRecap({

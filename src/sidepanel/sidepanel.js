@@ -638,6 +638,7 @@ const AI_WAIT_RAMP_MS = 45000;
 const AI_WAIT_COPY_INTERVAL_SECONDS = 4;
 const ACTIVE_JOB_POLL_MS = 600;
 const ACTIVE_JOB_POLL_MAX_FAILURES = 20;
+const LONG_TASK_KEEPALIVE_MS = 20_000;
 const GENERATED_COPY_CACHE_LIMIT = 4;
 const CANCELED_OPERATION_TTL_MS = 5 * 60 * 1000;
 
@@ -690,6 +691,8 @@ const PANEL_MODE_RECAP = "recap";
 
 let uiLanguage = readStoredUiLanguage() || browserUiLanguage();
 let currentPanelMode = PANEL_MODE_ORGANIZE;
+let recapKeepAliveTimer = null;
+let recapKeepAliveOperationId = null;
 let statusByMode = {
   [PANEL_MODE_ORGANIZE]: createStatusState("status.default"),
   [PANEL_MODE_RECAP]: createStatusState("status.default")
@@ -1576,6 +1579,7 @@ async function generateTimeRecap() {
 
     updateLocalProgress(t("status.recapGenerating"), 28, PANEL_MODE_RECAP);
     startRecapProgress(operationId, settings);
+    startRecapKeepAlive(operationId);
     const result = await sendMessage(scopedWindowMessage({
       type: "activity:generateTimeRecap",
       operationId,
@@ -1603,6 +1607,7 @@ async function generateTimeRecap() {
     setErrorStatus(error, message, { mode: PANEL_MODE_RECAP });
     renderTimeRecapError(error);
   } finally {
+    stopRecapKeepAlive(operationId);
     stopRecapProgress(operationId);
     canceledRecapOperations.delete(operationId);
     if (activeRecapOperationId === operationId) {
@@ -1621,6 +1626,7 @@ async function cancelTimeRecap() {
   if (!operationId) return;
   canceledRecapOperations.add(operationId);
   setTimeout(() => canceledRecapOperations.delete(operationId), CANCELED_OPERATION_TTL_MS);
+  stopRecapKeepAlive(operationId);
   stopRecapProgress(operationId);
   setBusy(true, t("status.recapCanceling"), { mode: PANEL_MODE_RECAP, cancelable: true, progress: currentProgressValue(PANEL_MODE_RECAP) || 92 });
   setCancelDisabled(PANEL_MODE_RECAP, true);
@@ -1633,6 +1639,26 @@ async function cancelTimeRecap() {
   sendMessage(scopedWindowMessage({ type: "activity:cancelTimeRecap", operationId })).catch(() => {
     // The UI should still stop waiting if the background context has already gone away.
   });
+}
+
+function startRecapKeepAlive(operationId) {
+  stopRecapKeepAlive();
+  const ping = () => {
+    sendMessage({ type: "task:keepAlive" }).catch(() => {
+      // The normal recap request reports terminal background failures to the UI.
+    });
+  };
+  ping();
+  recapKeepAliveOperationId = operationId;
+  recapKeepAliveTimer = setInterval(ping, LONG_TASK_KEEPALIVE_MS);
+}
+
+function stopRecapKeepAlive(operationId = null) {
+  if (operationId && recapKeepAliveOperationId && operationId !== recapKeepAliveOperationId) return;
+  if (!recapKeepAliveTimer) return;
+  clearInterval(recapKeepAliveTimer);
+  recapKeepAliveTimer = null;
+  recapKeepAliveOperationId = null;
 }
 
 function readEffectiveRunSettings() {
