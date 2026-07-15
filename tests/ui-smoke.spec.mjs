@@ -347,6 +347,14 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#previewSection")).toBeHidden();
   await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
   await expect(page.getByRole("button", { name: "撤销" })).toBeVisible();
+  await expect(page.locator("#statusText")).toHaveText("已创建 2 个分组");
+  await page.locator("#uiLanguageToggle").click();
+  await expect(page.locator("#statusText")).toHaveText("Created 2 groups");
+  await page.locator("#uiLanguageToggle").click();
+  await page.getByRole("button", { name: "撤销" }).click();
+  await expect(page.locator("#statusText")).toHaveText("已恢复 20 个标签页");
+  await page.locator("#uiLanguageToggle").click();
+  await expect(page.locator("#statusText")).toHaveText("Restored 20 tabs");
 });
 
 test("side panel stays within a 320px viewport", async ({ page }) => {
@@ -4177,6 +4185,8 @@ test("apply confirms changed tabs before adding them to review", async ({ page }
   await expect(page.locator(".preview").getByText("AI 编程", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "开始整理" }).click();
   await expect(page.locator("#statusText")).toHaveText("已创建 2 个分组；已处理 2 个变化标签页，1 个放进「待分类」");
+  await page.locator("#uiLanguageToggle").click();
+  await expect(page.locator("#statusText")).toHaveText('Created 2 groups; handled 2 changed tabs, with 1 added to "待分类"');
   await expect.poll(() => page.evaluate(() => window.__confirmMessages)).toEqual([
     "标签页在预览后发生了变化。\n1 个新增标签页会放进「待分类」。\n1 个已关闭的标签页会跳过。\n确认继续整理吗？"
   ]);

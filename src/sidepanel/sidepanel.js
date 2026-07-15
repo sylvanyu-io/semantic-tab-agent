@@ -68,9 +68,9 @@ const UI_COPY = Object.freeze({
     "status.gatewayLocalOriginOffline": "默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。",
     "status.gatewayFailed": "默认 AI 服务这次没有成功响应。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
     "status.customGatewayAuthDenied": "AI 服务拒绝访问。请检查自定义网关地址和密钥。",
-    "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页{reviewText}",
+    "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页",
+    "status.applyChangedWithReview": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页，{reviewCount} 个放进「{reviewTitle}」",
     "status.applyDone": "已创建 {groupCount} 个分组",
-    "status.applyReviewSuffix": "，{reviewCount} 个放进「{reviewTitle}」",
     "status.undoDone": "已恢复 {count} 个标签页",
     "status.noPlanToApply": "还没有可应用的方案，请先生成方案。",
     "status.noRollback": "还没有可回退的记录。",
@@ -347,9 +347,9 @@ const UI_COPY = Object.freeze({
     "status.gatewayLocalOriginOffline": "The default AI service origin is temporarily offline. Try again later; if it keeps failing, the local gateway or Cloudflare Tunnel needs attention.",
     "status.gatewayFailed": "The default AI service did not respond successfully. Try again later, or switch to a custom AI gateway in More options.",
     "status.customGatewayAuthDenied": "The AI service denied access. Check the custom gateway URL and key.",
-    "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs{reviewText}",
+    "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs",
+    "status.applyChangedWithReview": "Created {groupCount} groups; handled {changedTabs} changed tabs, with {reviewCount} added to \"{reviewTitle}\"",
     "status.applyDone": "Created {groupCount} groups",
-    "status.applyReviewSuffix": ", {reviewCount} added to \"{reviewTitle}\"",
     "status.undoDone": "Restored {count} tabs",
     "status.noPlanToApply": "No plan is ready yet. Generate one first.",
     "status.noRollback": "No rollback snapshot is available yet.",
@@ -2307,7 +2307,7 @@ async function applyLastPlan() {
     const status = applyResultStatus(result);
     await clearAnalysisState();
     resetToSetup();
-    setStatus(status, false, { mode: PANEL_MODE_ORGANIZE });
+    setStatusKey(status.key, status.params, false, { mode: PANEL_MODE_ORGANIZE });
   } catch (error) {
     setErrorStatus(error, t("status.previousFailed"), { mode: PANEL_MODE_ORGANIZE });
   } finally {
@@ -2342,12 +2342,15 @@ function applyResultStatus(result) {
   const changedTabs = result.rebasedPlan?.changedTabsCount || 0;
   if (changedTabs) {
     const reviewCount = result.rebasedPlan?.addedReviewTabIds?.length || 0;
-    const reviewText = reviewCount && fields.reviewGroupMode.value === "create_review_group"
-      ? t("status.applyReviewSuffix", { reviewCount, reviewTitle: reviewGroupTitle(currentResultLanguageMode()) })
-      : "";
-    return t("status.applyChanged", { groupCount, changedTabs, reviewText });
+    if (reviewCount && fields.reviewGroupMode.value === "create_review_group") {
+      return {
+        key: "status.applyChangedWithReview",
+        params: { groupCount, changedTabs, reviewCount, reviewTitle: reviewGroupTitle(currentResultLanguageMode()) }
+      };
+    }
+    return { key: "status.applyChanged", params: { groupCount, changedTabs } };
   }
-  return t("status.applyDone", { groupCount });
+  return { key: "status.applyDone", params: { groupCount } };
 }
 
 async function undoLastApply() {
@@ -2355,7 +2358,7 @@ async function undoLastApply() {
   try {
     const result = await sendMessage(scopedWindowMessage({ type: "tabs:undoLastApply" }));
     canUndo = false;
-    setStatus(t("status.undoDone", { count: result.restoredTabs || 0 }), false, { mode: PANEL_MODE_ORGANIZE });
+    setStatusKey("status.undoDone", { count: result.restoredTabs || 0 }, false, { mode: PANEL_MODE_ORGANIZE });
     renderDetails({ undoResult: result });
   } catch (error) {
     setErrorStatus(error, t("status.previousFailed"), { mode: PANEL_MODE_ORGANIZE });
