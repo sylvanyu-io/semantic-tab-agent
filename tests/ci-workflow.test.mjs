@@ -24,6 +24,7 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /uses: actions\/upload-artifact@v7/);
   assert.match(workflow, /path: dist\/\*\.zip/);
 
+  assert.match(workflow, /startsWith\(github\.ref, 'refs\/tags\/v'\)/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.full_gate/);
   assert.match(workflow, /run: npm run assets:icons && npm run build:extension/);
   assert.match(workflow, /run: xvfb-run --auto-servernum npm run stress:extension/);
@@ -32,4 +33,7 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /\$GITHUB_STEP_SUMMARY/);
   assert.match(workflow, /No stress summary artifact was produced\./);
   assert.match(workflow, /path: dist\/stress\/\*/);
+  assert.match(workflow, /release-live-gateway:/);
+  assert.match(workflow, /MONITOR_TOKEN: \$\{\{ secrets\.MONITOR_TOKEN \}\}/);
+  assert.match(workflow, /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
 });

@@ -65,7 +65,7 @@ jobs:
 
   extension-stress:
     name: Real extension stress
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_gate }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) }}
     needs: release-check
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -115,3 +115,32 @@ jobs:
           path: dist/stress/*
           if-no-files-found: ignore
           retention-days: 7
+
+  release-live-gateway:
+    name: Live default gateway
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs:
+      - release-check
+      - extension-stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify live default AI service
+        env:
+          MONITOR_TOKEN: ${{ secrets.MONITOR_TOKEN }}
+        run: node scripts/require-monitor-token.mjs && GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway

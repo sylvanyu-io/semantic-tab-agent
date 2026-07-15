@@ -106,6 +106,10 @@ Blocking gates:
 - `npm run stress:extension` validates current-window apply/undo and
   consolidate-to-one-window apply/undo on a throwaway Chromium profile. This is
   called automatically by `release:check:full` and `release:check:live`.
+- Tag-triggered CI also runs the real-extension stress job and the live default
+  gateway smoke check. The repository must provide a `MONITOR_TOKEN` Actions
+  secret; a missing secret or unhealthy built-in service blocks the tag
+  workflow instead of publishing a green package from an unverified gateway.
 - AI gateway live smoke verifies Worker health, origin readiness, monitor email
   configuration, the latest monitor snapshot, and one real chat-completions
   request.
