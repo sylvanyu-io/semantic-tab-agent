@@ -77,6 +77,7 @@ Worker vars, already present in `worker/wrangler.toml`:
 UPSTREAM_RETRY_ATTEMPTS = "2"
 UPSTREAM_RETRY_DELAY_MS = "1200"
 UPSTREAM_READY_TIMEOUT_MS = "8000"
+MAX_UPSTREAM_RESPONSE_BYTES = "1000000"
 LLM_READY_MODEL = "gpt-5.4-mini"
 LLM_READY_REASONING_EFFORT = "low"
 LLM_READY_MAX_TOKENS = "2"
@@ -120,8 +121,11 @@ Readiness check:
 curl https://cliproxy.sylvanyu.io/readyz
 ```
 
-`/readyz` calls the configured upstream health endpoint. By default it checks
-`/healthz` at the `UPSTREAM_BASE_URL` origin, so
+`/readyz` verifies both request-metering availability and the configured
+upstream health endpoint. It returns `503` if the Durable Object rate-limit
+binding is missing or unavailable, because public AI requests must fail closed
+when usage cannot be metered. By default the upstream check uses `/healthz` at
+the `UPSTREAM_BASE_URL` origin, so
 `UPSTREAM_BASE_URL=https://cliproxy-origin.sylvanyu.io/v1` checks
 `https://cliproxy-origin.sylvanyu.io/healthz`. Override with
 `UPSTREAM_HEALTH_URL` only if the origin uses a different health path.
@@ -135,7 +139,8 @@ curl -H "x-monitor-token: $MONITOR_TOKEN" https://cliproxy.sylvanyu.io/llm-ready
 
 `/llm-readyz` is intentionally separate from `/readyz`:
 
-- `/readyz` is free and only verifies Worker -> Tunnel -> local origin health.
+- `/readyz` is free and verifies the Worker rate-limit binding plus the
+  Worker -> Tunnel -> local origin health path.
 - `/llm-readyz` spends a tiny amount of model usage by sending one protected
   `gpt-5.4-mini`, `reasoning_effort=low`, `max_tokens=2` chat request through
   the real upstream path.

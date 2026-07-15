@@ -55,6 +55,7 @@ const DEFAULT_ALLOWED_MODELS = [
 const FORWARDED_CHAT_FIELDS = Object.freeze(["model", "messages", "response_format", "max_tokens", "reasoning_effort", "thinking"]);
 const DEFAULT_LIMITS = Object.freeze({
   bodyBytes: 1_000_000,
+  upstreamResponseBytes: 1_000_000,
   maxTokens: 8192,
   ipHourlyRequests: 60,
   installDailyRequests: 100,
@@ -241,14 +242,14 @@ export async function handleRequest(request, env = {}, ctx = {}, options = {}) {
     return jsonError(validation.message, 400, validation.code, {}, request, requestId);
   }
 
-  const upstream = upstreamConfig(env);
+  const upstream = upstreamConfig(env, request.url);
   if (!upstream.ok) {
     return jsonError(upstream.message, 503, "upstream_not_configured", {}, request, requestId);
   }
 
-  const rateLimit = await checkRateLimits(request, env, limits);
+  const rateLimit = await checkRateLimits(request, env, limits, validation);
   if (!rateLimit.ok) {
-    return jsonError(rateLimit.message, 429, rateLimit.code, rateLimit.headers, request, requestId);
+    return jsonError(rateLimit.message, rateLimit.status || 429, rateLimit.code, rateLimit.headers, request, requestId);
   }
 
   const fetchImpl = options.fetchImpl || fetch;
@@ -262,7 +263,7 @@ export async function handleRequest(request, env = {}, ctx = {}, options = {}) {
   );
 
   if (upstreamResult.response) {
-    return relayUpstreamResponse(upstreamResult.response, request, requestId, upstreamResult.attempts);
+    return relayUpstreamResponse(upstreamResult.response, request, requestId, upstreamResult.attempts, limits);
   }
 
   return jsonError(
@@ -279,6 +280,7 @@ export async function handleRequest(request, env = {}, ctx = {}, options = {}) {
 function readLimits(env) {
   return {
     bodyBytes: positiveInteger(env.MAX_BODY_BYTES, DEFAULT_LIMITS.bodyBytes),
+    upstreamResponseBytes: positiveInteger(env.MAX_UPSTREAM_RESPONSE_BYTES, DEFAULT_LIMITS.upstreamResponseBytes),
     maxTokens: positiveInteger(env.MAX_TOKENS, DEFAULT_LIMITS.maxTokens),
     ipHourlyRequests: positiveInteger(env.IP_HOURLY_REQUESTS, DEFAULT_LIMITS.ipHourlyRequests),
     installDailyRequests: positiveInteger(env.INSTALL_DAILY_REQUESTS, DEFAULT_LIMITS.installDailyRequests),
@@ -325,11 +327,22 @@ async function readBodyText(request, byteLimit) {
   if (contentLength > byteLimit) {
     return { ok: false, message: `Request body is above the ${byteLimit} byte limit.` };
   }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > byteLimit) {
-    return { ok: false, message: `Request body is above the ${byteLimit} byte limit.` };
+  if (!request.body) return { ok: true, text: "" };
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > byteLimit) {
+      await reader.cancel().catch(() => {});
+      return { ok: false, message: `Request body is above the ${byteLimit} byte limit.` };
+    }
+    text += decoder.decode(value, { stream: true });
   }
-  return { ok: true, text };
+  return { ok: true, text: text + decoder.decode() };
 }
 
 function validateChatRequest(body, env, limits) {
@@ -342,7 +355,9 @@ function validateChatRequest(body, env, limits) {
   if (!Array.isArray(body.messages) || !body.messages.length) {
     return { ok: false, code: "invalid_messages", message: "messages must be a non-empty array." };
   }
-  if (body.response_format?.type !== "json_object") {
+  const messageValidation = validateMessages(body.messages);
+  if (!messageValidation.ok) return messageValidation;
+  if (!hasOnlyKeys(body.response_format, new Set(["type"])) || body.response_format.type !== "json_object") {
     return { ok: false, code: "json_required", message: "TabRecap gateway requests must use JSON object output." };
   }
   if (!Number.isInteger(body.max_tokens) || body.max_tokens <= 0) {
@@ -351,18 +366,19 @@ function validateChatRequest(body, env, limits) {
   if (body.max_tokens > limits.maxTokens) {
     return { ok: false, code: "max_tokens_exceeded", message: `max_tokens must be <= ${limits.maxTokens}.` };
   }
+  const requestKind = detectRequestKind(body);
   if (body.model === PROGRESS_COPY_MODEL) {
-    if (isProgressCopyRequest(body)) {
+    if (requestKind.kind === "progress") {
       const sparkValidation = validateProgressCopyRequest(body);
       if (!sparkValidation.ok) return sparkValidation;
-    } else if (isTimeRecapRequest(body)) {
+    } else if (requestKind.kind === "recap") {
       const recapValidation = validateTimeRecapRequest(body, modelAllowlist, { includeProgressModel: true });
       if (!recapValidation.ok) return recapValidation;
     } else {
       const plannerValidation = validatePlannerRequest(body, modelAllowlist, { includeProgressModel: true });
       if (!plannerValidation.ok) return plannerValidation;
     }
-  } else if (isTimeRecapRequest(body)) {
+  } else if (requestKind.kind === "recap") {
     const recapValidation = validateTimeRecapRequest(body, modelAllowlist);
     if (!recapValidation.ok) return recapValidation;
   } else {
@@ -371,6 +387,41 @@ function validateChatRequest(body, env, limits) {
   }
   if (body.base_url || body.baseURL || body.provider_url) {
     return { ok: false, code: "proxy_target_not_allowed", message: "Custom upstream targets are not allowed." };
+  }
+  const optionValidation = validateForwardedOptions(body);
+  if (!optionValidation.ok) return optionValidation;
+  return { ok: true, kind: requestKind.kind, payload: requestKind.payload };
+}
+
+function validateMessages(messages) {
+  for (const message of messages) {
+    if (
+      !message ||
+      typeof message !== "object" ||
+      Array.isArray(message) ||
+      !hasOnlyKeys(message, new Set(["role", "content"])) ||
+      !["system", "user"].includes(message.role) ||
+      typeof message.content !== "string"
+    ) {
+      return {
+        ok: false,
+        code: "invalid_messages",
+        message: "TabRecap messages must contain only string role and content fields."
+      };
+    }
+  }
+  return { ok: true };
+}
+
+function validateForwardedOptions(body) {
+  if (body.reasoning_effort !== undefined && !["low", "medium", "high"].includes(body.reasoning_effort)) {
+    return { ok: false, code: "invalid_reasoning_effort", message: "reasoning_effort is not supported." };
+  }
+  if (
+    body.thinking !== undefined &&
+    (!hasOnlyKeys(body.thinking, new Set(["type"])) || !["disabled", "enabled"].includes(body.thinking.type))
+  ) {
+    return { ok: false, code: "invalid_thinking", message: "thinking is not supported." };
   }
   return { ok: true };
 }
@@ -418,18 +469,37 @@ function validatePlannerRequest(body, modelAllowlist, options = {}) {
   return validatePlannerPayload(payload, contract.schema, { allowMissingSchema: contract.allowMissingSchema });
 }
 
-function isProgressCopyRequest(body) {
-  const systemText = messageText(body?.messages?.[0]);
-  return /AI browser-tab organization extension|loading captions/i.test(systemText);
-}
-
-function isTimeRecapRequest(body) {
+function detectRequestKind(body) {
   const systemText = messageText(body?.messages?.[0]);
   const userText = messageText(body?.messages?.[1]);
-  return (
-    /time recap writer|time-recap|work recap/i.test(systemText) ||
-    /tab_recap_time_recap_input_v1|tab_tidy_time_recap_input_v1|local time-recap input/i.test(userText)
-  );
+  const payload = extractJsonPayload(messageText(body?.messages?.[1]));
+  if (
+    TIME_RECAP_INPUT_SCHEMAS.has(payload?.schema) ||
+    (includesEvery(systemText, [
+      "You are a JSON-only time recap writer for a consumer Chrome tab organization product.",
+      "This feature is recap-only; cleanup recommendations belong to the organizer flow."
+    ]) && startsWithLines(userText, ["TabRecap local time-recap input follows. Page rows are already privacy-reduced."]))
+  ) {
+    return { kind: "recap", payload };
+  }
+  const progressContract = includesEvery(systemText, [
+    "Return strict JSON only: {\"messages\":[\"...\"]}.",
+    "Write short loading captions for an AI browser-tab organization extension.",
+    "Do not claim real internal thoughts, exact work already completed, or user-private content."
+  ]);
+  if (payload?.schema === "tab_recap_progress_copy_v1" || (body?.model === PROGRESS_COPY_MODEL && progressContract)) {
+    return { kind: "progress", payload };
+  }
+  if (
+    payload?.schema === undefined &&
+    body?.model === PROGRESS_COPY_MODEL &&
+    hasOnlyKeys(payload, LEGACY_PROGRESS_COPY_FIELDS) &&
+    "languageMode" in payload &&
+    "phase" in payload
+  ) {
+    return { kind: "progress", payload };
+  }
+  return { kind: "planner", payload };
 }
 
 function validateTimeRecapRequest(body, modelAllowlist, options = {}) {
@@ -506,11 +576,7 @@ function validateProgressCopyRequest(body) {
 }
 
 function messageText(message) {
-  if (typeof message?.content === "string") return message.content;
-  if (Array.isArray(message?.content)) {
-    return message.content.map((part) => (typeof part === "string" ? part : part?.text || "")).join("\n");
-  }
-  return "";
+  return typeof message?.content === "string" ? message.content : "";
 }
 
 function validatePlannerPayload(payload, expectedSchema, options = {}) {
@@ -711,13 +777,21 @@ function validRequiredFieldValue(field, value) {
 }
 
 function forwardedChatBody(body) {
-  return Object.fromEntries(FORWARDED_CHAT_FIELDS.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
+  const forwarded = {
+    model: body.model,
+    messages: body.messages.map((message) => ({ role: message.role, content: message.content })),
+    response_format: { type: "json_object" },
+    max_tokens: body.max_tokens
+  };
+  if (body.reasoning_effort !== undefined) forwarded.reasoning_effort = body.reasoning_effort;
+  if (body.thinking !== undefined) forwarded.thinking = { type: body.thinking.type };
+  return forwarded;
 }
 
-async function checkRateLimits(request, env, limits) {
+async function checkRateLimits(request, env, limits, validation = {}) {
   if (!env.RATE_LIMIT_DO) {
     if (String(env.ALLOW_UNMETERED || "").toLowerCase() === "true") return { ok: true };
-    return { ok: false, code: "rate_limit_store_missing", message: "Free gateway rate limit store is not configured." };
+    return { ok: false, status: 503, code: "rate_limit_store_missing", message: "Free gateway rate limit store is not configured." };
   }
 
   const now = new Date();
@@ -730,7 +804,8 @@ async function checkRateLimits(request, env, limits) {
   const ipKey = normalizeIp(clientIp(request));
   const pageSummary =
     request.headers.get("x-tab-recap-page-summary") === "1" ||
-    request.headers.get("x-tab-tidy-page-summary") === "1";
+    request.headers.get("x-tab-tidy-page-summary") === "1" ||
+    payloadContainsPageSummaries(validation.payload);
   const checks = [
     rateLimitCheck("global", `global:${day}`, limits.globalDailyRequests, secondsUntilNextUtcDay(now), 3600, now),
     rateLimitCheck("install", `install:${installId}:${day}`, limits.installDailyRequests, secondsUntilNextUtcDay(now), 3600, now),
@@ -761,15 +836,35 @@ async function checkRateLimits(request, env, limits) {
       ok: false,
       code: `${result.kind || "gateway"}_rate_limited`,
       message: "The default AI service is temporarily rate limited. Please try later or use a custom AI gateway.",
-      headers: { "retry-after": String(Math.min(positiveInteger(result.retryAfter, 3600), 3600)) }
+      headers: { "retry-after": String(positiveInteger(result.retryAfter, 3600)) }
     };
   } catch {
     return {
       ok: false,
+      status: 503,
       code: "rate_limit_store_unavailable",
       message: "The default AI service is temporarily unavailable. Please try later or use a custom AI gateway."
     };
   }
+}
+
+function rateLimitStoreReadiness(env) {
+  if (env.RATE_LIMIT_DO) return { ok: true, code: "ready" };
+  if (String(env.ALLOW_UNMETERED || "").toLowerCase() === "true") {
+    return { ok: true, code: "unmetered" };
+  }
+  return {
+    ok: false,
+    code: "rate_limit_store_missing",
+    message: "Free gateway rate limit storage is not configured."
+  };
+}
+
+function payloadContainsPageSummaries(payload) {
+  if (!payload || typeof payload !== "object") return false;
+  if (Array.isArray(payload.pageSampleSignals) && payload.pageSampleSignals.length > 0) return true;
+  if (Array.isArray(payload.pageSampleResults) && payload.pageSampleResults.length > 0) return true;
+  return Number(payload.coverage?.sampledEntries || 0) > 0;
 }
 
 function rateLimitCheck(kind, key, limit, retryAfter, cleanupBuffer, now) {
@@ -816,10 +911,26 @@ async function scheduleRateLimitCleanup(storage, checks) {
   }
 }
 
-function upstreamConfig(env) {
-  const baseUrl = String(env.UPSTREAM_BASE_URL || "").replace(/\/+$/, "");
-  if (!baseUrl) return { ok: false, message: "UPSTREAM_BASE_URL is not configured." };
+function upstreamConfig(env, publicRequestUrl = "") {
+  const rawBaseUrl = String(env.UPSTREAM_BASE_URL || "").trim();
+  if (!rawBaseUrl) return { ok: false, message: "UPSTREAM_BASE_URL is not configured." };
   if (!env.UPSTREAM_API_KEY) return { ok: false, message: "UPSTREAM_API_KEY is not configured." };
+  let parsed;
+  try {
+    parsed = new URL(rawBaseUrl);
+  } catch {
+    return { ok: false, message: "UPSTREAM_BASE_URL must be a valid HTTPS URL." };
+  }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    return { ok: false, message: "UPSTREAM_BASE_URL must be a credential-free HTTPS URL." };
+  }
+  if (publicRequestUrl) {
+    const publicUrl = new URL(publicRequestUrl);
+    if (parsed.origin === publicUrl.origin) {
+      return { ok: false, message: "UPSTREAM_BASE_URL must not point back to this Worker." };
+    }
+  }
+  const baseUrl = parsed.toString().replace(/\/+$/, "");
   return {
     ok: true,
     baseUrl,
@@ -840,7 +951,7 @@ function upstreamRequest(bodyText, upstream, signal, requestId = "") {
     headers["cf-access-client-id"] = upstream.accessClientId;
     headers["cf-access-client-secret"] = upstream.accessClientSecret;
   }
-  return { method: "POST", headers, body: bodyText, signal };
+  return { method: "POST", headers, body: bodyText, signal, redirect: "error" };
 }
 
 async function fetchUpstreamWithRetries(fetchImpl, upstream, bodyText, request, limits, requestId) {
@@ -858,7 +969,11 @@ async function fetchUpstreamWithRetries(fetchImpl, upstream, bodyText, request, 
       if (!isRetryableUpstreamStatus(response.status)) {
         return { response, attempts: attempt };
       }
-      const body = await response.text().catch(() => "");
+      const bodyResult = await readResponseText(response, limits.upstreamResponseBytes, {
+        timeoutMs: limits.upstreamChatTimeoutMs,
+        signal: request.signal
+      });
+      const body = bodyResult.ok ? bodyResult.text : "";
       lastFailure = classifyUpstreamFailure({ status: response.status, body, attempt, attempts });
     } catch (error) {
       if (request.signal?.aborted) {
@@ -947,14 +1062,18 @@ function cloudflareErrorCode(text) {
 }
 
 async function upstreamReadiness(request, env, options = {}, requestId = "") {
-  const check = await checkUpstreamReadiness(env, options);
+  const metering = rateLimitStoreReadiness(env);
+  const check = metering.ok
+    ? await checkUpstreamReadiness(env, { ...options, requestUrl: request.url })
+    : { ok: false, code: metering.code, message: metering.message };
   return jsonResponse(
     {
-      ok: check.ok,
+      ok: check.ok && metering.ok,
       worker: true,
-      upstream: check
+      upstream: check,
+      rateLimit: metering
     },
-    check.ok ? 200 : 503,
+    check.ok && metering.ok ? 200 : 503,
     {},
     request,
     requestId
@@ -967,7 +1086,7 @@ async function llmReadiness(request, env, options = {}, requestId = "") {
     return jsonError(auth.message, auth.status, auth.code, {}, request, requestId);
   }
 
-  const check = await checkLlmReadiness(env, { ...options, requestId, signal: request.signal });
+  const check = await checkLlmReadiness(env, { ...options, requestId, requestUrl: request.url, signal: request.signal });
   return jsonResponse(
     {
       ok: check.ok,
@@ -1016,25 +1135,37 @@ async function monitorStatus(request, env, requestId = "") {
 }
 
 async function checkUpstreamReadiness(env, options = {}) {
-  const upstream = upstreamConfig(env);
+  const upstream = upstreamConfig(env, options.requestUrl || "");
   if (!upstream.ok) {
     return { ok: false, code: "upstream_not_configured", message: upstream.message };
   }
 
   const limits = readLimits(env);
-  const url = upstreamHealthUrl(env, upstream);
+  let url;
+  try {
+    url = upstreamHealthUrl(env, upstream, options.requestUrl || "");
+  } catch (error) {
+    return { ok: false, code: "upstream_health_url_invalid", message: compactResponseText(error?.message || "Invalid health URL.") };
+  }
   const fetchImpl = options.fetchImpl || fetch;
   const startedAt = Date.now();
   try {
     const response = await fetchWithTimeout(
       fetchImpl,
       url,
-      { method: "GET", headers: upstreamHealthHeaders(upstream) },
+      { method: "GET", headers: upstreamHealthHeaders(upstream), redirect: "error" },
       limits.upstreamReadyTimeoutMs
     );
-    const body = await response.text().catch(() => "");
-    const ok = response.ok;
-    const failure = ok ? null : classifyUpstreamFailure({ status: response.status, body });
+    const bodyResult = await readResponseText(response, limits.upstreamResponseBytes, {
+      timeoutMs: limits.upstreamReadyTimeoutMs
+    });
+    const body = bodyResult.ok ? bodyResult.text : "";
+    const ok = response.ok && bodyResult.ok;
+    const failure = ok
+      ? null
+      : bodyResult.ok
+        ? classifyUpstreamFailure({ status: response.status, body })
+        : { code: bodyResult.code, message: bodyResult.message, upstreamCode: "" };
     return {
       ok,
       status: response.status,
@@ -1054,7 +1185,7 @@ async function checkUpstreamReadiness(env, options = {}) {
 }
 
 async function checkLlmReadiness(env, options = {}) {
-  const upstream = upstreamConfig(env);
+  const upstream = upstreamConfig(env, options.requestUrl || "");
   if (!upstream.ok) {
     return { ok: false, code: "upstream_not_configured", message: upstream.message, httpStatus: 503 };
   }
@@ -1091,8 +1222,24 @@ async function checkLlmReadiness(env, options = {}) {
       limits.llmReadyTimeoutMs,
       options.signal
     );
-    const text = await response.text().catch(() => "");
+    const bodyResult = await readResponseText(response, limits.upstreamResponseBytes, {
+      timeoutMs: limits.llmReadyTimeoutMs,
+      signal: options.signal
+    });
+    const text = bodyResult.ok ? bodyResult.text : "";
     const latencyMs = Date.now() - startedAt;
+
+    if (!bodyResult.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        code: bodyResult.code,
+        message: bodyResult.message,
+        latencyMs,
+        model,
+        httpStatus: bodyResult.status || 502
+      };
+    }
 
     if (!response.ok) {
       const failure = classifyUpstreamFailure({ status: response.status, body: text });
@@ -1499,9 +1646,18 @@ function validateLlmReadyResponse(text) {
   return { ok: true };
 }
 
-function upstreamHealthUrl(env, upstream) {
-  if (env.UPSTREAM_HEALTH_URL) return String(env.UPSTREAM_HEALTH_URL);
-  return new URL(String(env.UPSTREAM_HEALTH_PATH || "/healthz"), upstream.baseUrl).toString();
+function upstreamHealthUrl(env, upstream, publicRequestUrl = "") {
+  const raw = env.UPSTREAM_HEALTH_URL
+    ? String(env.UPSTREAM_HEALTH_URL)
+    : new URL(String(env.UPSTREAM_HEALTH_PATH || "/healthz"), upstream.baseUrl).toString();
+  const url = new URL(raw);
+  if (url.protocol !== "https:" || url.username || url.password || url.hash) {
+    throw new Error("The upstream health endpoint must be a credential-free HTTPS URL.");
+  }
+  if (publicRequestUrl && url.origin === new URL(publicRequestUrl).origin) {
+    throw new Error("The upstream health endpoint must not point back to this Worker.");
+  }
+  return url.toString();
 }
 
 function upstreamHealthHeaders(upstream) {
@@ -1530,22 +1686,111 @@ function fetchWithTimeout(fetchImpl, url, options, timeoutMs, externalSignal = n
   });
 }
 
-async function relayUpstreamResponse(response, request, requestId = "", attempts = 1) {
+async function relayUpstreamResponse(response, request, requestId = "", attempts = 1, limits = DEFAULT_LIMITS) {
   if (!response.ok) {
-    return relayUpstreamErrorResponse(response, request, requestId, attempts);
+    return relayUpstreamErrorResponse(response, request, requestId, attempts, limits);
+  }
+  const body = await readResponseText(response, limits.upstreamResponseBytes || DEFAULT_LIMITS.upstreamResponseBytes, {
+    timeoutMs: limits.upstreamChatTimeoutMs,
+    signal: request.signal
+  });
+  if (!body.ok) {
+    return jsonError(body.message, body.status || 502, body.code, {}, request, requestId, { attempts: Number(attempts) || 1 });
+  }
+  let payload;
+  try {
+    payload = JSON.parse(body.text);
+  } catch {
+    return jsonError(
+      "The TabRecap AI upstream returned an invalid JSON response.",
+      502,
+      "upstream_invalid_json",
+      {},
+      request,
+      requestId,
+      { attempts: Number(attempts) || 1 }
+    );
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload) || !hasAiResponseEnvelope(payload)) {
+    return jsonError(
+      "The TabRecap AI upstream returned an invalid response object.",
+      502,
+      "upstream_invalid_response",
+      {},
+      request,
+      requestId,
+      { attempts: Number(attempts) || 1 }
+    );
   }
   const headers = {
     ...corsHeaders(request),
     "cache-control": "no-store",
-    "content-type": response.headers.get("content-type") || "application/json",
+    "content-type": "application/json; charset=utf-8",
     ...requestIdHeaders(requestId),
     "x-tab-recap-upstream-attempts": String(attempts || 1)
   };
-  return new Response(response.body, { status: response.status, headers });
+  return new Response(body.text, { status: response.status, headers });
 }
 
-async function relayUpstreamErrorResponse(response, request, requestId = "", attempts = 1) {
-  const text = await response.text().catch(() => "");
+function hasAiResponseEnvelope(payload) {
+  return Array.isArray(payload.choices) || typeof payload.output_text === "string" || Array.isArray(payload.output);
+}
+
+async function readResponseText(response, byteLimit, options = {}) {
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (contentLength > byteLimit) {
+    return { ok: false, code: "upstream_response_too_large", message: "The TabRecap AI upstream response is too large." };
+  }
+  if (!response.body) return { ok: true, text: "" };
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const timeoutMs = positiveInteger(options.timeoutMs, DEFAULT_LIMITS.upstreamChatTimeoutMs);
+  let timeoutId;
+  let abortListener;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(Object.assign(new Error("Upstream response body timed out."), { code: "timeout" })), timeoutMs);
+  });
+  const aborted = new Promise((_, reject) => {
+    if (!options.signal?.addEventListener) return;
+    abortListener = () => reject(Object.assign(new Error("Request was cancelled."), { code: "cancelled" }));
+    if (options.signal.aborted) abortListener();
+    else options.signal.addEventListener("abort", abortListener, { once: true });
+  });
+  let bytes = 0;
+  let text = "";
+  try {
+    while (true) {
+      const { done, value } = await Promise.race([reader.read(), timeout, aborted]);
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > byteLimit) {
+        await reader.cancel().catch(() => {});
+        return { ok: false, code: "upstream_response_too_large", message: "The TabRecap AI upstream response is too large." };
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    return { ok: true, text: text + decoder.decode() };
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    if (error?.code === "cancelled") {
+      return { ok: false, status: 499, code: "request_cancelled", message: "The TabRecap request was cancelled." };
+    }
+    if (error?.code === "timeout") {
+      return { ok: false, status: 503, code: "origin_chat_timeout", message: "The local TabRecap AI origin did not finish the response in time." };
+    }
+    return { ok: false, status: 502, code: "upstream_response_read_failed", message: "The TabRecap AI upstream response could not be read." };
+  } finally {
+    clearTimeout(timeoutId);
+    if (abortListener && options.signal?.removeEventListener) options.signal.removeEventListener("abort", abortListener);
+  }
+}
+
+async function relayUpstreamErrorResponse(response, request, requestId = "", attempts = 1, limits = DEFAULT_LIMITS) {
+  const body = await readResponseText(response, limits.upstreamResponseBytes || DEFAULT_LIMITS.upstreamResponseBytes, {
+    timeoutMs: limits.upstreamChatTimeoutMs,
+    signal: request.signal
+  });
+  const text = body.ok ? body.text : "";
   const status = Number(response.status) || 502;
   const upstreamCode = cloudflareErrorCode(text);
   const retryAfter = response.headers.get("retry-after") || "20";

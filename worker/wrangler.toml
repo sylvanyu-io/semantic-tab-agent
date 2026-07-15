@@ -24,6 +24,7 @@ new_sqlite_classes = ["RateLimitCounter"]
 [vars]
 ALLOWED_MODELS = "gpt-5.5,gpt-5.4,gpt-5.4-mini,codex-auto-review,claude-fable-5,claude-opus-4-8,claude-opus-4-7,claude-opus-4-6,claude-opus-4-5-20251101,claude-opus-4-1-20250805,claude-opus-4-20250514,claude-sonnet-4-6,claude-sonnet-4-5-20250929,claude-sonnet-4-20250514,claude-haiku-4-5-20251001,claude-3-7-sonnet-20250219,claude-3-5-haiku-20241022,gpt-5.3-codex-spark"
 MAX_BODY_BYTES = "1000000"
+MAX_UPSTREAM_RESPONSE_BYTES = "1000000"
 MAX_TOKENS = "8192"
 IP_HOURLY_REQUESTS = "60"
 INSTALL_DAILY_REQUESTS = "100"

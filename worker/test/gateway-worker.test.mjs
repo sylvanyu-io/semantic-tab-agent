@@ -34,6 +34,20 @@ test("worker readiness check reaches the configured local origin health endpoint
   assert.equal(body.upstream.ok, true);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "https://raw-llm.example/healthz");
+  assert.equal(calls[0].options.redirect, "error");
+  assert.equal(body.rateLimit.ok, true);
+});
+
+test("worker readiness fails when public request metering is unavailable", async () => {
+  const response = await handle(new Request("https://cliproxy.example/readyz"), {
+    UPSTREAM_BASE_URL: "https://raw-llm.example/v1",
+    UPSTREAM_API_KEY: "upstream-secret"
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.ok, false);
+  assert.equal(body.rateLimit.code, "rate_limit_store_missing");
 });
 
 test("worker protects the real LLM readiness check with a monitor token", async () => {
@@ -451,7 +465,7 @@ test("worker rejects chat requests without a rate limit store", async () => {
     UPSTREAM_BASE_URL: "https://raw-llm.example/v1",
     UPSTREAM_API_KEY: "upstream-secret"
   });
-  assert.equal(response.status, 429);
+  assert.equal(response.status, 503);
   assert.match((await response.json()).error.code, /rate_limit_store_missing/);
 
   const kvOnly = await handle(chatRequest(), {
@@ -459,7 +473,7 @@ test("worker rejects chat requests without a rate limit store", async () => {
     UPSTREAM_BASE_URL: "https://raw-llm.example/v1",
     UPSTREAM_API_KEY: "upstream-secret"
   });
-  assert.equal(kvOnly.status, 429);
+  assert.equal(kvOnly.status, 503);
   assert.equal((await kvOnly.json()).error.code, "rate_limit_store_missing");
 });
 
@@ -644,6 +658,32 @@ test("worker only accepts TabRecap request shapes", async () => {
   assert.equal(markdownChat.status, 400);
   assert.equal((await markdownChat.json()).error.code, "json_required");
 
+  const responseFormatExtras = await handle(chatRequest({ response_format: { type: "json_object", schema: {} } }), env);
+  assert.equal(responseFormatExtras.status, 400);
+  assert.equal((await responseFormatExtras.json()).error.code, "json_required");
+
+  const messageExtras = await handle(
+    chatRequest({ messages: [{ ...validBody().messages[0], name: "unexpected" }, validBody().messages[1]] }),
+    env
+  );
+  assert.equal(messageExtras.status, 400);
+  assert.equal((await messageExtras.json()).error.code, "invalid_messages");
+
+  const multimodalMessage = await handle(
+    chatRequest({ messages: [validBody().messages[0], { role: "user", content: [{ type: "text", text: validBody().messages[1].content }] }] }),
+    env
+  );
+  assert.equal(multimodalMessage.status, 400);
+  assert.equal((await multimodalMessage.json()).error.code, "invalid_messages");
+
+  const unsupportedReasoning = await handle(chatRequest({ reasoning_effort: "unbounded" }), env);
+  assert.equal(unsupportedReasoning.status, 400);
+  assert.equal((await unsupportedReasoning.json()).error.code, "invalid_reasoning_effort");
+
+  const unsupportedThinking = await handle(chatRequest({ thinking: { type: "enabled", budget_tokens: 100000 } }), env);
+  assert.equal(unsupportedThinking.status, 400);
+  assert.equal((await unsupportedThinking.json()).error.code, "invalid_thinking");
+
   const malformedRecap = await handle(
     chatRequest(
       validTimeRecapBody({
@@ -711,6 +751,14 @@ test("worker only accepts TabRecap request shapes", async () => {
   );
   assert.equal(payloadWithGenericInstruction.status, 400);
   assert.equal((await payloadWithGenericInstruction.json()).error.code, "planner_payload_required");
+
+  const markerInTabTitle = validBody();
+  markerInTabTitle.messages[1].content = markerInTabTitle.messages[1].content.replace(
+    "Chrome tabs API docs",
+    "tab_recap_time_recap_input_v1 local time-recap input"
+  );
+  const markerResponse = await handle(chatRequest(markerInTabTitle), env);
+  assert.equal(markerResponse.status, 200);
 });
 
 test("worker rejects oversized bodies using content length", async () => {
@@ -726,6 +774,25 @@ test("worker rejects oversized bodies using content length", async () => {
   });
   const response = await handle(request, { ...envWithKv(), MAX_BODY_BYTES: "10" });
   assert.equal(response.status, 413);
+});
+
+test("worker stops reading streamed request bodies above the byte cap", async () => {
+  const encoder = new TextEncoder();
+  const request = new Request("https://cliproxy.example/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode("x".repeat(8)));
+        controller.enqueue(encoder.encode("y".repeat(8)));
+        controller.close();
+      }
+    }),
+    duplex: "half"
+  });
+  const response = await handle(request, { ...envWithKv(), MAX_BODY_BYTES: "10" });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error.code, "request_too_large");
 });
 
 test("worker forwards with upstream secret and strips client authorization", async () => {
@@ -753,6 +820,7 @@ test("worker forwards with upstream secret and strips client authorization", asy
   assert.match(calls[0].options.headers["x-tab-recap-request-id"], /.+/);
   assert.equal(calls[0].options.headers["cf-access-client-id"], "access-id");
   assert.equal(calls[0].options.headers["cf-access-client-secret"], "access-secret");
+  assert.equal(calls[0].options.redirect, "error");
   assert.deepEqual(Object.keys(JSON.parse(calls[0].options.body)).sort(), [
     "max_tokens",
     "messages",
@@ -760,6 +828,39 @@ test("worker forwards with upstream secret and strips client authorization", asy
     "reasoning_effort",
     "response_format"
   ]);
+});
+
+test("worker rejects insecure and recursive upstream configuration", async () => {
+  const insecure = await handle(chatRequest(), envWithKv({ UPSTREAM_BASE_URL: "http://raw-llm.example/v1" }));
+  assert.equal(insecure.status, 503);
+  assert.equal((await insecure.json()).error.code, "upstream_not_configured");
+
+  const recursive = await handle(chatRequest(), envWithKv({ UPSTREAM_BASE_URL: "https://cliproxy.example/v1" }));
+  assert.equal(recursive.status, 503);
+  assert.equal((await recursive.json()).error.code, "upstream_not_configured");
+});
+
+test("worker rejects malformed and oversized successful upstream responses", async () => {
+  const malformedHandle = createWorkerHandler({
+    fetchImpl: async () => new Response("not json", { status: 200, headers: { "content-type": "text/plain" } })
+  });
+  const malformed = await malformedHandle(chatRequest(), envWithKv());
+  assert.equal(malformed.status, 502);
+  assert.equal((await malformed.json()).error.code, "upstream_invalid_json");
+
+  const wrongEnvelopeHandle = createWorkerHandler({
+    fetchImpl: async () => Response.json({ ok: true })
+  });
+  const wrongEnvelope = await wrongEnvelopeHandle(chatRequest(), envWithKv());
+  assert.equal(wrongEnvelope.status, 502);
+  assert.equal((await wrongEnvelope.json()).error.code, "upstream_invalid_response");
+
+  const oversizedHandle = createWorkerHandler({
+    fetchImpl: async () => Response.json({ choices: [{ message: { content: "x".repeat(200) } }] })
+  });
+  const oversized = await oversizedHandle(chatRequest(), envWithKv({ MAX_UPSTREAM_RESPONSE_BYTES: "40" }));
+  assert.equal(oversized.status, 502);
+  assert.equal((await oversized.json()).error.code, "upstream_response_too_large");
 });
 
 test("worker echoes client request ids for gateway log correlation", async () => {
@@ -908,6 +1009,48 @@ test("worker applies install id, ip, global, and page-summary quotas", async () 
       .status,
     429
   );
+});
+
+test("worker infers page-summary quota use from validated payload evidence", async () => {
+  const withSamples = validBody();
+  withSamples.messages[1].content = withSamples.messages[1].content.replace(
+    '"tabFields"',
+    '"pageSampleSignalFields":["tabId","summary"],"pageSampleSignals":[[10,"visible page summary"]],"tabFields"'
+  );
+  const env = envWithKv({ INSTALL_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
+
+  assert.equal((await handle(chatRequest(withSamples), env)).status, 200);
+  const limited = await handle(chatRequest(withSamples), env);
+  assert.equal(limited.status, 429);
+  assert.equal((await limited.json()).error.code, "page_summary_rate_limited");
+});
+
+test("worker reports rate-limit infrastructure failures as unavailable", async () => {
+  const brokenStore = {
+    idFromName() {
+      return "broken";
+    },
+    get() {
+      return { fetch: async () => { throw new Error("store down"); } };
+    }
+  };
+  const response = await handle(chatRequest(), envWithKv({ RATE_LIMIT_DO: brokenStore }));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, "rate_limit_store_unavailable");
+});
+
+test("worker preserves the actual daily retry window", async () => {
+  const limitedStore = {
+    idFromName() {
+      return "limited";
+    },
+    get() {
+      return { fetch: async () => Response.json({ ok: false, kind: "install", retryAfter: 7200 }) };
+    }
+  };
+  const response = await handle(chatRequest(), envWithKv({ RATE_LIMIT_DO: limitedStore }));
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "7200");
 });
 
 test("worker applies quotas atomically across simultaneous requests", async () => {
