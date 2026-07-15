@@ -50,6 +50,25 @@ test("worker readiness fails when public request metering is unavailable", async
   assert.equal(body.rateLimit.code, "rate_limit_store_missing");
 });
 
+test("worker readiness fails when rate-limit storage is unhealthy", async () => {
+  const brokenStore = {
+    idFromName() {
+      return "broken";
+    },
+    get() {
+      return { fetch: async () => { throw new Error("store down"); } };
+    }
+  };
+  const response = await handle(
+    new Request("https://cliproxy.example/readyz"),
+    envWithKv({ RATE_LIMIT_DO: brokenStore })
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.rateLimit.code, "rate_limit_store_unavailable");
+});
+
 test("worker protects the real LLM readiness check with a monitor token", async () => {
   const missingConfig = await handle(new Request("https://cliproxy.example/llm-readyz"), envWithKv());
   assert.equal(missingConfig.status, 503);
@@ -316,6 +335,24 @@ test("scheduled monitor skips the real LLM probe when origin readiness fails", a
   assert.equal(chatCalls.length, 0);
   assert.equal(calls.emails.length, 1);
   assert.match(calls.emails[0].text, /llm-readyz: skipped/);
+});
+
+test("scheduled monitor alerts when public request metering is unavailable", async () => {
+  const calls = monitorFetch();
+  const result = await runScheduledMonitor(monitorEnv({ RATE_LIMIT_DO: undefined }), {
+    scheduledTime: Date.parse("2026-07-02T00:00:00.000Z"),
+    fetchImpl: calls.fetch
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.event, "down");
+  assert.deepEqual(result.summary.failed, ["rate-limit"]);
+  assert.equal(result.checks.readyz.skipped, true);
+  assert.equal(result.checks.llm.skipped, true);
+  assert.equal(calls.calls.some((call) => String(call.url).endsWith("/healthz")), false);
+  assert.equal(calls.calls.some((call) => String(call.url).endsWith("/chat/completions")), false);
+  assert.equal(calls.emails.length, 1);
+  assert.match(calls.emails[0].text, /rate-limit: failed/);
 });
 
 test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds later", async () => {

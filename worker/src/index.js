@@ -89,6 +89,14 @@ export class RateLimitCounter {
   }
 
   async fetch(request) {
+    if (request.method === "GET" && new URL(request.url).pathname === "/healthz") {
+      try {
+        await this.ctx.storage.get("__health__");
+        return Response.json({ ok: true });
+      } catch {
+        return Response.json({ ok: false, code: "storage_unavailable" }, { status: 503 });
+      }
+    }
     if (request.method !== "POST") {
       return Response.json({ ok: false, code: "method_not_allowed" }, { status: 405 });
     }
@@ -860,6 +868,24 @@ function rateLimitStoreReadiness(env) {
   };
 }
 
+async function checkRateLimitStoreReadiness(env) {
+  const configured = rateLimitStoreReadiness(env);
+  if (!configured.ok || configured.code === "unmetered") return configured;
+  try {
+    const id = env.RATE_LIMIT_DO.idFromName(RATE_LIMIT_OBJECT_NAME);
+    const response = await env.RATE_LIMIT_DO.get(id).fetch("https://rate-limit.internal/healthz", { method: "GET" });
+    const result = await response.json();
+    if (!response.ok || result?.ok !== true) throw new Error("Invalid rate limit health response.");
+    return { ok: true, code: "ready" };
+  } catch {
+    return {
+      ok: false,
+      code: "rate_limit_store_unavailable",
+      message: "Free gateway rate limit storage is unavailable."
+    };
+  }
+}
+
 function payloadContainsPageSummaries(payload) {
   if (!payload || typeof payload !== "object") return false;
   if (Array.isArray(payload.pageSampleSignals) && payload.pageSampleSignals.length > 0) return true;
@@ -1062,7 +1088,7 @@ function cloudflareErrorCode(text) {
 }
 
 async function upstreamReadiness(request, env, options = {}, requestId = "") {
-  const metering = rateLimitStoreReadiness(env);
+  const metering = await checkRateLimitStoreReadiness(env);
   const check = metering.ok
     ? await checkUpstreamReadiness(env, { ...options, requestUrl: request.url })
     : { ok: false, code: metering.code, message: metering.message };
@@ -1330,11 +1356,18 @@ function constantTimeStringEqual(a, b) {
 }
 
 async function runGatewayMonitorChecks(env, options = {}) {
-  const readyz = await checkUpstreamReadiness(env, options);
-  const llm = readyz.ok
+  const rateLimit = await checkRateLimitStoreReadiness(env);
+  const readyz = rateLimit.ok
+    ? await checkUpstreamReadiness(env, options)
+    : skippedReadinessCheck("Skipped because rate-limit storage is unavailable.");
+  const llm = rateLimit.ok && readyz.ok
     ? await checkLlmReadiness(env, options)
     : skippedLlmReadinessCheck();
-  return { readyz, llm, requestId: options.requestId || "" };
+  return { rateLimit, readyz, llm, requestId: options.requestId || "" };
+}
+
+function skippedReadinessCheck(message) {
+  return { ok: true, skipped: true, code: "skipped", message, httpStatus: 0 };
 }
 
 function skippedLlmReadinessCheck() {
@@ -1349,8 +1382,9 @@ function skippedLlmReadinessCheck() {
 }
 
 function monitorSummary(checks) {
-  const ok = Boolean(checks.readyz?.ok && checks.llm?.ok);
+  const ok = Boolean(checks.rateLimit?.ok && checks.readyz?.ok && checks.llm?.ok);
   const failed = [];
+  if (!checks.rateLimit?.ok) failed.push("rate-limit");
   if (!checks.readyz?.ok) failed.push("readyz");
   if (!checks.llm?.ok) failed.push("llm-readyz");
   return {
@@ -1358,6 +1392,7 @@ function monitorSummary(checks) {
     status: ok ? "ok" : "down",
     failed,
     requestId: checks.requestId || "",
+    rateLimitCode: checks.rateLimit?.code || "unknown",
     readyzCode: checks.readyz?.code || "unknown",
     llmCode: checks.llm?.code || "unknown",
     llmModel: checks.llm?.model || DEFAULT_LLM_READY_MODEL
@@ -1590,17 +1625,20 @@ function monitorEmailText(event, summary, checks, now) {
     `Request ID: ${summary.requestId || "-"}`,
     "",
     "Checks:",
+    `- rate-limit: ${formatMonitorCheck(checks.rateLimit)}`,
     `- readyz: ${formatMonitorCheck(checks.readyz)}`,
     `- llm-readyz: ${formatMonitorCheck(checks.llm)}`,
     "",
     "Interpretation:",
+    "- rate-limit checks the Durable Object used by public requests without consuming quota.",
     "- readyz checks Worker -> Cloudflare Tunnel -> local API-only proxy health.",
     `- llm-readyz sends a tiny real ${checks.llm?.model || DEFAULT_LLM_READY_MODEL} / low / max_tokens=2 request only after readyz passes.`,
     "",
     "Runbook:",
     "1. Check https://cliproxy.sylvanyu.io/readyz",
-    "2. If readyz fails, restart the local CLIProxyAPI stack and Cloudflare Tunnel.",
-    "3. If readyz passes but llm-readyz fails, inspect model availability and CLIProxyAPI logs."
+    "2. If rate-limit fails, verify the RATE_LIMIT_DO binding and Durable Object migration.",
+    "3. If readyz fails, restart the local CLIProxyAPI stack and Cloudflare Tunnel.",
+    "4. If readyz passes but llm-readyz fails, inspect model availability and CLIProxyAPI logs."
   ].join("\n");
 }
 

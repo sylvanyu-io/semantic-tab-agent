@@ -674,7 +674,8 @@ gateway failure. It reads the last scheduled monitor snapshot from KV and does
 not run another upstream health check or model request. A healthy response only
 means the status snapshot was read successfully; check `monitor.status`,
 `monitor.lastSummary.readyzCode`, and `monitor.lastSummary.llmCode` for the
-gateway state.
+gateway state. `monitor.lastSummary.rateLimitCode` separately reports the
+Durable Object path used by public request metering.
 
 Useful monitor fields:
 
@@ -696,8 +697,9 @@ The Worker runs a Cron monitor every 30 minutes.
 
 Checks:
 
-1. Worker to origin readiness via `/readyz`.
-2. Real LLM path via `/llm-readyz`, using:
+1. Durable Object rate-limit storage health without consuming quota.
+2. Worker to origin readiness via `/readyz`.
+3. Real LLM path via `/llm-readyz`, using:
 
    ```text
    model: gpt-5.4-mini
