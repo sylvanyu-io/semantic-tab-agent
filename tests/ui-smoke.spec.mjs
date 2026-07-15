@@ -350,7 +350,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
 });
 
 test("side panel stays within a 320px viewport", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 680 });
+  await page.setViewportSize({ width: 320, height: 500 });
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 
   const expectNoHorizontalOverflow = async () => {
@@ -365,13 +365,27 @@ test("side panel stays within a 320px viewport", async ({ page }) => {
       .toBe(true);
   };
 
+  const expectPrimaryActionInViewport = async () => {
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const button = document.querySelector("#analyzeBtn")?.getBoundingClientRect();
+          return Boolean(button && button.top >= 0 && button.bottom <= window.innerHeight);
+        })
+      )
+      .toBe(true);
+  };
+
   await expectNoHorizontalOverflow();
+  await expectPrimaryActionInViewport();
   await page.getByText("更多选项").click();
   await expectNoHorizontalOverflow();
+  await expectPrimaryActionInViewport();
 
   await page.getByRole("button", { name: "回顾" }).click();
   await expect(page.getByRole("heading", { name: "看看最近主要在忙什么" })).toBeVisible();
   await expectNoHorizontalOverflow();
+  await expectPrimaryActionInViewport();
 });
 
 test("settings changed back during an in-flight save are persisted", async ({ page }) => {
