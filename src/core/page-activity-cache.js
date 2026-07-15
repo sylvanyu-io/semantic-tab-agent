@@ -17,7 +17,9 @@ export async function rememberOpenTabActivity(chromeApi, tab, sampleResult = nul
   return queueActivityCacheOperation(async () => {
     const now = Number.isFinite(options.now) ? options.now : Date.now();
     const cache = pruneActivityCache(normalizeActivityCache(await getLocal(chromeApi, STORAGE_KEYS.pageActivityCache, null)), now);
-    const key = upsertActivityEntry(cache, tab, sampleResult, now);
+    const key = upsertActivityEntry(cache, tab, sampleResult, now, {
+      markActive: options.markActive !== false
+    });
     if (!key) return null;
 
     const pruned = pruneActivityCache(cache, now);
@@ -33,7 +35,7 @@ export async function rememberOpenTabsActivity(chromeApi, tabs = [], options = {
     let stored = 0;
     for (const tab of tabs) {
       if (tab?.incognito && !options.includeIncognitoTabs) continue;
-      if (upsertActivityEntry(cache, tab, null, now)) stored += 1;
+      if (upsertActivityEntry(cache, tab, null, now, { markActive: Boolean(options.markActive) })) stored += 1;
     }
     if (stored) {
       await setLocal(chromeApi, STORAGE_KEYS.pageActivityCache, pruneActivityCache(cache, now));
@@ -42,7 +44,7 @@ export async function rememberOpenTabsActivity(chromeApi, tabs = [], options = {
   });
 }
 
-function upsertActivityEntry(cache, tab, sampleResult, now) {
+function upsertActivityEntry(cache, tab, sampleResult, now, options = {}) {
   const rawUrl = activityTabUrl(tab);
   const key = pageActivityCacheKey(rawUrl);
   if (!key) return "";
@@ -51,6 +53,7 @@ function upsertActivityEntry(cache, tab, sampleResult, now) {
   const urlInfo = sanitizeTabUrl(rawUrl, URL_PRIVACY_MODES.SANITIZED_URL);
   const existing = cache.entries[key];
   const sample = sampleResult?.status === "ok" ? normalizeActivitySample(sampleResult.sample) : existing?.sample || null;
+  const markActive = Boolean(options.markActive);
 
   cache.entries[key] = {
     key,
@@ -59,8 +62,10 @@ function upsertActivityEntry(cache, tab, sampleResult, now) {
     sanitizedUrl: urlInfo.sanitizedUrl || existing?.sanitizedUrl || "",
     sampleable: canSampleUrl(rawUrl),
     firstSeenAt: existing?.firstSeenAt || nowIso,
-    lastSeenAt: nowIso,
-    seenCount: Math.min(9999, Number(existing?.seenCount || 0) + 1),
+    lastObservedAt: nowIso,
+    observedCount: Math.min(9999, Number(existing?.observedCount || 0) + 1),
+    lastSeenAt: markActive ? nowIso : existing?.lastSeenAt || nowIso,
+    seenCount: Math.min(9999, Number(existing?.seenCount || 0) + (markActive ? 1 : 0)),
     lastTabId: typeof (tab?.id ?? tab?.tabId) === "number" ? tab.id ?? tab.tabId : existing?.lastTabId ?? null,
     lastWindowId: typeof tab?.windowId === "number" ? tab.windowId : existing?.lastWindowId ?? null,
     lastKnownState: {
@@ -79,10 +84,20 @@ export async function getActivityOverview(chromeApi, options = {}) {
   const rangeMs = normalizeRangeMs(options.rangeMs);
   const cache = await loadPrunedActivityCache(chromeApi, now);
   const currentTabs = await collectCurrentNormalTabs(chromeApi, options);
-  const lifecycle = await getTabLifecycleStats(chromeApi, { now, includeIncognitoTabs: options.includeIncognitoTabs });
+  const lifecycle = await getTabLifecycleStats(chromeApi, {
+    now,
+    includeIncognitoTabs: options.includeIncognitoTabs,
+    windowId: options.windowId,
+    windowIds: options.windowIds
+  });
   const lifecycleByTabId = new Map((lifecycle.olderOpenTabs || []).map((tab) => [tab.tabId, tab]));
   const since = now - rangeMs;
-  const visibleEntries = Object.values(cache.entries).filter((entry) => options.includeIncognitoTabs || !isIncognitoActivityEntry(entry));
+  const scopedPageKeys = hasWindowScope(options)
+    ? new Set(currentTabs.map((tab) => pageActivityCacheKey(activityTabUrl(tab))).filter(Boolean))
+    : null;
+  const visibleEntries = Object.values(cache.entries).filter(
+    (entry) => (options.includeIncognitoTabs || !isIncognitoActivityEntry(entry)) && (!scopedPageKeys || scopedPageKeys.has(entry.key))
+  );
   const visibleEntriesByKey = Object.fromEntries(visibleEntries.map((entry) => [entry.key, entry]));
   const entries = visibleEntries
     .filter((entry) => activityTimeForRange(entry) >= since)
@@ -169,7 +184,7 @@ function matchOpenTabsToActivity(tabs, entriesByKey, now, lifecycleByTabId = new
       if (!entry) return null;
       const lifecycle = lifecycleByTabId.get(tab.id) || null;
       const firstSeenAt = lifecycle?.openedAt || entry.firstSeenAt || "";
-      const lastSeenAt = latestIso(lifecycle?.lastObservedAt, entry.lastSeenAt) || entry.lastSeenAt || "";
+      const lastSeenAt = latestIso(lifecycle?.lastActivatedAt, entry.lastSeenAt) || entry.lastSeenAt || "";
       const firstSeen = Date.parse(firstSeenAt || "");
       const lastSeen = Date.parse(lastSeenAt || "");
       return {
@@ -218,8 +233,9 @@ function activityTimeForRange(entry) {
 
 async function collectCurrentNormalTabs(chromeApi, options = {}) {
   const windows = (await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => [])) || [];
-  const groupsById = await collectTabGroupsById(chromeApi, windows);
-  return windows
+  const scopedWindows = windows.filter((window) => windowInScope(window.id, options));
+  const groupsById = await collectTabGroupsById(chromeApi, scopedWindows);
+  return scopedWindows
     .flatMap((window) =>
       (window.tabs || []).map((tab) => ({
         ...tab,
@@ -227,6 +243,17 @@ async function collectCurrentNormalTabs(chromeApi, options = {}) {
       }))
     )
     .filter((tab) => typeof tab.id === "number" && (!tab.incognito || options.includeIncognitoTabs) && canSampleUrl(activityTabUrl(tab)));
+}
+
+function windowInScope(windowId, options = {}) {
+  if (Number.isInteger(options.windowId)) return windowId === options.windowId;
+  if (options.windowIds instanceof Set) return options.windowIds.has(windowId);
+  if (Array.isArray(options.windowIds)) return options.windowIds.includes(windowId);
+  return true;
+}
+
+function hasWindowScope(options = {}) {
+  return Number.isInteger(options.windowId) || options.windowIds instanceof Set || Array.isArray(options.windowIds);
 }
 
 async function collectTabGroupsById(chromeApi, windows = []) {
@@ -260,7 +287,7 @@ function pruneActivityCache(cache, now = Date.now()) {
   let freshEntries = Object.values(cache.entries).filter((entry) => isFreshActivityEntry(entry, now));
   if (freshEntries.length > CACHE_MAX_ENTRIES) {
     freshEntries = freshEntries
-      .sort((left, right) => Date.parse(right.lastSeenAt || 0) - Date.parse(left.lastSeenAt || 0))
+      .sort((left, right) => activityRetentionTime(right) - activityRetentionTime(left))
       .slice(0, CACHE_MAX_ENTRIES);
   }
   return {
@@ -283,8 +310,15 @@ function activityCacheCompacted(rawCache, compactedCache) {
 
 function isFreshActivityEntry(entry, now) {
   if (!entry?.key) return false;
-  const lastSeenAt = Date.parse(entry.lastSeenAt || "");
+  const lastSeenAt = activityRetentionTime(entry);
   return Number.isFinite(lastSeenAt) && now - lastSeenAt <= CACHE_TTL_MS;
+}
+
+function activityRetentionTime(entry) {
+  const times = [entry?.lastObservedAt, entry?.lastSeenAt, entry?.firstSeenAt]
+    .map((value) => Date.parse(value || ""))
+    .filter(Number.isFinite);
+  return times.length ? Math.max(...times) : Number.NEGATIVE_INFINITY;
 }
 
 function pageActivityCacheKey(rawUrl) {

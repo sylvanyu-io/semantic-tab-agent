@@ -5,6 +5,7 @@ import {
   getTabLifecycleStats,
   reconcileTabLifecycle,
   recordTabClosed,
+  recordWindowBlur,
   rememberTabLifecycle,
   rememberTabsLifecycle
 } from "../src/core/tab-lifecycle-log.js";
@@ -76,10 +77,33 @@ test("tab lifecycle splits same-tab navigation into separate page sessions", asy
   assert.equal(sessions[0].closeReason, "navigated");
   assert.equal(sessions[1].title, "Release issue");
   assert.equal(sessions[1].closedAt, undefined);
+  assert.equal(sessions[1].activeCount, 1);
+  assert.equal(
+    log.events.some((event) => event.type === "tab_activated" && event.sessionId === sessions[1].id && event.source === "tab_updated"),
+    true
+  );
   assert.equal(log.tabIndex["7"], sessions[1].id);
   assert.equal(JSON.stringify(log).includes("AAA111111111111111111111111111111111111"), false);
   assert.equal(JSON.stringify(log).includes("BBB222222222222222222222222222222222222"), false);
   assert.equal(log.events.some((event) => event.reason === "navigated"), true);
+});
+
+test("window blur deactivates open sessions and records a focus boundary", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  await rememberTabLifecycle(
+    chrome,
+    "tab_activated",
+    { id: 7, windowId: 1, index: 0, title: "Research", url: "https://example.com/research", active: true },
+    { now }
+  );
+
+  await recordWindowBlur(chrome, { now: now + 60_000 });
+
+  const log = chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog];
+  assert.equal(Object.values(log.sessions)[0].active, false);
+  assert.equal(log.events.at(-1).type, "window_blurred");
+  assert.equal(log.events.at(-1).at, "2026-06-25T00:01:00.000Z");
 });
 
 test("tab lifecycle reconciliation infers missed opens and closes", async () => {
@@ -335,7 +359,7 @@ test("tab lifecycle counts focused-window returns without double-counting focus 
   );
 
   const sessions = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions).sort((left, right) => left.tabId - right.tabId);
-  assert.equal(sessions[0].activeCount, 1);
+  assert.equal(sessions[0].activeCount, 0);
   assert.equal(sessions[1].activeCount, 2);
   assert.equal(sessions[0].active, false);
   assert.equal(sessions[1].active, true);
@@ -429,7 +453,7 @@ test("tab lifecycle accepts native chrome tab ids for activation flow context", 
   assert.deepEqual(context.transitions.map((transition) => [transition.fromId, transition.toId]), [[1, 2]]);
 });
 
-test("tab lifecycle does not attach pre-navigation behavior to the current page", async () => {
+test("tab lifecycle starts fresh behavior at active navigation without reusing the old page session", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");
   const oldPage = { id: 7, windowId: 1, index: 0, title: "Old research page", url: "https://old.example/topic", active: true };
@@ -444,9 +468,9 @@ test("tab lifecycle does not attach pre-navigation behavior to the current page"
 
   const context = await getTabActivationFlowContext(chrome, [newPage, otherPage]);
 
-  assert.deepEqual(context.runs, []);
-  assert.deepEqual(context.transitions, []);
-  assert.deepEqual(context.evidence, []);
+  assert.deepEqual(context.runs.map((run) => run.ids), [[8, 7]]);
+  assert.deepEqual(context.transitions.map((transition) => [transition.fromId, transition.toId]), [[8, 7]]);
+  assert.deepEqual(context.evidence.map((entry) => entry.ids), [[8, 7]]);
   assert.equal(context.tabActivity.find((activity) => activity.id === 7).activeCount, 1);
   assert.equal(context.tabActivity.find((activity) => activity.id === 7).totalActiveSeconds, 0);
 });

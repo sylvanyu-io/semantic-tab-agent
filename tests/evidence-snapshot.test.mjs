@@ -3,6 +3,7 @@ import test from "node:test";
 import { handleRuntimeMessage } from "../src/core/controller.js";
 import { buildEvidenceSnapshot } from "../src/core/evidence-snapshot.js";
 import { rememberOpenTabsActivity } from "../src/core/page-activity-cache.js";
+import { pageSummaryCacheKey } from "../src/core/page-summary-cache.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import { rememberTabLifecycle, rememberTabsLifecycle } from "../src/core/tab-lifecycle-log.js";
 import { DEFAULT_SETTINGS, ORGANIZE_MODES, PLANNER_PROVIDERS } from "../src/shared/settings.js";
@@ -74,6 +75,42 @@ test("evidence snapshot runtime message stays redacted even if private fields ar
   assert.equal(serializedPrivateAttempt.includes("token=SHOULD_NOT_LEAK"), false);
 });
 
+test("current-window evidence excludes activity and lifecycle rows from other windows", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      { id: 1, focused: true, tabs: [{ id: 10, title: "Window one", url: "https://one.example/work", active: true }] },
+      { id: 2, focused: false, tabs: [{ id: 20, title: "Window two private state", url: "https://two.example/secret", active: true }] }
+    ]
+  });
+  await rememberOpenTabsActivity(
+    chrome,
+    [
+      { id: 10, windowId: 1, title: "Window one", url: "https://one.example/work", active: true },
+      { id: 20, windowId: 2, title: "Window two private state", url: "https://two.example/secret", active: true }
+    ],
+    { now: NOW }
+  );
+  await rememberTabsLifecycle(
+    chrome,
+    [
+      { id: 10, windowId: 1, title: "Window one", url: "https://one.example/work", active: true },
+      { id: 20, windowId: 2, title: "Window two private state", url: "https://two.example/secret", active: true }
+    ],
+    { now: NOW }
+  );
+
+  const snapshot = await buildEvidenceSnapshot(
+    chrome,
+    { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.FAKE, organizeMode: ORGANIZE_MODES.CURRENT_WINDOW },
+    { windowId: 1, now: NOW, range: { preset: "7d" }, includePrivateFields: true }
+  );
+
+  assert.equal(snapshot.counts.tabs, 1);
+  assert.equal(snapshot.counts.recapPages, 1);
+  assert.equal(snapshot.counts.lifecycleSessions, 1);
+  assert.equal(snapshot.privateDetails.recapPages.some((page) => page.title === "Window two private state"), false);
+});
+
 async function seededSnapshotChrome() {
   const tabs = [
     { id: 10, title: "Secret Strategy Doc", url: "https://docs.example.com/strategy?token=SHOULD_NOT_LEAK", active: true },
@@ -95,8 +132,8 @@ async function seededSnapshotChrome() {
     [STORAGE_KEYS.pageSummaryCache]: {
       version: 1,
       entries: {
-        strategy: {
-          key: "strategy",
+        [pageSummaryCacheKey(tabs[0].url)]: {
+          key: pageSummaryCacheKey(tabs[0].url),
           origin: "https://docs.example.com/*",
           title: "Secret Strategy Doc",
           firstSeenAt: new Date(NOW - 22 * 60_000).toISOString(),

@@ -10,10 +10,17 @@ export async function buildEvidenceSnapshot(chromeApi, rawSettings = {}, options
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const range = normalizeTimeRecapRange(options.range || { preset: "7d" }, now);
   const invocation = { windowId: options.windowId, strictWindowId: Boolean(options.strictWindowId) };
-  const [inventory, recapInput, overview] = await Promise.all([
-    collectTabInventory(chromeApi, settings, invocation),
-    buildTimeRecapInput(chromeApi, settings, { range, now }),
-    getActivityOverview(chromeApi, { rangeMs: range.rangeMs, includeIncognitoTabs: settings.includeIncognitoTabs, now })
+  const inventory = await collectTabInventory(chromeApi, settings, invocation);
+  const scopedWindowId = inventory.scope?.kind === "current_window" ? inventory.scope.currentWindowId : null;
+  const scopeOptions = Number.isInteger(scopedWindowId) ? { windowId: scopedWindowId } : {};
+  const [recapInput, overview] = await Promise.all([
+    buildTimeRecapInput(chromeApi, settings, { range, now, ...scopeOptions }),
+    getActivityOverview(chromeApi, {
+      rangeMs: range.rangeMs,
+      includeIncognitoTabs: settings.includeIncognitoTabs,
+      now,
+      ...scopeOptions
+    })
   ]);
   const activationFlow = inventory.activationFlow || { tabActivity: [], runs: [], transitions: [], evidence: [] };
   const includePrivateFields = Boolean(options.includePrivateFields);

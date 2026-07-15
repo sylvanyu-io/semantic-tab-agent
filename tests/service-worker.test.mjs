@@ -151,6 +151,35 @@ test("service worker records focused-window returns for lifecycle evidence", asy
   }
 });
 
+test("service worker records browser blur instead of leaving dwell active", async () => {
+  const listeners = {};
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Research", url: "https://example.com/research", active: true }]
+      }
+    ]
+  });
+  installServiceWorkerEventMocks(chrome, listeners);
+
+  globalThis.chrome = chrome;
+  try {
+    await import(`${pathToFileURL(`${process.cwd()}/src/background/service-worker.js`).href}?test=${Date.now()}`);
+    listeners.tabActivated({ tabId: 10, windowId: 1 });
+    await waitForCondition(() => lifecycleEvents(chrome).some((event) => event.type === "tab_activated"), "Timed out waiting for activation.");
+
+    listeners.windowFocusChanged(chrome.windows.WINDOW_ID_NONE);
+    await waitForCondition(() => lifecycleEvents(chrome).some((event) => event.type === "window_blurred"), "Timed out waiting for blur.");
+
+    const session = Object.values(chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog].sessions)[0];
+    assert.equal(session.active, false);
+  } finally {
+    delete globalThis.chrome;
+  }
+});
+
 test("service worker disables background summaries when the manifest has no content access feature", async () => {
   const listeners = {};
   const alarmCreates = [];

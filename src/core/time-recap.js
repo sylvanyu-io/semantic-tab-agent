@@ -26,6 +26,7 @@ const MAX_RANGE_MS = 90 * DAY_MS;
 const MAX_RECAP_PAGES = 360;
 const REVIEW_AGE_MS = 14 * DAY_MS;
 const RECAP_ACTIVE_EVENT_TYPES = new Set(["tab_activated", "window_focused"]);
+const RECAP_FOCUS_BOUNDARY_EVENT_TYPES = new Set(["window_blurred"]);
 const RECAP_MAX_DWELL_MS = 60 * 60 * 1000;
 
 export { TIME_RECAP_GATEWAY_TIMEOUT_MS };
@@ -142,18 +143,19 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
     loadPrunedActivityCache(chromeApi, now),
     loadPrunedPageSummaryCache(chromeApi, now),
     loadPrunedTabLifecycleLog(chromeApi, now),
-    collectCurrentTabs(chromeApi, settings)
+    collectCurrentTabs(chromeApi, settings, options)
   ]);
 
   const rows = new Map();
-  const rawActivityEntries = normalizeEntryMap(activityCache);
-  const rawSummaryEntries = normalizeEntryMap(summaryCache);
-  const rawLifecycleSessions = normalizeLifecycleSessions(lifecycleLog);
+  const scopedPageKeys = scopedCurrentPageKeys(currentTabs, options);
+  const rawActivityEntries = filterEntryMapByScope(normalizeEntryMap(activityCache), scopedPageKeys);
+  const rawSummaryEntries = filterEntryMapByScope(normalizeEntryMap(summaryCache), scopedPageKeys);
+  const rawLifecycleSessions = normalizeLifecycleSessions(lifecycleLog).filter((session) => windowInScope(session.windowId, options));
   const incognitoSummaryKeys = incognitoKeysForLegacySummaries(rawActivityEntries, rawSummaryEntries, rawLifecycleSessions);
   const activityEntries = filterEntryMapByPrivacy(rawActivityEntries, settings, isIncognitoActivityEntry);
   const summaryEntries = filterEntryMapByPrivacy(rawSummaryEntries, settings, (entry) => isIncognitoSummaryEntry(entry, incognitoSummaryKeys));
   const lifecycleSessions = settings.includeIncognitoTabs ? rawLifecycleSessions : rawLifecycleSessions.filter((session) => !session.incognito);
-  const lifecycleEvents = filterLifecycleEventsByPrivacy(normalizeEvents(lifecycleLog), settings, lifecycleSessions);
+  const lifecycleEvents = filterLifecycleEventsByPrivacy(normalizeEvents(lifecycleLog), lifecycleSessions);
   const currentActiveTabIds = new Set(
     currentTabs
       .filter((tab) => tab.active && Number.isInteger(tab.tabId))
@@ -223,7 +225,8 @@ export async function buildTimeRecapInput(chromeApi, rawSettings = {}, options =
       title: tab.title,
       hostname: tab.hostname,
       sanitizedUrl: tab.sanitizedUrl,
-      lastSeenAt: nowInRange ? new Date(now).toISOString() : "",
+      firstSeenAt: nowInRange ? new Date(now).toISOString() : "",
+      lastSeenAt: nowInRange && tab.active ? new Date(now).toISOString() : "",
       open: true,
       currentGroupTitle: tab.currentGroupTitle || "",
       active: Boolean(tab.active),
@@ -489,11 +492,12 @@ function normalizeTimeRecap(parsed, input, settings) {
   };
 }
 
-async function collectCurrentTabs(chromeApi, settings) {
+async function collectCurrentTabs(chromeApi, settings, options = {}) {
   const windows = (await chromeApi.windows?.getAll?.({ populate: true, windowTypes: ["normal"] }).catch(() => [])) || [];
-  const groupsById = await collectTabGroupsById(chromeApi, windows);
-  const focusedWindowIds = new Set(windows.filter((window) => window.focused).map((window) => window.id));
-  return windows
+  const scopedWindows = windows.filter((window) => windowInScope(window.id, options));
+  const groupsById = await collectTabGroupsById(chromeApi, scopedWindows);
+  const focusedWindowIds = new Set(scopedWindows.filter((window) => window.focused).map((window) => window.id));
+  return scopedWindows
     .flatMap((window) => (window.tabs || []).map((tab) => ({ tab, window })))
     .filter(({ tab }) => (!tab.incognito || settings.includeIncognitoTabs) && (getTabUrl(tab) || tab.title))
     .map(({ tab, window }) => {
@@ -509,13 +513,34 @@ async function collectCurrentTabs(chromeApi, settings) {
         hostname: urlInfo.hostname || urlInfo.urlKind || "",
         sanitizedUrl: urlInfo.sanitizedUrl || "",
         currentGroupTitle: group?.title || "",
-        active: Boolean(tab.active && (!focusedWindowIds.size || focusedWindowIds.has(window.id))),
+        active: Boolean(tab.active && focusedWindowIds.has(window.id)),
         discarded: Boolean(tab.discarded),
         pinned: Boolean(tab.pinned),
         audible: Boolean(tab.audible),
         sampleable: canSampleUrl(rawUrl)
       };
     });
+}
+
+function scopedCurrentPageKeys(currentTabs, options = {}) {
+  if (!hasWindowScope(options)) return null;
+  return new Set(currentTabs.map((tab) => pageCacheKey(tab.rawUrl)).filter(Boolean));
+}
+
+function filterEntryMapByScope(entries, scopedPageKeys) {
+  if (!(scopedPageKeys instanceof Set)) return entries;
+  return Object.fromEntries(Object.entries(entries).filter(([key]) => scopedPageKeys.has(key)));
+}
+
+function hasWindowScope(options = {}) {
+  return Number.isInteger(options.windowId) || options.windowIds instanceof Set || Array.isArray(options.windowIds);
+}
+
+function windowInScope(windowId, options = {}) {
+  if (Number.isInteger(options.windowId)) return windowId === options.windowId;
+  if (options.windowIds instanceof Set) return options.windowIds.has(windowId);
+  if (Array.isArray(options.windowIds)) return options.windowIds.includes(windowId);
+  return true;
 }
 
 async function collectTabGroupsById(chromeApi, windows = []) {
@@ -575,7 +600,6 @@ function pageScore(page, range) {
   const lastSeenAge = ageMs(page.lastSeenAt, range.to);
   const firstSeenAge = ageMs(page.firstSeenAt, range.to);
   let score = 0;
-  if (page.open) score += 4;
   if (page.summary) score += 32;
   if (page.currentGroupTitle) score += 3;
   if (page.activeCount) score += Math.min(24, page.activeCount * 4);
@@ -672,6 +696,12 @@ function buildActiveSecondsBySessionId(events, sessions, range, options = {}) {
   );
   const ordered = [];
   for (const event of events || []) {
+    if (RECAP_FOCUS_BOUNDARY_EVENT_TYPES.has(event?.type)) {
+      const at = Date.parse(event.at || "");
+      if (!Number.isFinite(at) || at > to) continue;
+      ordered.push({ sessionId: "", at, seq: Number(event.seq || 0), boundary: true });
+      continue;
+    }
     if (!RECAP_ACTIVE_EVENT_TYPES.has(event?.type)) continue;
     const id = lifecycleEventSessionId(event);
     const session = sessionsById.get(id);
@@ -688,9 +718,10 @@ function buildActiveSecondsBySessionId(events, sessions, range, options = {}) {
   const secondsBySessionId = new Map();
   const userFocusEvents = ordered
     .sort((left, right) => left.at - right.at || left.seq - right.seq)
-    .filter((event, index, list) => index === 0 || event.sessionId !== list[index - 1].sessionId);
+    .filter((event, index, list) => event.boundary || index === 0 || event.sessionId !== list[index - 1].sessionId);
   for (let index = 0; index < userFocusEvents.length; index += 1) {
     const event = userFocusEvents[index];
+    if (event.boundary) continue;
     const session = sessionsById.get(event.sessionId);
     const next = userFocusEvents[index + 1];
     const isCurrentlyActive = Number.isInteger(session?.tabId) && currentActiveTabIds.has(session.tabId);
@@ -727,10 +758,11 @@ function normalizeEvents(log) {
   return Array.isArray(log?.events) ? log.events : [];
 }
 
-function filterLifecycleEventsByPrivacy(events, settings, lifecycleSessions) {
-  if (settings.includeIncognitoTabs) return events;
+function filterLifecycleEventsByPrivacy(events, lifecycleSessions) {
   const includedSessionIds = new Set(lifecycleSessions.map((session) => session.id || session.sessionId).filter(Boolean));
-  return events.filter((event) => event?.sessionId && includedSessionIds.has(event.sessionId));
+  return events.filter(
+    (event) => RECAP_FOCUS_BOUNDARY_EVENT_TYPES.has(event?.type) || (event?.sessionId && includedSessionIds.has(event.sessionId))
+  );
 }
 
 function filterEntryMapByPrivacy(entries, settings, isPrivateEntry) {

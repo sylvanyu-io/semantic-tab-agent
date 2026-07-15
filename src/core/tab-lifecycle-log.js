@@ -16,6 +16,7 @@ const FLOW_MAX_NEARBY_IDS = 6;
 const FLOW_EVIDENCE_WINDOW_SIZE = 5;
 const FLOW_EVIDENCE_WINDOW_STEP = 3;
 const ACTIVATION_ENTRY_TYPES = new Set(["tab_activated", "window_focused"]);
+const WINDOW_BLURRED_EVENT = "window_blurred";
 const ACTIVATION_DEDUPE_MS = 2000;
 
 let lifecycleWriteQueue = Promise.resolve();
@@ -64,6 +65,17 @@ export async function recordTabClosed(chromeApi, tabId, removeInfo = {}, options
 
     closeSession(log, session, now, removeInfo.isWindowClosing ? "window_closed" : "tab_closed");
     return session;
+  });
+}
+
+export async function recordWindowBlur(chromeApi, options = {}) {
+  const now = normalizeNow(options.now);
+  return mutateLifecycleLog(chromeApi, now, (log) => {
+    for (const session of Object.values(log.sessions)) {
+      if (!session.closedAt) session.active = false;
+    }
+    appendLifecycleEvent(log, { type: WINDOW_BLURRED_EVENT, at: now });
+    return { recordedAt: new Date(now).toISOString() };
   });
 }
 
@@ -156,7 +168,8 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
   const tabIndexKey = String(tab.id);
   const existingSessionId = log.tabIndex[tabIndexKey];
   let existing = existingSessionId ? log.sessions[existingSessionId] : null;
-  if (existing && !existing.closedAt && sessionNavigated(existing, tab)) {
+  const navigated = Boolean(existing && !existing.closedAt && sessionNavigated(existing, tab));
+  if (navigated) {
     closeSession(log, existing, now, "navigated");
     existing = null;
   }
@@ -187,7 +200,9 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
     incognito: Boolean(tab.incognito)
   });
 
-  if (shouldRecordActivationEntry(session, previousActive, nextActive, type, now)) {
+  const recordedActivation =
+    (navigated && type === "tab_updated" && nextActive) || shouldRecordActivationEntry(session, previousActive, nextActive, type, now);
+  if (recordedActivation) {
     session.activeCount = Math.min(9999, Number(session.activeCount || 0) + 1);
     session.lastActivatedAt = new Date(now).toISOString();
   }
@@ -202,6 +217,18 @@ function upsertOpenSession(log, tab, type, now, options = {}) {
     discarded: Boolean(tab.discarded),
     inferred: Boolean(options.inferred)
   });
+  if (recordedActivation && navigated && type === "tab_updated") {
+    appendLifecycleEvent(log, {
+      type: "tab_activated",
+      sessionId: session.id,
+      tabId: tab.id,
+      windowId: tab.windowId,
+      at: now,
+      active: true,
+      inferred: true,
+      source: type
+    });
+  }
   return session;
 }
 
@@ -211,7 +238,7 @@ function sessionNavigated(session, tab) {
 
 function shouldRecordActivationEntry(session, previousActive, nextActive, type, now) {
   if (!nextActive) return false;
-  if (!ACTIVATION_ENTRY_TYPES.has(type)) return !previousActive;
+  if (!ACTIVATION_ENTRY_TYPES.has(type)) return false;
   if (!previousActive) return true;
   const lastActivatedAt = Date.parse(session.lastActivatedAt || "");
   return !Number.isFinite(lastActivatedAt) || now - lastActivatedAt > ACTIVATION_DEDUPE_MS;
@@ -242,9 +269,9 @@ function createSession(tab, now, inferred) {
     openedAt: nowIso,
     firstObservedAt: nowIso,
     lastObservedAt: nowIso,
-    activeCount: tab.active ? 1 : 0,
-    lastActivatedAt: tab.active ? nowIso : "",
-    active: Boolean(tab.active),
+    activeCount: 0,
+    lastActivatedAt: "",
+    active: false,
     inferredOpen: inferred,
     pinned: Boolean(tab.pinned),
     discarded: Boolean(tab.discarded),
@@ -373,7 +400,9 @@ function isFreshSession(session, now) {
 
 function getLifecycleStatsFromLog(log, now, options = {}) {
   const rawSessions = Object.values(log.sessions);
-  const sessions = rawSessions.filter((session) => options.includeIncognitoTabs || !session.incognito);
+  const sessions = rawSessions.filter(
+    (session) => (options.includeIncognitoTabs || !session.incognito) && windowInScope(session.windowId, options)
+  );
   const hasHiddenSessions = rawSessions.length !== sessions.length;
   const sessionIds = new Set(sessions.map((session) => session.id));
   const events = filterLifecycleEventsForStats(log.events || [], sessionIds, options);
@@ -397,10 +426,11 @@ function getLifecycleStatsFromLog(log, now, options = {}) {
         hostname: session.hostname,
         openedAt: session.openedAt,
         lastObservedAt: session.lastObservedAt,
+        lastActivatedAt: session.lastActivatedAt || "",
         activeCount: session.activeCount || 0,
         inferredOpen: Boolean(session.inferredOpen),
         ageMs: Math.max(0, now - Date.parse(session.openedAt || "")),
-        idleMs: Math.max(0, now - Date.parse(session.lastObservedAt || session.openedAt || ""))
+        idleMs: Math.max(0, now - Date.parse(session.lastActivatedAt || session.openedAt || ""))
       }))
       .sort((left, right) => right.ageMs - left.ageMs)
       .slice(0, 50)
@@ -408,11 +438,22 @@ function getLifecycleStatsFromLog(log, now, options = {}) {
 }
 
 function filterLifecycleEventsForStats(events, visibleSessionIds, options = {}) {
-  if (options.includeIncognitoTabs) return events;
+  if (options.includeIncognitoTabs && !hasWindowScope(options)) return events;
   return (events || []).filter((event) => {
     if (event.sessionId) return visibleSessionIds.has(event.sessionId);
-    return event.type === RECONCILE_EVENT;
+    return event.type === RECONCILE_EVENT || event.type === WINDOW_BLURRED_EVENT;
   });
+}
+
+function hasWindowScope(options = {}) {
+  return Number.isInteger(options.windowId) || options.windowIds instanceof Set || Array.isArray(options.windowIds);
+}
+
+function windowInScope(windowId, options = {}) {
+  if (Number.isInteger(options.windowId)) return windowId === options.windowId;
+  if (options.windowIds instanceof Set) return options.windowIds.has(windowId);
+  if (Array.isArray(options.windowIds)) return options.windowIds.includes(windowId);
+  return true;
 }
 
 function visibleReconcileStats(stats, sessions) {
@@ -440,11 +481,21 @@ function buildActivationFlowContext(log, tabs = [], options = {}) {
   const currentRunByWindow = new Map();
   let focusedWindowId = null;
   for (const event of (log.events || [])
-    .filter((event) => ACTIVATION_ENTRY_TYPES.has(event.type) && Number.isInteger(event.tabId) && Number.isInteger(event.windowId))
+    .filter(
+      (event) =>
+        event.type === WINDOW_BLURRED_EVENT ||
+        (ACTIVATION_ENTRY_TYPES.has(event.type) && Number.isInteger(event.tabId) && Number.isInteger(event.windowId))
+    )
     .sort((left, right) => {
       const byTime = Date.parse(left.at || "") - Date.parse(right.at || "");
       return byTime || Number(left.seq || 0) - Number(right.seq || 0);
     })) {
+    if (event.type === WINDOW_BLURRED_EVENT) {
+      for (const current of currentRunByWindow.values()) appendActivationRun(runs, current, maxDwellMs);
+      currentRunByWindow.clear();
+      focusedWindowId = null;
+      continue;
+    }
     if (event.type === "window_focused") {
       if (Number.isInteger(focusedWindowId) && focusedWindowId !== event.windowId) {
         appendActivationRun(runs, currentRunByWindow.get(focusedWindowId), maxDwellMs);

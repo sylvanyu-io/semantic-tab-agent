@@ -277,6 +277,58 @@ test("time recap dwell estimates extend currently open active sessions to the re
   assert.equal(page.activeSeconds, 60 * 60);
 });
 
+test("time recap dwell stops when the browser loses focus", async () => {
+  const chrome = createFakeChrome({
+    windows: [
+      {
+        id: 1,
+        focused: false,
+        tabs: [
+          {
+            id: 30,
+            windowId: 1,
+            index: 0,
+            title: "失焦前的研究页",
+            url: "https://research.example/before-blur",
+            active: true
+          }
+        ]
+      }
+    ]
+  });
+  chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {
+    version: 1,
+    sessions: {
+      currentThread: {
+        id: "currentThread",
+        tabId: 30,
+        windowId: 1,
+        title: "失焦前的研究页",
+        hostname: "research.example",
+        sanitizedUrl: "https://research.example/before-blur",
+        openedAt: "2026-06-27T05:00:00.000Z",
+        firstObservedAt: "2026-06-27T05:00:00.000Z",
+        lastObservedAt: "2026-06-27T06:00:00.000Z",
+        activeCount: 1
+      }
+    },
+    events: [
+      { seq: 1, type: "tab_activated", sessionId: "currentThread", tabId: 30, windowId: 1, at: "2026-06-27T05:00:00.000Z" },
+      { seq: 2, type: "window_blurred", at: "2026-06-27T05:10:00.000Z" }
+    ]
+  };
+
+  const input = await buildTimeRecapInput(
+    chrome,
+    { ...DEFAULT_SETTINGS, languageMode: "zh-CN" },
+    { range: { preset: "today" }, now: NOW }
+  );
+  const page = input.pages.find((item) => item.title === "失焦前的研究页");
+
+  assert.ok(page);
+  assert.equal(page.activeSeconds, 10 * 60);
+});
+
 test("time recap dwell follows the focused window instead of extending every window active tab", async () => {
   const chrome = createFakeChrome({
     windows: [

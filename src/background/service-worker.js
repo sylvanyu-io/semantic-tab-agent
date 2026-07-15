@@ -1,7 +1,7 @@
 import { getSettings, handleRuntimeMessage } from "../core/controller.js";
 import { rememberOpenTabActivity, rememberOpenTabsActivity } from "../core/page-activity-cache.js";
 import { capturePageSummaryIfAllowed } from "../core/page-summary-cache.js";
-import { reconcileTabLifecycle, recordTabClosed, rememberTabLifecycle } from "../core/tab-lifecycle-log.js";
+import { reconcileTabLifecycle, recordTabClosed, recordWindowBlur, rememberTabLifecycle } from "../core/tab-lifecycle-log.js";
 import { redactSensitiveText } from "../shared/redaction.js";
 
 const summaryCaptureTimers = new Map();
@@ -88,7 +88,10 @@ chrome.tabs.onUpdated?.addListener((tabId, changeInfo, tab) => {
 });
 
 chrome.windows.onFocusChanged?.addListener((windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    recordWindowBlur(chrome).catch((error) => logBackgroundError("window_blurred", error));
+    return;
+  }
   chrome.tabs.query({ active: true, windowId }).then(([tab]) => {
     if (tab?.id) {
       rememberTabLifecycleWithSettings("window_focused", tab).catch((error) => logBackgroundError("window_focused", error));
@@ -169,9 +172,10 @@ async function captureSummaryForTab(tabId) {
   if (!settings.continuousPageSummaries) return;
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab) return;
-  await rememberOpenTabActivity(chrome, tab, null, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch((error) =>
-    logBackgroundError("open_tab_activity", error)
-  );
+  await rememberOpenTabActivity(chrome, tab, null, {
+    includeIncognitoTabs: settings.includeIncognitoTabs,
+    markActive: Boolean(tab.active)
+  }).catch((error) => logBackgroundError("open_tab_activity", error));
   await capturePageSummaryIfAllowed(chrome, tab, settings);
 }
 

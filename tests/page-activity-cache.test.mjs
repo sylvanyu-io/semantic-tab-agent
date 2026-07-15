@@ -152,7 +152,7 @@ test("activity overview hides saved private activity when incognito is excluded"
   assert.equal(included.lifecycle.events, 2);
 });
 
-test("batch activity remember writes storage once and keeps recently active old pages in range", async () => {
+test("batch observation writes once without pretending old pages were used again", async () => {
   const chrome = createFakeChrome();
   const originalSet = chrome.storage.local.set.bind(chrome.storage.local);
   let writes = 0;
@@ -186,12 +186,14 @@ test("batch activity remember writes storage once and keeps recently active old 
   const cache = chrome.__state.storage[STORAGE_KEYS.pageActivityCache];
   assert.equal(Object.keys(cache.entries).length, 2);
   const entry = Object.values(cache.entries).find((item) => item.title === "Old research doc");
-  assert.equal(entry.seenCount, 2);
+  assert.equal(entry.seenCount, 1);
+  assert.equal(entry.observedCount, 2);
   assert.equal(entry.firstSeenAt, new Date(old).toISOString());
-  assert.equal(entry.lastSeenAt, new Date(now).toISOString());
+  assert.equal(entry.lastSeenAt, new Date(old).toISOString());
+  assert.equal(entry.lastObservedAt, new Date(now).toISOString());
 
   const overview = await getActivityOverview(chrome, { rangeMs: 24 * 60 * 60 * 1000, now });
-  assert.equal(overview.recap.entries, 2);
+  assert.equal(overview.recap.entries, 1);
 });
 
 test("activity overview persists cache compaction for expired local memory", async () => {

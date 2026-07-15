@@ -14,7 +14,8 @@ import {
   GATEWAY_PROVIDER_MODES,
   GROUPING_GRANULARITIES,
   PLANNER_PROVIDERS,
-  PROMPT_PRESETS
+  PROMPT_PRESETS,
+  URL_PRIVACY_MODES
 } from "../src/shared/settings.js";
 
 const inventory = {
@@ -167,6 +168,20 @@ test("custom gateway base URLs use compatible JSON prompting without OpenAI-only
     }),
     false
   );
+});
+
+test("title-only planner payload omits page-sample origins", () => {
+  const payload = buildPlannerPayload(
+    {
+      ...inventory,
+      pageSamples: inventory.pageSamples.map((sample) => ({ ...sample, origin: "https://private.example/*" }))
+    },
+    { ...DEFAULT_SETTINGS, urlPrivacyMode: URL_PRIVACY_MODES.TITLE_ONLY }
+  );
+  const result = rowToObject(payload.pageSampleResultFields, payload.pageSampleResults[0]);
+
+  assert.equal(result.origin, "");
+  assert.equal(JSON.stringify(payload).includes("private.example"), false);
 });
 
 test("AI gateway planner posts a custom chat-completions JSON request", async () => {

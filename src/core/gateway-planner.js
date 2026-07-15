@@ -7,6 +7,7 @@ import {
   REVIEW_GROUP_MODES,
   TARGET_WINDOW_MODES,
   THINKING_INTENSITIES,
+  URL_PRIVACY_MODES,
   isCustomGatewayProvider,
   normalizeSettings,
   resolveGatewayAuxiliaryModel,
@@ -715,7 +716,7 @@ export function buildPlannerPayload(inventory, settings, options = {}) {
       result.tabId,
       result.windowId,
       result.status,
-      result.origin,
+      settings.urlPrivacyMode === URL_PRIVACY_MODES.TITLE_ONLY ? "" : result.origin,
       result.reason
     ])
   };
