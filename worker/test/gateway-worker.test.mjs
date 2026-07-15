@@ -316,6 +316,13 @@ test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds
     scheduledTime: Date.parse("2026-07-02T00:30:00.000Z"),
     fetchImpl: calls.fetch
   });
+  const duplicateStatusResponse = await handle(
+    new Request("https://cliproxy.example/monitor/status", {
+      headers: { "x-monitor-token": "secret" }
+    }),
+    env
+  );
+  const duplicateStatus = await duplicateStatusResponse.json();
   const reminder = await runScheduledMonitor(env, {
     scheduledTime: Date.parse("2026-07-02T06:30:00.000Z"),
     fetchImpl: calls.fetch
@@ -324,6 +331,9 @@ test("scheduled monitor alerts on outage, suppresses duplicate mail, and reminds
   assert.equal(first.ok, false);
   assert.equal(first.event, "down");
   assert.equal(duplicate.event, "none");
+  assert.equal(duplicateStatus.monitor.lastEmail.ok, true);
+  assert.equal(duplicateStatus.monitor.firstFailureAt, "2026-07-02T00:00:00.000Z");
+  assert.equal(duplicateStatus.monitor.lastFailureAt, "2026-07-02T00:30:00.000Z");
   assert.equal(reminder.event, "still_down");
   assert.equal(calls.emails.length, 2);
   assert.match(calls.emails[0].subject, /down: llm-readyz/);
