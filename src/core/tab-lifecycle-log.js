@@ -437,40 +437,44 @@ function buildActivationFlowContext(log, tabs = [], options = {}) {
   const activityByTabId = buildInitialTabActivity(log, scope);
   const runs = [];
 
-  const eventsByWindow = new Map();
+  const currentRunByWindow = new Map();
+  let focusedWindowId = null;
   for (const event of (log.events || [])
     .filter((event) => ACTIVATION_ENTRY_TYPES.has(event.type) && Number.isInteger(event.tabId) && Number.isInteger(event.windowId))
     .sort((left, right) => {
       const byTime = Date.parse(left.at || "") - Date.parse(right.at || "");
       return byTime || Number(left.seq || 0) - Number(right.seq || 0);
     })) {
+    if (event.type === "window_focused") {
+      if (Number.isInteger(focusedWindowId) && focusedWindowId !== event.windowId) {
+        appendActivationRun(runs, currentRunByWindow.get(focusedWindowId), maxDwellMs);
+        currentRunByWindow.delete(focusedWindowId);
+      }
+      focusedWindowId = event.windowId;
+    } else if (Number.isInteger(focusedWindowId) && focusedWindowId !== event.windowId) {
+      continue;
+    }
     if (!activationEventInScope(event, scope)) continue;
     const at = Date.parse(event.at || "");
     if (!Number.isFinite(at)) continue;
-    if (!eventsByWindow.has(event.windowId)) eventsByWindow.set(event.windowId, []);
-    eventsByWindow.get(event.windowId).push({ tabId: event.tabId, windowId: event.windowId, at, atIso: event.at });
-  }
-
-  for (const events of eventsByWindow.values()) {
-    let current = [];
-    for (const event of events) {
-      const previous = current[current.length - 1];
-      if (!previous) {
-        current = [event];
-        continue;
-      }
-      const gap = event.at - previous.at;
-      if (event.tabId === previous.tabId) continue;
-      if (gap <= 0) continue;
-      if (gap > runBreakMs) {
-        appendActivationRun(runs, current, maxDwellMs);
-        current = [event];
-        continue;
-      }
-      current.push(event);
+    const normalizedEvent = { tabId: event.tabId, windowId: event.windowId, at, atIso: event.at };
+    const current = currentRunByWindow.get(event.windowId) || [];
+    const previous = current[current.length - 1];
+    if (!previous) {
+      currentRunByWindow.set(event.windowId, [normalizedEvent]);
+      continue;
     }
-    appendActivationRun(runs, current, maxDwellMs);
+    const gap = normalizedEvent.at - previous.at;
+    if (normalizedEvent.tabId === previous.tabId || gap <= 0) continue;
+    if (gap > runBreakMs) {
+      appendActivationRun(runs, current, maxDwellMs);
+      currentRunByWindow.set(event.windowId, [normalizedEvent]);
+      continue;
+    }
+    current.push(normalizedEvent);
+    currentRunByWindow.set(event.windowId, current);
   }
+  for (const current of currentRunByWindow.values()) appendActivationRun(runs, current, maxDwellMs);
 
   const recentRuns = runs
     .sort((left, right) => Date.parse(right.endedAt || "") - Date.parse(left.endedAt || ""))

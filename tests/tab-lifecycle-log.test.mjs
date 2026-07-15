@@ -481,6 +481,26 @@ test("tab lifecycle keeps activation flow separated by idle gaps and windows", a
   assert.equal(context.evidence.some((entry) => entry.ids.includes(2) && entry.ids.includes(3)), false);
 });
 
+test("tab lifecycle treats leaving a window as an activation-flow boundary", async () => {
+  const chrome = createFakeChrome();
+  const now = Date.parse("2026-06-25T00:00:00.000Z");
+  const tabs = [
+    { id: 1, windowId: 1, index: 0, title: "Window one anchor", url: "https://a.example/", active: true },
+    { id: 2, windowId: 1, index: 1, title: "Window one follow-up", url: "https://b.example/", active: false },
+    { id: 3, windowId: 2, index: 0, title: "Other window task", url: "https://c.example/", active: true }
+  ];
+
+  await rememberTabsLifecycle(chrome, tabs, { now });
+  await rememberTabLifecycle(chrome, "window_focused", { ...tabs[0], active: true }, { now: now + 1000 });
+  await rememberTabLifecycle(chrome, "window_focused", { ...tabs[2], active: true }, { now: now + 31_000 });
+  await rememberTabLifecycle(chrome, "window_focused", { ...tabs[1], active: true }, { now: now + 121_000 });
+
+  const context = await getTabActivationFlowContext(chrome, tabs);
+
+  assert.equal(context.runs.some((run) => run.ids.includes(1) && run.ids.includes(2)), false);
+  assert.equal(context.transitions.some((transition) => transition.fromId === 1 && transition.toId === 2), false);
+});
+
 test("tab lifecycle uses unsupported URL activations as private flow boundaries", async () => {
   const chrome = createFakeChrome();
   const now = Date.parse("2026-06-25T00:00:00.000Z");
