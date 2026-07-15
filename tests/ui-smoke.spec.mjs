@@ -1101,6 +1101,9 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
   await page.locator("#gatewayAuxiliaryModel").selectOption("same_as_primary");
   await page.locator("#gatewayThinkingIntensity").selectOption("medium");
   await page.locator(".advanced-settings > summary").click();
+  await page.locator("#recapToDate").evaluate((input) => {
+    input.value = "2000-01-01T00:00";
+  });
   await page.getByRole("button", { name: "生成回顾" }).click();
 
   await expect(page.locator(".actions #progressBar")).toBeVisible();
@@ -1144,7 +1147,8 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
           languageMode: message?.languageMode,
           gatewayModel: message?.settings?.gatewayModel,
           gatewayAuxiliaryModel: message?.settings?.gatewayAuxiliaryModel,
-          gatewayThinkingIntensity: message?.settings?.gatewayThinkingIntensity
+          gatewayThinkingIntensity: message?.settings?.gatewayThinkingIntensity,
+          rollingRangeRefreshed: Date.parse(message?.range?.to || "") > Date.parse("2025-01-01T00:00:00Z")
         };
       })
     )
@@ -1153,7 +1157,8 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
       languageMode: "en-US",
       gatewayModel: "claude-sonnet-4-6",
       gatewayAuxiliaryModel: "same_as_primary",
-      gatewayThinkingIntensity: "medium"
+      gatewayThinkingIntensity: "medium",
+      rollingRangeRefreshed: true
     });
   await expect
     .poll(() =>

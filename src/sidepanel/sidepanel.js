@@ -1805,6 +1805,19 @@ function downloadJson(payload, filename) {
 }
 
 function readRecapRange() {
+  const preset = normalizeRecapPreset(fields.recapRangePreset?.value || "custom");
+  if (preset !== "custom") {
+    const range = dateRangeForRecapPreset(preset);
+    fields.recapFromDate.value = dateInputValue(range.from);
+    fields.recapToDate.value = dateInputValue(range.to);
+    syncRecapDateDisplays();
+    return {
+      preset,
+      from: range.from.toISOString(),
+      to: range.to.toISOString()
+    };
+  }
+
   const fromValue = fields.recapFromDate.value;
   const toValue = fields.recapToDate.value;
   const from = dateTimeInputIso(fromValue, "start");
@@ -1813,7 +1826,7 @@ function readRecapRange() {
     throw new Error(t("status.recapRangeInvalid"));
   }
   return {
-    preset: normalizeRecapPreset(fields.recapRangePreset?.value || "custom"),
+    preset,
     from,
     to
   };
