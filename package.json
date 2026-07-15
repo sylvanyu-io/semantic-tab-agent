@@ -10,6 +10,7 @@
     "test:worker": "node --test worker/test/*.test.mjs",
     "test:ui": "playwright test tests/ui-smoke.spec.mjs",
     "smoke:gateway": "node scripts/live-smoke-gateway.mjs",
+    "smoke:long-recap": "node scripts/smoke-long-recap-lifecycle.mjs",
     "benchmark:planner-scale": "node scripts/benchmark-gateway-planner-scale.mjs",
     "analyze:planner-quality": "node scripts/analyze-planner-benchmark-quality.mjs",
     "benchmark:recap-extension-scale": "node scripts/benchmark-recap-extension-scale.mjs",

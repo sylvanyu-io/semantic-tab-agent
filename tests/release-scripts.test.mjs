@@ -25,6 +25,16 @@ test("public release scripts include real extension stress and live gateway gate
   assert.equal(scripts["stress:summary"], "node scripts/summarize-stress-artifact.mjs");
 });
 
+test("long recap lifecycle smoke uses a delayed real extension gateway", async () => {
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  const script = await readFile("scripts/smoke-long-recap-lifecycle.mjs", "utf8");
+
+  assert.equal(packageJson.scripts["smoke:long-recap"], "node scripts/smoke-long-recap-lifecycle.mjs");
+  assert.match(script, /LONG_RECAP_DELAY_MS/);
+  assert.match(script, /launchPersistentContext/);
+  assert.match(script, /task:keepAlive|长请求生命周期验证完成/);
+});
+
 test("release version gate rejects reuse of a tag on newer source", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "tab-recap-version-gate-"));
   try {
