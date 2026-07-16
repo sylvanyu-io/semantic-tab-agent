@@ -525,7 +525,14 @@ function runGit(cwd, args) {
 function runReleaseVersionGate(root, extraEnv = {}) {
   return spawnSync(process.execPath, ["scripts/verify-release-version.mjs"], {
     encoding: "utf8",
-    env: { ...process.env, RELEASE_ROOT_DIR: root, ...extraEnv }
+    env: {
+      ...process.env,
+      GITHUB_REF: "",
+      GITHUB_REF_NAME: "",
+      GITHUB_REF_TYPE: "",
+      RELEASE_ROOT_DIR: root,
+      ...extraEnv
+    }
   });
 }
 
