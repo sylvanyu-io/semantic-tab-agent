@@ -43,6 +43,7 @@ const PROGRESS_COPY_MAX_LENGTH = 18;
 const PROGRESS_COPY_TIMEOUT_MS = 12_000;
 const PAGE_SAMPLE_CONCURRENCY = 6;
 const PAGE_SAMPLE_TIMEOUT_MS = 1800;
+const PAGE_SAMPLE_RETRY_TIMEOUT_MS = 5000;
 const CLEANUP_ACTIVITY_RANGE_MS = 30 * 24 * 60 * 60 * 1000;
 const LOCAL_MEMORY_KEYS = Object.freeze([
   STORAGE_KEYS.pageActivityCache,
@@ -1705,24 +1706,32 @@ function skippedPageSampleForTab(tab) {
 }
 
 async function requestPageSampleWithTimeout(chromeApi, tab, settings, signal, reason) {
-  const timeoutMs = Number(globalThis.__semanticTabAgentPageSampleTimeoutMs) || PAGE_SAMPLE_TIMEOUT_MS;
-  try {
-    return await raceWithTimeoutAndAbort(
-      requestPageSample(chromeApi, tab, settings, reason),
-      timeoutMs,
-      signal
-    );
-  } catch (error) {
-    throwIfCanceled(signal);
-    const rawUrl = tab.url || tab.pendingUrl || "";
-    return {
-      status: "blocked",
-      origin: safeOriginPattern(rawUrl),
-      reason: /timed out/i.test(String(error?.message || ""))
-        ? "Timed out while reading page summary."
-        : "Page summary could not be read in time."
-    };
+  const configuredTimeoutMs = Number(globalThis.__semanticTabAgentPageSampleTimeoutMs);
+  const timeoutMs = configuredTimeoutMs || PAGE_SAMPLE_TIMEOUT_MS;
+  const retryTimeoutMs = configuredTimeoutMs || PAGE_SAMPLE_RETRY_TIMEOUT_MS;
+  let lastError = null;
+
+  for (const attemptTimeoutMs of [timeoutMs, retryTimeoutMs]) {
+    try {
+      return await raceWithTimeoutAndAbort(
+        requestPageSample(chromeApi, tab, settings, reason),
+        attemptTimeoutMs,
+        signal
+      );
+    } catch (error) {
+      throwIfCanceled(signal);
+      lastError = error;
+    }
   }
+
+  const rawUrl = tab.url || tab.pendingUrl || "";
+  return {
+    status: "blocked",
+    origin: safeOriginPattern(rawUrl),
+    reason: /timed out/i.test(String(lastError?.message || ""))
+      ? "Timed out twice while reading page summary."
+      : "Page summary could not be read after retrying."
+  };
 }
 
 function raceWithTimeoutAndAbort(promise, timeoutMs, signal) {

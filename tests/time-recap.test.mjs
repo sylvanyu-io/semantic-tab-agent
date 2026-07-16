@@ -29,6 +29,101 @@ test("time recap input combines local activity, summaries, lifecycle, and curren
   assert.deepEqual([...input.pageFields].sort(), Object.keys(input.pages[0]).sort());
 });
 
+test("time recap explicitly asks compatible chat models to generate the recap", async () => {
+  const chrome = seededRecapChrome();
+  let capturedBody = null;
+  const fetchImpl = async (_url, init) => {
+    capturedBody = JSON.parse(init.body);
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                schema: "tab_recap_time_recap_v1",
+                language: "en-US",
+                headline: "Extension work dominated the week.",
+                summary: "The selected range focused on browser extension work.",
+                themes: [],
+                timeline: [],
+                coverageNote: "Used local activity signals."
+              })
+            }
+          }
+        ]
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  };
+
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.BUILTIN,
+      gatewayModel: "claude-sonnet-4-6",
+      languageMode: "en-US"
+    },
+    { range: { preset: "7d" }, now: NOW, fetchImpl }
+  );
+
+  assert.equal(result.source, "ai");
+  assert.match(
+    capturedBody.messages[1].content,
+    /^TabRecap local time-recap input follows\. Page rows are already privacy-reduced\.\nGenerate the time recap now\./
+  );
+});
+
+test("time recap retries one malformed successful gateway response", async () => {
+  const chrome = seededRecapChrome();
+  const requests = [];
+  const fetchImpl = async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    if (requests.length === 1) {
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: "I received context but no request." } }] }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                schema: "tab_recap_time_recap_v1",
+                language: "en-US",
+                headline: "Extension work dominated the week.",
+                summary: "The selected range focused on browser extension work.",
+                themes: [],
+                timeline: [],
+                coverageNote: "Used local activity signals."
+              })
+            }
+          }
+        ]
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  };
+
+  const result = await generateTimeRecap(
+    chrome,
+    {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.BUILTIN,
+      languageMode: "en-US"
+    },
+    { range: { preset: "7d" }, now: NOW, fetchImpl, timeoutMs: 300_000 }
+  );
+
+  assert.equal(result.source, "ai");
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].messages[1].content, /previous response was not valid JSON/i);
+});
+
 test("time recap input accumulates repeated page sessions and estimated dwell time", async () => {
   const chrome = createFakeChrome();
   chrome.__state.storage[STORAGE_KEYS.tabLifecycleLog] = {

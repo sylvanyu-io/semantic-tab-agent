@@ -1656,8 +1656,12 @@ test("page sampling timeouts fall back without blocking analysis", async () => {
     ]
   });
 
+  let timedOutCalls = 0;
   chrome.scripting.executeScript = async ({ target }) => {
-    if (target.tabId === 11) return new Promise(() => {});
+    if (target.tabId === 11) {
+      timedOutCalls += 1;
+      return new Promise(() => {});
+    }
     return [{ result: { title: `Sample ${target.tabId}`, headings: [], visibleText: "Readable text" } }];
   };
   globalThis.__semanticTabAgentPageSampleTimeoutMs = 10;
@@ -1679,9 +1683,48 @@ test("page sampling timeouts fall back without blocking analysis", async () => {
       [10, 11, 12]
     );
     assert.equal(job.inventory.pageSamples.find((sample) => sample.tabId === 11).status, "blocked");
-    assert.match(job.inventory.pageSamples.find((sample) => sample.tabId === 11).reason, /Timed out/);
+    assert.match(job.inventory.pageSamples.find((sample) => sample.tabId === 11).reason, /Timed out twice/);
     assert.equal(job.preview.pageSampling.ok, 2);
     assert.equal(job.preview.pageSampling.blocked, 1);
+    assert.equal(timedOutCalls, 2);
+  } finally {
+    delete globalThis.__semanticTabAgentPageSampleTimeoutMs;
+  }
+});
+
+test("page sampling retries a transient timeout before falling back", async () => {
+  const chrome = createFakeChrome({
+    grantedOrigins: ["https://example.com/*"],
+    windows: [
+      {
+        id: 1,
+        focused: true,
+        tabs: [{ id: 10, title: "Transient page", url: "https://example.com/page", active: true }]
+      }
+    ]
+  });
+  let calls = 0;
+  chrome.scripting.executeScript = async () => {
+    calls += 1;
+    if (calls === 1) return new Promise(() => {});
+    return [{ result: { title: "Recovered sample", headings: [], visibleText: "Readable after retry" } }];
+  };
+  globalThis.__semanticTabAgentPageSampleTimeoutMs = 10;
+
+  try {
+    const job = await analyzeTabs(
+      chrome,
+      {
+        ...FAKE_PLANNER_SETTINGS,
+        pageContextMode: PAGE_CONTEXT_MODES.ALL_GRANTED_ORIGINS,
+        pageSamplingConsentMode: PAGE_SAMPLING_CONSENT_MODES.ACKNOWLEDGED_FOR_SESSION
+      },
+      { windowId: 1 }
+    );
+
+    assert.equal(calls, 2);
+    assert.equal(job.preview.pageSampling.ok, 1);
+    assert.equal(job.preview.pageSampling.blocked, 0);
   } finally {
     delete globalThis.__semanticTabAgentPageSampleTimeoutMs;
   }

@@ -1857,15 +1857,29 @@ function parseGatewayJson(data) {
 
   if (!text) {
     const refusal = findRefusal(data);
-    if (refusal) throw new Error("AI 没有生成可用方案。请调整自定义要求后重新生成。");
-    throw new Error("AI 这次没有生成可用方案。请重新生成。");
+    if (refusal) {
+      throw gatewayResponseParseError(
+        "AI 没有生成可用方案。请调整自定义要求后重新生成。",
+        "gateway_response_refused"
+      );
+    }
+    throw gatewayResponseParseError("AI 这次没有生成可用方案。请重新生成。", "gateway_response_empty");
   }
 
   try {
     return JSON.parse(extractJsonObjectText(text));
   } catch {
-    throw new Error("AI 这次生成的方案格式不完整。请重新生成，或换一个模型再试。");
+    throw gatewayResponseParseError(
+      "AI 这次生成的方案格式不完整。请重新生成，或换一个模型再试。",
+      "gateway_response_invalid_json"
+    );
   }
+}
+
+function gatewayResponseParseError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }
 
 function findRefusal(data) {

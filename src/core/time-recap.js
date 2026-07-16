@@ -369,37 +369,54 @@ export function normalizeTimeRecapRange(rawRange = {}, now = Date.now()) {
 
 export async function createGatewayTimeRecap(input, rawSettings = {}, fetchImpl = globalThis.fetch, options = {}) {
   const settings = normalizeSettings(rawSettings);
-  const body = {
-    model: requireGatewayModel(settings),
-    messages: [
-      { role: "system", content: buildTimeRecapSystemPrompt(settings) },
-      { role: "user", content: buildTimeRecapUserPrompt(input) }
-    ],
-    max_tokens: 4096
-  };
-  attachJsonResponseFormat(body, settings);
-  applyThinkingIntensity(body, settings, settings.gatewayThinkingIntensity);
+  const taskTimeoutMs = options.timeoutMs ?? TIME_RECAP_GATEWAY_TIMEOUT_MS;
+  const startedAt = Date.now();
 
-  const { response, data } = await fetchJsonWithTimeout(
-    fetchImpl,
-    gatewayChatCompletionsUrl(settings),
-    {
-      method: "POST",
-      headers: gatewayHeaders(settings, {
-        ...gatewayRequestMeta({ pageSamples: input.pages.filter((page) => page.summary).map(() => ({ status: "ok" })) }, options),
-        feature: "time_recap"
-      }),
-      body: JSON.stringify(body)
-    },
-    "AI gateway time recap",
-    options.timeoutMs ?? TIME_RECAP_GATEWAY_TIMEOUT_MS,
-    options.signal
-  );
-  if (!response.ok) {
-    throw new Error(gatewayErrorMessage(response, data, settings));
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const body = {
+      model: requireGatewayModel(settings),
+      messages: [
+        { role: "system", content: buildTimeRecapSystemPrompt(settings) },
+        { role: "user", content: buildTimeRecapUserPrompt(input, { retry: attempt > 0 }) }
+      ],
+      max_tokens: 4096
+    };
+    attachJsonResponseFormat(body, settings);
+    applyThinkingIntensity(body, settings, settings.gatewayThinkingIntensity);
+
+    const remainingTimeoutMs = Number.isFinite(Number(taskTimeoutMs)) && Number(taskTimeoutMs) > 0
+      ? Math.max(1, Number(taskTimeoutMs) - (Date.now() - startedAt))
+      : taskTimeoutMs;
+    const { response, data } = await fetchJsonWithTimeout(
+      fetchImpl,
+      gatewayChatCompletionsUrl(settings),
+      {
+        method: "POST",
+        headers: gatewayHeaders(settings, {
+          ...gatewayRequestMeta({ pageSamples: input.pages.filter((page) => page.summary).map(() => ({ status: "ok" })) }, options),
+          feature: "time_recap"
+        }),
+        body: JSON.stringify(body)
+      },
+      "AI gateway time recap",
+      remainingTimeoutMs,
+      options.signal
+    );
+    if (!response.ok) {
+      throw new Error(gatewayErrorMessage(response, data, settings));
+    }
+
+    try {
+      return normalizeTimeRecap(parsePlanFromResponse(data), input, settings);
+    } catch (error) {
+      if (attempt === 0 && isRetryableTimeRecapResponseError(error) && remainingTaskTime(taskTimeoutMs, startedAt) > 0) {
+        continue;
+      }
+      throw error;
+    }
   }
 
-  return normalizeTimeRecap(parsePlanFromResponse(data), input, settings);
+  throw new Error("AI 这次没有生成可用回顾。请重新生成。");
 }
 
 export function buildLocalTimeRecap(input, rawSettings = {}) {
@@ -447,11 +464,23 @@ function buildTimeRecapSystemPrompt(settings) {
   ].join("\n");
 }
 
-function buildTimeRecapUserPrompt(input) {
+function buildTimeRecapUserPrompt(input, options = {}) {
   return [
     "TabRecap local time-recap input follows. Page rows are already privacy-reduced.",
+    "Generate the time recap now. Return exactly the JSON object required by the system message and nothing else.",
+    options.retry ? "The previous response was not valid JSON. Follow the required schema exactly on this retry." : "",
     JSON.stringify(input)
-  ].join("\n");
+  ].filter(Boolean).join("\n");
+}
+
+function isRetryableTimeRecapResponseError(error) {
+  return error?.code === "gateway_response_empty" || error?.code === "gateway_response_invalid_json";
+}
+
+function remainingTaskTime(timeoutMs, startedAt) {
+  const timeout = Number(timeoutMs);
+  if (!Number.isFinite(timeout) || timeout <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(0, timeout - (Date.now() - startedAt));
 }
 
 function normalizeTimeRecap(parsed, input, settings) {
