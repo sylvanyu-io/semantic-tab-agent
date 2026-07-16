@@ -133,9 +133,20 @@ test("extension build rejects unknown release channels", () => {
 
 test("untagged extension packages include source identity", async () => {
   const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
-  const name = artifactZipName(process.cwd(), manifest.version, "dev");
+  const tempRoot = await mkdtemp(join(tmpdir(), "tab-recap-untagged-build-"));
+  try {
+    await writeFile(join(tempRoot, "source.txt"), "untagged source");
+    runGit(tempRoot, ["init", "-q"]);
+    runGit(tempRoot, ["config", "user.email", "release-test@example.com"]);
+    runGit(tempRoot, ["config", "user.name", "Release Test"]);
+    runGit(tempRoot, ["add", "."]);
+    runGit(tempRoot, ["commit", "-qm", "untagged source"]);
 
-  assert.match(name, new RegExp(`^tab-recap-${manifest.version.replaceAll(".", "\\.")}-dev-[a-f0-9]{12}(?:-dirty)?\\.zip$`));
+    const name = artifactZipName(tempRoot, manifest.version, "dev");
+    assert.match(name, new RegExp(`^tab-recap-${manifest.version.replaceAll(".", "\\.")}-dev-[a-f0-9]{12}\\.zip$`));
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test("release artifact audit rejects obsolete product names and legacy extension keys", async () => {
