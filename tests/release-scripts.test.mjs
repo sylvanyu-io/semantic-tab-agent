@@ -485,6 +485,24 @@ test("real extension stress can find UI sampling jobs across scoped storage", as
   assert.match(stressScript, /findStoredLastSamplingJob/);
   assert.match(stressScript, /createdAfterMs/);
   assert.match(stressScript, /key === lastJobBaseKey \|\| key\.startsWith\(`\$\{lastJobBaseKey\}:`\)/);
+  assert.match(stressScript, /tabs:clearAnalysisState[^]*page\.reload\(\{ waitUntil: "domcontentloaded" \}\)/);
+});
+
+test("live release gate explicitly enables the keyless built-in gateway stress branch", async () => {
+  const stressScript = await readFile("scripts/stress-extension.mjs", "utf8");
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  const readme = await readFile("README.md", "utf8");
+
+  assert.match(stressScript, /gatewayStressEnabled = process\.env\.STRESS_GATEWAY === "1"/);
+  assert.doesNotMatch(stressScript, /gatewayStressEnabled = .*Boolean\(gatewayKey\)/);
+  assert.match(stressScript, /gatewayTabs: gatewayStressEnabled \? gatewayTabs : 0/);
+  assert.doesNotMatch(stressScript, /gatewayTabs: gatewayKey \? gatewayTabs : 0/);
+  assert.match(stressScript, /type: "activity:generateTimeRecap"/);
+  assert.match(stressScript, /gatewayRecap\.source === "ai"/);
+  assert.match(stressScript, /reason: "STRESS_GATEWAY is not enabled"/);
+  assert.match(packageJson.scripts["release:check:live"], /STRESS_GATEWAY=1 npm run release:check:full/);
+  assert.match(readme, /STRESS_GATEWAY=1 STRESS_GATEWAY_TABS=60 npm run stress:extension/);
+  assert.doesNotMatch(readme, /GATEWAY_BASE_URL=http:\/\/127\.0\.0\.1:8317\/v1 STRESS_GATEWAY_TABS=60/);
 });
 
 function runGit(cwd, args) {
