@@ -15,6 +15,7 @@ const gatewayTabs = positiveInteger(process.env.STRESS_GATEWAY_TABS, Math.min(to
 const gatewayKey = process.env.GATEWAY_API_KEY || "";
 const gatewayBaseUrl = process.env.GATEWAY_BASE_URL || BUILTIN_GATEWAY_BASE_URL;
 const gatewayModel = process.env.GATEWAY_MODEL || DEFAULT_SETTINGS.gatewayModel;
+const gatewayStressEnabled = process.env.STRESS_GATEWAY === "1";
 const runId = `sta-stress-${Date.now().toString(36)}`;
 
 if (!existsSync(join(extensionDir, "manifest.json"))) {
@@ -186,7 +187,7 @@ try {
     assertEqual(activeSamplingJob.preview.pageSampling.ok, windowCount, "active-tab sampling ok count");
     record("active-tab page sampling", activeSamplingJob.preview.pageSampling);
 
-    if (gatewayKey) {
+    if (gatewayStressEnabled) {
       const gatewayWindows = await resetForGateway(control, urls.slice(0, gatewayTabs), baseUrl, windowCount);
       const gatewaySettings = {
         ...fakeAllSettings,
@@ -210,8 +211,37 @@ try {
         reviewTabs: gatewayJob.preview.reviewTabsCount,
         warnings: gatewayJob.preview.warnings.length
       });
+
+      const gatewayRecap = await timed("gateway time recap", () =>
+        sendRuntime(control, {
+          type: "activity:generateTimeRecap",
+          settings: {
+            ...gatewaySettings,
+            languageMode: "en",
+            customPrompt: ""
+          },
+          range: { preset: "1d" },
+          timeoutMs: 300_000,
+          windowId: gatewayWindows[0].id
+        })
+      );
+      assert(
+        gatewayRecap.source === "ai",
+        `gateway recap did not use AI: source=${gatewayRecap.source || "unknown"} error=${gatewayRecap.error || "none"}`
+      );
+      assert(Boolean(gatewayRecap.recap?.headline), "gateway recap headline is missing");
+      assert(
+        (gatewayRecap.recap?.themes?.length || 0) + (gatewayRecap.recap?.timeline?.length || 0) > 0,
+        "gateway recap has no themes or timeline entries"
+      );
+      record("gateway time recap", {
+        source: gatewayRecap.source,
+        pages: gatewayRecap.input?.coverage?.includedPages || 0,
+        themes: gatewayRecap.recap?.themes?.length || 0,
+        timeline: gatewayRecap.recap?.timeline?.length || 0
+      });
     } else {
-      record("gateway all-window analyze skipped", { reason: "GATEWAY_API_KEY is not set" });
+      record("gateway all-window analyze skipped", { reason: "STRESS_GATEWAY is not enabled" });
     }
   } finally {
     await context.close();
@@ -386,6 +416,10 @@ async function runUiSamplingAnalyze(page, options) {
   if (options.sourceWindowId) {
     await sendRuntime(page, { type: "tabs:clearAnalysisState", windowId: options.sourceWindowId }).catch(() => null);
   }
+  // The clear above runs outside the panel UI. Reload so its in-memory preview
+  // state matches scoped extension storage before the primary action is clicked.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#analyzeBtn");
   await page.evaluate(({ organizeMode }) => {
     window.__semanticTabAgentAllowFakeProvider = true;
     const ensureOption = (selector, value, label) => {
@@ -437,6 +471,10 @@ async function runUiSamplingAnalyze(page, options) {
   assertEqual(job.settings?.plannerProvider, "fake", "UI sampling planner provider");
   const statuses = countBy((job.inventory.pageSamples || []).map((sample) => sample.status));
   if (job.preview.pageSampling.ok !== options.expectedSamples) {
+    const unsuccessfulSamples = job.inventory.pageSamples
+      .filter((sample) => sample.status !== "ok")
+      .slice(0, 20)
+      .map(({ tabId, windowId, status, reason }) => ({ tabId, windowId, status, reason }));
     const uiDebug = await page.evaluate(async () => {
       const savedResponse = await chrome.runtime.sendMessage({ type: "settings:get" });
       return {
@@ -453,7 +491,9 @@ async function runUiSamplingAnalyze(page, options) {
     throw new Error(
       `UI page sample count: expected ${options.expectedSamples}, got ${job.preview.pageSampling.ok}; summary ${JSON.stringify(
         job.preview.pageSampling
-      )}; statuses ${JSON.stringify(statuses)}; jobSettings ${JSON.stringify(job.settings)}; ui ${JSON.stringify(uiDebug)}`
+      )}; statuses ${JSON.stringify(statuses)}; unsuccessfulSamples ${JSON.stringify(unsuccessfulSamples)}; jobSettings ${JSON.stringify(
+        job.settings
+      )}; ui ${JSON.stringify(uiDebug)}`
     );
   }
   assert(
@@ -581,7 +621,7 @@ async function writeStressSummary(error = null) {
     runId,
     totalTabs,
     windowCount,
-    gatewayTabs: gatewayKey ? gatewayTabs : 0,
+    gatewayTabs: gatewayStressEnabled ? gatewayTabs : 0,
     summaryPath,
     status: error ? "failed" : "passed",
     ...(error

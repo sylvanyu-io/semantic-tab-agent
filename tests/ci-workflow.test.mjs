@@ -27,6 +27,7 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /startsWith\(github\.ref, 'refs\/tags\/v'\)/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.full_gate/);
   assert.match(workflow, /run: npm run assets:icons && npm run build:extension/);
+  assert.match(workflow, /STRESS_GATEWAY: \$\{\{ startsWith\(github\.ref, 'refs\/tags\/v'\) && '1' \|\| '0' \}\}/);
   assert.match(workflow, /run: xvfb-run --auto-servernum npm run stress:extension/);
   assert.match(workflow, /Publish stress summary to job summary/);
   assert.match(workflow, /dist\/stress\/\*\.md/);

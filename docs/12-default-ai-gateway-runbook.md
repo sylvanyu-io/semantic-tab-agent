@@ -892,9 +892,11 @@ Full pre-release live gate:
 npm run release:check:live
 ```
 
-This runs the full local release gate first, then the same live default-gateway
-smoke with `GATEWAY_REQUIRE_MONITOR=1`. Use it before publishing builds that
-rely on the built-in AI service.
+This runs the full local release gate with `STRESS_GATEWAY=1`, which makes the
+real extension stress profile send its configured gateway batch through the
+keyless built-in service. It then runs the same live default-gateway smoke with
+`GATEWAY_REQUIRE_MONITOR=1`. Use it before publishing builds that rely on the
+built-in AI service.
 
 If `cloudflared` is running but public checks still return 530, inspect
 Cloudflare tunnel logs. If logs show QUIC timeouts or no free edge addresses,

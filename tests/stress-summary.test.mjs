@@ -20,7 +20,7 @@ const artifact = {
     { label: "UI-driven page sampling", details: { requested: 240, ok: 240, permissionRequired: 0, blocked: 0 } },
     { label: "active-tab page sampling", elapsedMs: 297 },
     { label: "active-tab page sampling", details: { requested: 4, ok: 4, permissionRequired: 0, blocked: 0 } },
-    { label: "gateway all-window analyze skipped", details: { reason: "GATEWAY_API_KEY is not set" } }
+    { label: "gateway all-window analyze skipped", details: { reason: "STRESS_GATEWAY is not enabled" } }
   ]
 };
 
@@ -36,7 +36,8 @@ test("stress artifact summary extracts release evidence fields", () => {
   assert.deepEqual(summary.currentWindow, { windowTabs: 60, groups: 6 });
   assert.equal(summary.fullPageSampling.ok, 240);
   assert.equal(summary.activeTabSampling.ok, 4);
-  assert.equal(summary.gateway.reason, "GATEWAY_API_KEY is not set");
+  assert.equal(summary.gateway.reason, "STRESS_GATEWAY is not enabled");
+  assert.equal(summary.gatewayRecap, null);
   assert.equal(summary.timings.allWindowAnalyzeMs, 36227);
 });
 
@@ -49,7 +50,26 @@ test("stress artifact summary formats copy for release notes", () => {
   assert.match(markdown, /Current-window apply\/undo: 6 groups for 60 tabs/);
   assert.match(markdown, /Page-summary risk gate: blocked 60 of 60 attempted samples/);
   assert.match(markdown, /Authorized page sampling: read 240 of 240 pages/);
-  assert.match(markdown, /Gateway branch: skipped \(GATEWAY_API_KEY is not set\)/);
+  assert.match(markdown, /Gateway branch: skipped \(STRESS_GATEWAY is not enabled\)/);
+  assert.match(markdown, /Gateway recap: skipped \(STRESS_GATEWAY is not enabled\)/);
+});
+
+test("stress artifact summary records the live AI recap branch", () => {
+  const liveArtifact = {
+    ...artifact,
+    results: artifact.results
+      .filter((entry) => entry.label !== "gateway all-window analyze skipped")
+      .concat(
+        { label: "gateway all-window analyze", details: { tabs: 180, groups: 8, reviewTabs: 12, warnings: 0 } },
+        { label: "gateway time recap", details: { source: "ai", pages: 180, themes: 6, timeline: 3 } }
+      )
+  };
+
+  const summary = summarizeStressArtifact(liveArtifact);
+  const markdown = formatStressSummaryMarkdown(summary);
+
+  assert.deepEqual(summary.gatewayRecap, { source: "ai", pages: 180, themes: 6, timeline: 3 });
+  assert.match(markdown, /Gateway recap: ai, 180 pages, 6 themes, 3 timeline entries/);
 });
 
 test("stress artifact summary rejects malformed artifacts", () => {

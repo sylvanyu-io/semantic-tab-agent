@@ -99,15 +99,19 @@ Blocking gates:
 - The GitHub full stress job also publishes that Markdown summary to the job
   summary, so pass/fail evidence is visible without downloading artifacts.
 - `npm run release:check:live` passes before public releases that depend on the
-  built-in default AI service. It runs `release:check:full`, reads
+  built-in default AI service. It runs `release:check:full` with
+  `STRESS_GATEWAY=1`, so the real extension stress profile sends its gateway
+  batch through the keyless built-in service instead of silently skipping it.
+  It then reads
   `MONITOR_TOKEN`, `MONITOR_TOKEN_FILE`, or this machine's default local runtime
   token file, and fails if `/monitor/status` is skipped, not `ok`, older than
   two hours, or missing healthy `readyz` / `llm-readyz` summary codes.
 - `npm run stress:extension` validates current-window apply/undo and
   consolidate-to-one-window apply/undo on a throwaway Chromium profile. This is
   called automatically by `release:check:full` and `release:check:live`.
-- Tag-triggered CI also runs the real-extension stress job and the live default
-  gateway smoke check. The repository must provide a `MONITOR_TOKEN` Actions
+- Tag-triggered CI also enables `STRESS_GATEWAY=1` for the real-extension stress
+  job and runs the live default gateway smoke check. The repository must provide
+  a `MONITOR_TOKEN` Actions
   secret; a missing secret or unhealthy built-in service blocks the tag
   workflow instead of publishing a green package from an unverified gateway.
 - AI gateway live smoke verifies Worker health, origin readiness, monitor email

@@ -49,6 +49,7 @@ export function summarizeStressArtifact(artifact) {
 
   const gatewaySkipped = details("gateway all-window analyze skipped");
   const gatewayAnalyze = details("gateway all-window analyze");
+  const gatewayRecap = details("gateway time recap");
 
   return {
     runId: artifact.runId,
@@ -64,6 +65,7 @@ export function summarizeStressArtifact(artifact) {
     fullPageSampling: details("UI-driven page sampling"),
     activeTabSampling: details("active-tab page sampling"),
     gateway: gatewayAnalyze || gatewaySkipped,
+    gatewayRecap,
     timings: {
       allWindowAnalyzeMs: elapsedMs("fake all-window analyze"),
       allWindowApplyMs: elapsedMs("fake all-window apply"),
@@ -87,6 +89,7 @@ export function formatStressSummaryMarkdown(summary) {
     `- Authorized page sampling: read ${formatCount(summary.fullPageSampling?.ok)} of ${formatCount(summary.fullPageSampling?.requested)} pages`,
     `- Active-tab sampling: read ${formatCount(summary.activeTabSampling?.ok)} of ${formatCount(summary.activeTabSampling?.requested)} active pages`,
     `- Gateway branch: ${formatGateway(summary.gateway)}`,
+    `- Gateway recap: ${formatGatewayRecap(summary.gatewayRecap, summary.gateway)}`,
     `- Key timings: all-window analyze ${formatMs(summary.timings.allWindowAnalyzeMs)}, full page sampling ${formatMs(summary.timings.fullPageSamplingMs)}`
   ];
   if (summary.status === "failed" && summary.failure?.message) {
@@ -118,6 +121,12 @@ function formatGateway(value) {
   if (value.reviewTabs !== undefined) pieces.push(`${value.reviewTabs} review tabs`);
   if (value.warnings !== undefined) pieces.push(`${value.warnings} warnings`);
   return pieces.length ? pieces.join(", ") : "recorded";
+}
+
+function formatGatewayRecap(value, gateway) {
+  if (!value && gateway?.reason) return `skipped (${gateway.reason})`;
+  if (!value) return "not recorded";
+  return `${value.source || "unknown source"}, ${formatCount(value.pages)} pages, ${formatCount(value.themes)} themes, ${formatCount(value.timeline)} timeline entries`;
 }
 
 function formatMs(value) {
