@@ -295,6 +295,15 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#undoTargetWindowMode")).toHaveValue("leave_empty_target_window");
 
   await page.getByRole("button", { name: "生成方案" }).click();
+  await expect(page.locator(".preview .step-label")).toHaveText("方案预览");
+  await expect(page.locator(".preview .section-heading h2")).toHaveText("AI 分析结果");
+  await expect(page.locator("#previewCount")).toHaveText("23 个标签页");
+  await expect(page.locator(".preview-result-tabs")).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(page.locator(".preview-result-tabs")).toHaveCSS("border-top-width", "1px");
+  await expect(page.getByRole("tab", { name: "分组建议 3 组" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toHaveAttribute("aria-selected", "false");
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toHaveCSS("color", "rgb(112, 103, 85)");
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" }).locator("span")).toHaveCSS("color", "rgb(180, 56, 44)");
   await expect(page.locator(".preview").getByText("AI 研究", { exact: true })).toBeVisible();
   await expect(page.locator(".preview").getByText("当前项目", { exact: true })).toBeVisible();
   await expect(page.locator(".preview").getByText("待分类", { exact: true })).toBeVisible();
@@ -305,6 +314,10 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".preview").getByText("已补充部分页面线索，并结合标题、网址和原始顺序整理。")).toBeVisible();
   await expect(page.locator(".preview").getByText("另有 1 个固定、无痕或受限标签页未参与整理。")).toBeVisible();
   await expect(page.locator(".activity-panel")).toHaveCount(0);
+  await page.getByRole("tab", { name: "清理建议 2 项" }).click();
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "分组建议 3 组" })).toHaveCSS("color", "rgb(112, 103, 85)");
+  await expect(page.locator(".preview").getByText("AI 研究", { exact: true })).toBeHidden();
   await expect(page.locator(".cleanup-preview").getByText("清理建议", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview")).not.toContainText("本地已缓存");
   await expect(page.locator(".cleanup-preview").getByText("旧方案对比笔记")).toBeVisible();
@@ -313,6 +326,9 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator('.cleanup-row-actions button[data-action="close"]').first()).toHaveCSS("color", "rgb(180, 56, 44)");
   await expect(page.locator('.cleanup-row-actions button[data-action="close"]').first()).toHaveCSS("background-color", "rgb(255, 230, 222)");
   await expect(page.locator('.cleanup-priority-group[data-priority="high"] > summary .cleanup-priority')).toHaveText("优先检查");
+  await expect(page.locator('.cleanup-priority-group[data-priority="low"] > summary .cleanup-priority')).toHaveText("最后扫一眼");
+  await expect(page.locator(".cleanup-preview-row")).toHaveCount(3);
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toBeVisible();
   await expect(page.locator(".cleanup-row-actions .cleanup-priority")).toHaveCount(0);
   await expect(page.locator(".cleanup-title-line").first().locator(".cleanup-priority")).toHaveCount(0);
   await expect(page.locator(".cleanup-row-actions").first()).toHaveCSS("float", "right");
@@ -325,16 +341,20 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".preview-stats")).toHaveCount(0);
   await expect(page.locator(".stat-chip")).toHaveCount(0);
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator("#previewCount")).toHaveText("3 groups");
+  await expect(page.locator("#previewCount")).toHaveText("23 tabs");
+  await expect(page.getByRole("tab", { name: "Cleanup suggestions 2 items" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator('.cleanup-priority-group[data-priority="high"] > summary .cleanup-priority')).toHaveText("Check first");
   await expect(page.locator(".cleanup-row-actions").first().locator(".icon-action")).toHaveText(["Find", "Close tab"]);
+  await page.getByRole("tab", { name: "Group suggestions 3 groups" }).click();
   await expect(
     page
       .locator(".preview")
       .getByText('AI reviewed 23 tabs, found 2 topic groups; 20 tabs will be grouped automatically, with 3 tabs set aside for "Needs Review".')
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Cleanup suggestions 2 items" }).click();
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator("#previewCount")).toHaveText("3 组");
+  await expect(page.locator("#previewCount")).toHaveText("23 个标签页");
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "开始整理" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "撤销" })).toBeHidden();
   await expect(page.getByText("调整", { exact: true })).toHaveCount(0);
@@ -391,6 +411,17 @@ test("side panel stays within a 320px viewport", async ({ page }) => {
 
   await expectNoHorizontalOverflow();
   await expectPrimaryActionInViewport();
+  await page.getByRole("button", { name: "生成方案" }).click();
+  await expect(page.getByRole("tab", { name: "分组建议 3 组" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toBeVisible();
+  await expectNoHorizontalOverflow();
+  await page.locator("#uiLanguageToggle").click();
+  await expectNoHorizontalOverflow();
+  await page.getByRole("tab", { name: "Group suggestions 3 groups" }).press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Cleanup suggestions 2 items" })).toHaveAttribute("aria-selected", "true");
+  await expectNoHorizontalOverflow();
+  await page.locator("#uiLanguageToggle").click();
+  await page.getByRole("button", { name: "返回上级" }).click();
   await page.getByText("更多选项").click();
   await expectNoHorizontalOverflow();
   await expectPrimaryActionInViewport();
@@ -628,7 +659,17 @@ test("diagnostics export failure keeps raw details out of visible status", async
 test("time recap mode renders a first-class recap surface", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 
+  const recapTitle = page.locator('.mode-tab[data-panel-mode="recap"] .mode-tab-title');
+  const recapSubtitle = page.locator('.mode-tab[data-panel-mode="recap"] .mode-tab-subtitle');
+  const inactiveTitleBox = await recapTitle.boundingBox();
+  const inactiveSubtitleBox = await recapSubtitle.boundingBox();
   await page.getByRole("button", { name: "回顾" }).click();
+  const activeTitleBox = await recapTitle.boundingBox();
+  const activeSubtitleBox = await recapSubtitle.boundingBox();
+  expect(Math.abs(activeTitleBox.x - inactiveTitleBox.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(activeTitleBox.y - inactiveTitleBox.y)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(activeSubtitleBox.x - inactiveSubtitleBox.x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(activeSubtitleBox.y - inactiveSubtitleBox.y)).toBeLessThanOrEqual(0.5);
   await expect(page.locator("#timeRecapPanel")).toBeVisible();
   await expect(page.locator(".launch-panel")).toBeVisible();
   await expect(page.locator("#ackSampling")).toBeVisible();
@@ -2410,12 +2451,13 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await page.getByRole("button", { name: "生成方案" }).click();
 
   await expect(page.locator("#previewSection")).toBeVisible();
+  await page.getByRole("tab", { name: "清理建议 2 项" }).click();
   await expect(page.locator(".cleanup-preview").getByText("清理建议", { exact: true })).toBeVisible();
   await expect(page.locator('.cleanup-priority-group[data-priority="high"]')).toHaveAttribute("open", "");
   await expect(page.locator('.cleanup-priority-group[data-priority="medium"]')).not.toHaveAttribute("open", "");
   await expect(page.locator(".cleanup-preview").getByText(/旧方案对比笔记/)).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("上轮调研资料")).toBeHidden();
-  await page.locator(".cleanup-preview").getByRole("button", { name: "展开全部" }).click();
+  await page.locator('.cleanup-priority-group[data-priority="medium"] > summary').click();
   await expect(page.locator('.cleanup-priority-group[data-priority="medium"]')).toHaveAttribute("open", "");
   await expect(page.locator(".cleanup-preview").getByText("上轮调研资料")).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("分组：技术调研", { exact: false })).toBeVisible();
@@ -2446,7 +2488,7 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview").getByText("停留约 45 秒", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("浏览轨迹", { exact: false })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("相邻标签页", { exact: false })).toBeVisible();
-  await page.locator(".cleanup-preview").getByRole("button", { name: "收起其余" }).click();
+  await page.locator('.cleanup-priority-group[data-priority="medium"] > summary').click();
   await expect(page.locator('.cleanup-priority-group[data-priority="high"]')).toHaveAttribute("open", "");
   await expect(page.locator('.cleanup-priority-group[data-priority="medium"]')).not.toHaveAttribute("open", "");
   await expect(page.locator(".cleanup-preview-row").first()).toHaveCSS("content-visibility", "auto");
@@ -2474,9 +2516,12 @@ test("cleanup candidates are returned with the generated plan and can be closed 
     });
   expect(transientStatus).toBe("正在关闭标签页");
   await expect(page.locator("#statusText")).toHaveText("已关闭 1 个标签页，方案已同步更新");
+  await expect(page.getByRole("tab", { name: /清理建议/ })).toHaveAttribute("aria-selected", "true");
   await page.locator(".cleanup-preview").getByRole("button", { name: "关闭这个标签页" }).first().click();
   await expect(page.locator(".cleanup-preview").getByText("旧方案对比笔记")).toHaveCount(0);
   await expect(page.locator(".cleanup-preview").getByText("上轮调研资料")).toHaveCount(0);
+  await expect(page.locator(".cleanup-preview").getByText("临时浏览入口")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "清理建议 0 项" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#statusText")).toHaveText("已关闭 1 个标签页，方案已同步更新");
 });
 
@@ -3426,13 +3471,9 @@ test("preview keeps review-like groups at the bottom", async ({ page }) => {
 
   const expectedOrder = ["当前项目", "AI 研究", "视觉设计", "产品文档", "购物参考", "待分类"];
   await expect.poll(() => page.locator(".preview .group-title").allTextContents()).toEqual(expectedOrder);
-  await expect(page.locator(".preview .group-row:visible")).toHaveCount(4);
-  await expect(page.locator(".preview").getByText("待分类", { exact: true })).toBeHidden();
-  await page.getByRole("button", { name: "展开其余 2 个分组" }).click();
   await expect(page.locator(".preview .group-row:visible")).toHaveCount(6);
   await expect(page.locator(".preview").getByText("待分类", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "收起分组" }).click();
-  await expect(page.locator(".preview .group-row:visible")).toHaveCount(4);
+  await expect(page.locator(".preview-list-toggle")).toHaveCount(0);
 });
 
 test("side panel shows optimistic progress while waiting for AI", async ({ page }) => {

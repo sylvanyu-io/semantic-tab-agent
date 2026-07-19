@@ -17,7 +17,6 @@ import { isGenericRecapThemeTitle, stripCleanupRecommendationsFromRecapText } fr
 
 const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
-const GROUP_PREVIEW_INITIAL_LIMIT = 4;
 const CLEANUP_PRIORITY_ORDER = Object.freeze(["high", "medium", "low"]);
 const UI_COPY = Object.freeze({
   "zh-CN": {
@@ -138,14 +137,10 @@ const UI_COPY = Object.freeze({
     "activity.priority.high": "优先检查",
     "activity.priority.medium": "稍后检查",
     "activity.priority.low": "最后扫一眼",
-    "preview.expandGroups": "展开其余 {count} 个分组",
-    "preview.collapseGroups": "收起分组",
     "cleanup.preview.title": "清理建议",
     "cleanup.preview.subtitle": "这些标签页可能已经过期、重复或属于已完成任务；是否关闭由你决定。",
     "cleanup.preview.subtitleOnly": "AI 只做清理检查：帮你挑出建议先检查的标签页，是否关闭由你决定。",
     "cleanup.preview.empty": "这次没有发现明显需要清理的标签页。",
-    "cleanup.expandAll": "展开全部",
-    "cleanup.collapseOthers": "收起其余",
     "cleanup.groupCount": "{count} 个标签页",
     "cleanup.clue.openCount": "打开过 {count} 次",
     "cleanup.clue.notReopened": "基本没再打开",
@@ -281,6 +276,14 @@ const UI_COPY = Object.freeze({
     "preview.heading": "即将创建的分组",
     "preview.stepCleanup": "清理预览",
     "preview.headingCleanup": "建议先检查的标签页",
+    "preview.stepCombined": "方案预览",
+    "preview.headingCombined": "AI 分析结果",
+    "preview.resultsAria": "分析结果",
+    "preview.groupingTab": "分组建议",
+    "preview.cleanupTab": "清理建议",
+    "preview.tabsCount": "{count} 个标签页",
+    "preview.groupCount": "{count} 组",
+    "preview.cleanupCount": "{count} 项",
     "preview.pending": "待生成",
     "preview.empty": "还没有方案。",
     "preview.error": "出错",
@@ -422,14 +425,10 @@ const UI_COPY = Object.freeze({
     "activity.priority.high": "Check first",
     "activity.priority.medium": "Check later",
     "activity.priority.low": "Quick scan",
-    "preview.expandGroups": "Show {count} more groups",
-    "preview.collapseGroups": "Collapse groups",
     "cleanup.preview.title": "Cleanup suggestions",
     "cleanup.preview.subtitle": "These tabs may be stale, duplicate, or from completed work. You decide what to close.",
     "cleanup.preview.subtitleOnly": "AI is only checking cleanup candidates here. You decide what to close.",
     "cleanup.preview.empty": "No obvious cleanup candidates in this run.",
-    "cleanup.expandAll": "Expand all",
-    "cleanup.collapseOthers": "Collapse others",
     "cleanup.groupCount": "{count} tabs",
     "cleanup.clue.openCount": "Opened {count} times",
     "cleanup.clue.notReopened": "Rarely reopened",
@@ -565,6 +564,14 @@ const UI_COPY = Object.freeze({
     "preview.heading": "Groups to be created",
     "preview.stepCleanup": "Cleanup preview",
     "preview.headingCleanup": "Tabs to check first",
+    "preview.stepCombined": "Plan preview",
+    "preview.headingCombined": "AI analysis",
+    "preview.resultsAria": "Analysis results",
+    "preview.groupingTab": "Group suggestions",
+    "preview.cleanupTab": "Cleanup suggestions",
+    "preview.tabsCount": "{count} tabs",
+    "preview.groupCount": "{count} groups",
+    "preview.cleanupCount": "{count} items",
     "preview.pending": "Pending",
     "preview.empty": "No plan yet.",
     "preview.error": "Error",
@@ -715,6 +722,7 @@ let actionStateByMode = {
 };
 let lastPreview = null;
 let lastError = null;
+let previewResultView = "grouping";
 let lastTimeRecap = null;
 let lastTimeRecapError = null;
 let lastCanApply = false;
@@ -2424,15 +2432,17 @@ function renderPreview(job) {
   const preview = job.preview;
   const resultLanguageMode = preview.languageMode || job.settings?.languageMode || currentResultLanguageMode();
   const groupingEnabled = preview.analysisFeatures?.grouping !== false;
-  const cleanupEnabled = preview.analysisFeatures?.cleanup !== false;
+  const cleanupEnabled =
+    preview.analysisFeatures?.cleanup === true || (preview.analysisFeatures?.cleanup === undefined && Boolean(preview.cleanup));
   const groups = orderPreviewGroups(preview.groups || [], resultLanguageMode);
   const reviewTabsCount = preview.reviewTabsCount || 0;
   const reviewGroupWillBeCreated = Boolean(preview.reviewGroupWillBeCreated && reviewTabsCount);
   const visibleGroupCount = groups.length + (reviewGroupWillBeCreated ? 1 : 0);
   const cleanup = preview.cleanup || null;
-  const cleanupCandidateCount = Number(cleanup?.candidateCount || cleanup?.candidates?.length || 0);
+  const cleanupCandidateCount = cleanupSuggestionCount(cleanup);
   const hasCleanupContent = Boolean(cleanup && (cleanup.candidateCount || cleanup.summary));
   const cleanupOnly = !groupingEnabled && cleanupEnabled;
+  const combinedResults = groupingEnabled && cleanupEnabled;
   const groupedTabsCount = Number.isFinite(Number(preview.groupedTabsCount))
     ? Number(preview.groupedTabsCount)
     : groups.reduce((sum, group) => sum + (Number(group.tabCount) || 0), 0);
@@ -2444,7 +2454,7 @@ function renderPreview(job) {
       : groupedTabsCount + reviewTabsCount
   };
 
-  updatePreviewHeading({ cleanupOnly });
+  updatePreviewHeading({ cleanupOnly, combinedResults });
 
   const hasEligibleTabs = Number(preview.eligibleTabsCount || preview.totalTabsCount || 0) > 0;
   if (groupingEnabled && !groups.length && !reviewTabsCount && !preview.lockedGroupsCount && !hasCleanupContent) {
@@ -2461,9 +2471,11 @@ function renderPreview(job) {
   }
 
   nodes.previewRoot.className = "preview-list";
-  nodes.previewCount.textContent = cleanupOnly
-    ? localizedText(uiLanguage, `${cleanupCandidateCount} 项`, formatCount(cleanupCandidateCount, "item"))
-    : localizedText(uiLanguage, `${visibleGroupCount} 组`, formatCount(visibleGroupCount, "group"));
+  nodes.previewCount.textContent = combinedResults
+    ? t("preview.tabsCount", { count: summaryPreview.eligibleTabsCount })
+    : cleanupOnly
+      ? t("preview.cleanupCount", { count: cleanupCandidateCount })
+      : t("preview.groupCount", { count: visibleGroupCount });
   const groupRows = [
     ...groups.map((group, index) => groupRow(group, swatchForIndex(index), uiLanguage)),
     ...(reviewGroupWillBeCreated ? [reviewGroupRow(reviewTabsCount, resultLanguageMode, preview)] : [])
@@ -2474,13 +2486,99 @@ function renderPreview(job) {
         previewSummary(summaryPreview, groups.length, reviewTabsCount, reviewGroupWillBeCreated, resultLanguageMode),
         ...(groupRows.length ? [previewGroupList(groupRows)] : [])
       ];
-  const cleanupNodes = cleanupEnabled ? [cleanupPreviewSection(cleanup, { cleanupOnly })] : [];
+  const cleanupNodes = cleanupEnabled ? [cleanupPreviewSection(cleanup, { cleanupOnly, embedded: combinedResults })] : [];
+  if (combinedResults) {
+    nodes.previewRoot.replaceChildren(
+      combinedPreviewResults({
+        groupNodes,
+        cleanupNodes,
+        groupCount: visibleGroupCount,
+        cleanupCount: cleanupCandidateCount
+      })
+    );
+    return;
+  }
   nodes.previewRoot.replaceChildren(...groupNodes, ...cleanupNodes);
 }
 
-function updatePreviewHeading({ cleanupOnly = false } = {}) {
-  setText(".preview .step-label", t(cleanupOnly ? "preview.stepCleanup" : "preview.step"));
-  setText(".preview .section-heading h2", t(cleanupOnly ? "preview.headingCleanup" : "preview.heading"));
+function updatePreviewHeading({ cleanupOnly = false, combinedResults = false } = {}) {
+  const stepKey = combinedResults ? "preview.stepCombined" : cleanupOnly ? "preview.stepCleanup" : "preview.step";
+  const headingKey = combinedResults ? "preview.headingCombined" : cleanupOnly ? "preview.headingCleanup" : "preview.heading";
+  setText(".preview .step-label", t(stepKey));
+  setText(".preview .section-heading h2", t(headingKey));
+}
+
+function combinedPreviewResults({ groupNodes, cleanupNodes, groupCount, cleanupCount }) {
+  const container = document.createElement("section");
+  container.className = "preview-results";
+
+  const tabList = document.createElement("div");
+  tabList.className = "preview-result-tabs";
+  tabList.setAttribute("role", "tablist");
+  tabList.setAttribute("aria-label", t("preview.resultsAria"));
+
+  const groupingTab = previewResultTab("grouping", t("preview.groupingTab"), t("preview.groupCount", { count: groupCount }));
+  const cleanupTab = previewResultTab("cleanup", t("preview.cleanupTab"), t("preview.cleanupCount", { count: cleanupCount }));
+  const groupingPanel = previewResultPanel("grouping", groupNodes);
+  const cleanupPanel = previewResultPanel("cleanup", cleanupNodes);
+  const tabs = [groupingTab, cleanupTab];
+  const panels = [groupingPanel, cleanupPanel];
+
+  const selectView = (view) => {
+    previewResultView = view === "cleanup" ? "cleanup" : "grouping";
+    tabs.forEach((tab) => {
+      const selected = tab.dataset.previewView === previewResultView;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.previewView !== previewResultView;
+    });
+  };
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectView(tab.dataset.previewView));
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      const nextIndex = event.key === "ArrowRight" ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+      selectView(tabs[nextIndex].dataset.previewView);
+      tabs[nextIndex].focus();
+    });
+  });
+
+  tabList.append(...tabs);
+  container.append(tabList, ...panels);
+  selectView(previewResultView);
+  return container;
+}
+
+function previewResultTab(view, label, count) {
+  const tab = document.createElement("button");
+  tab.type = "button";
+  tab.className = "preview-result-tab";
+  tab.id = `preview-result-tab-${view}`;
+  tab.dataset.previewView = view;
+  tab.setAttribute("role", "tab");
+  tab.setAttribute("aria-controls", `preview-result-panel-${view}`);
+
+  const title = document.createElement("strong");
+  title.textContent = label;
+  const badge = document.createElement("span");
+  badge.textContent = count;
+  tab.append(title, badge);
+  return tab;
+}
+
+function previewResultPanel(view, children) {
+  const panel = document.createElement("div");
+  panel.className = "preview-result-panel";
+  panel.id = `preview-result-panel-${view}`;
+  panel.dataset.previewView = view;
+  panel.setAttribute("role", "tabpanel");
+  panel.setAttribute("aria-labelledby", `preview-result-tab-${view}`);
+  panel.append(...children);
+  return panel;
 }
 
 function orderPreviewGroups(groups) {
@@ -2602,31 +2700,7 @@ function groupRow(group, swatchColor, languageMode = "auto") {
 function previewGroupList(rows) {
   const list = document.createElement("section");
   list.className = "preview-group-list";
-  let expanded = false;
-
-  const update = () => {
-    rows.forEach((row, index) => {
-      row.hidden = !expanded && index >= GROUP_PREVIEW_INITIAL_LIMIT;
-    });
-    if (!toggle) return;
-    toggle.textContent = expanded
-      ? t("preview.collapseGroups")
-      : t("preview.expandGroups", { count: rows.length - GROUP_PREVIEW_INITIAL_LIMIT });
-    toggle.setAttribute("aria-expanded", String(expanded));
-  };
-
-  const toggle = rows.length > GROUP_PREVIEW_INITIAL_LIMIT ? document.createElement("button") : null;
-  if (toggle) {
-    toggle.type = "button";
-    toggle.className = "preview-list-toggle";
-    toggle.addEventListener("click", () => {
-      expanded = !expanded;
-      update();
-    });
-  }
-
-  list.append(...rows, ...(toggle ? [toggle] : []));
-  update();
+  list.append(...rows);
   return list;
 }
 
@@ -2659,6 +2733,7 @@ function cleanupPreviewSection(cleanup, options = {}) {
   const cleanupOnly = Boolean(options.cleanupOnly);
   const section = document.createElement("section");
   section.className = "cleanup-preview";
+  section.classList.toggle("is-embedded", Boolean(options.embedded));
   const header = document.createElement("div");
   header.className = "cleanup-preview-header";
   const copy = document.createElement("div");
@@ -2688,27 +2763,6 @@ function cleanupPreviewSection(cleanup, options = {}) {
   const groups = populatedPriorities.map((priority) =>
     cleanupPriorityGroup(priority, candidatesByPriority.get(priority), { open: priority === defaultOpenPriority })
   );
-
-  if (groups.length > 1) {
-    const expandToggle = document.createElement("button");
-    expandToggle.type = "button";
-    expandToggle.className = "cleanup-expand-toggle";
-    const updateExpandToggle = () => {
-      const allOpen = groups.every((group) => group.open);
-      expandToggle.textContent = t(allOpen ? "cleanup.collapseOthers" : "cleanup.expandAll");
-      expandToggle.setAttribute("aria-expanded", String(allOpen));
-    };
-    expandToggle.addEventListener("click", () => {
-      const allOpen = groups.every((group) => group.open);
-      for (const group of groups) {
-        group.open = allOpen ? group.dataset.priority === defaultOpenPriority : true;
-      }
-      updateExpandToggle();
-    });
-    for (const group of groups) group.addEventListener("toggle", updateExpandToggle);
-    updateExpandToggle();
-    header.append(expandToggle);
-  }
 
   const groupList = document.createElement("div");
   groupList.className = "cleanup-priority-groups";
@@ -2740,6 +2794,14 @@ function cleanupPriorityGroup(priority, candidates, options = {}) {
 
 function normalizeCleanupPriority(priority) {
   return CLEANUP_PRIORITY_ORDER.includes(priority) ? priority : "medium";
+}
+
+function cleanupSuggestionCount(cleanup) {
+  const candidates = asArray(cleanup?.candidates);
+  if (candidates.length) {
+    return candidates.filter((candidate) => normalizeCleanupPriority(candidate.priority) !== "low").length;
+  }
+  return Number(cleanup?.candidateCount || 0);
 }
 
 function cleanupSummaryForPreview(cleanup, { cleanupOnly = false } = {}) {
@@ -3003,6 +3065,7 @@ async function focusActivityTab(tab) {
 function resetToSetup() {
   lastPreview = null;
   lastError = null;
+  previewResultView = "grouping";
   lastCanApply = false;
   nodes.previewSection.hidden = true;
   setText(".preview .step-label", t("preview.step"));
@@ -4161,7 +4224,7 @@ function mockAnalysisJob(settings = {}) {
 function mockCleanupPreview(grouping = true) {
   return {
     summary: grouping ? "本地已缓存，AI 找到 2 个可能是旧任务遗留的标签页，你可以先检查。" : "本次按要求不自动分组，优先检查这些低价值或已完成页面。",
-    candidateCount: 2,
+    candidateCount: 3,
     candidates: [
       {
         tabId: 31,
@@ -4194,6 +4257,18 @@ function mockCleanupPreview(grouping = true) {
           "sample_able false",
           "标题为“上轮调研资料”"
         ]
+      },
+      {
+        tabId: 33,
+        windowId: 1,
+        title: "临时浏览入口",
+        hostname: "example.com",
+        ageMs: 4 * 24 * 60 * 60 * 1000,
+        idleMs: 2 * 24 * 60 * 60 * 1000,
+        activeCount: 2,
+        priority: "low",
+        reason: "和当前任务关系不强，但没有足够证据建议优先清理。",
+        evidence: ["最后确认是否还需要"]
       }
     ]
   };
