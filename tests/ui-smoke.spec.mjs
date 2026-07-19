@@ -2439,6 +2439,8 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview")).not.toContainText("toId");
   await expect(page.locator(".cleanup-preview")).not.toContainText("标题为");
   await expect(page.locator(".cleanup-preview")).not.toContainText("已暂存");
+  await expect(page.locator(".cleanup-preview")).not.toContainText("cached locally");
+  await expect(page.locator(".cleanup-preview").getByText("浏览器缓存策略文档", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("切换过 2 次", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("停留约 45 秒", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("浏览轨迹", { exact: false })).toBeVisible();

@@ -60,7 +60,7 @@ function summarizeCleanup(cleanup, settings) {
     schema: cleanup.schema || "tab_recap_cleanup_v1",
     summary: String(cleanup.summary || "").slice(0, 220),
     candidateCount: candidates.length,
-    candidates: candidates.slice(0, 20).map((candidate) => ({
+    candidates: candidates.map((candidate) => ({
       tabId: candidate.tabId,
       windowId: candidate.windowId,
       index: candidate.index,

@@ -2864,13 +2864,15 @@ const CLEANUP_ACTIVE_COUNT_FIELD_PATTERN = /\bactive(?:Count|[_\s-]?count)\s*(?:
 const CLEANUP_AGE_DAYS_FIELD_PATTERN = /\bage(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
 const CLEANUP_IDLE_DAYS_FIELD_PATTERN = /\bidle(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
 const CLEANUP_SAMPLEABLE_FIELD_PATTERN = /不可采样|cannot sample|not sampleable|sample(?:able|[_\s-]?able)/i;
+const CLEANUP_INTERNAL_STORAGE_STATE_PATTERN =
+  /^(?:(?:(?:该|此|这个)?(?:标签页|页面|候选项?)\s*)?(?:(?:已|曾|正在|当前|本地)\s*)?(?:被\s*)?(?:暂存|缓存)(?:中|过|完成)?(?:\s*(?:约\s*)?\d+(?:\.\d+)?\s*(?:秒|分钟|小时|天|周|月))?(?:\s*(?:的)?(?:记录|状态|数据))?|(?:(?:this|the)\s+)?(?:(?:tab|page|candidate)\s+)?(?:(?:is|was|has\s+been|currently|locally)\s+)?(?:stag(?:ed|ing)|cach(?:e|ed|ing))(?:\s+(?:locally|for\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?)))?)[。.!]?$/i;
 const CLEANUP_INTERNAL_FIELD_PATTERN =
   /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))|activation(?:Flow|[_\s-]?flow)|nearby(?:Ids?|[_\s-]?ids?)|return(?:ToId|[_\s-]?to[_\s-]?id)|returned(?:ToCount|[_\s-]?to[_\s-]?count)|repeated(?:Ids?|[_\s-]?ids?)|dwell(?:Seconds|[_\s-]?seconds?)|(?:total|avg|max)?(?:Active|Dwell)(?:Seconds|[_\s-]?seconds?)|transition(?:Count|[_\s-]?count)|from(?:Id|[_\s-]?id)|to(?:Id|[_\s-]?id)|started(?:At|[_\s-]?at)|ended(?:At|[_\s-]?at)|last(?:At|[_\s-]?at)|clues?/i;
 
 function cleanupEvidenceLabel(value) {
   const text = String(value || "").trim();
   if (!text) return "";
-  if (/^(?:已?暂存|暂存中|已缓存|缓存中|staged|cached)$/i.test(text)) return "";
+  if (CLEANUP_INTERNAL_STORAGE_STATE_PATTERN.test(text)) return "";
 
   const activeMatch = text.match(CLEANUP_ACTIVE_COUNT_FIELD_PATTERN);
   if (activeMatch) return cleanupOpenCountLabel(Number(activeMatch[1]));
@@ -4174,7 +4176,7 @@ function mockCleanupPreview(grouping = true) {
         activeCount: 1,
         priority: "high",
         reason: "上一轮对比调研留下的页面，近期没有再打开。",
-        evidence: ["旧任务线索", "近期未活跃", "已暂存"]
+        evidence: ["旧任务线索", "标签页已暂存", "已暂存 7 天", "page was cached locally", "浏览器缓存策略文档"]
       },
       {
         tabId: 32,
