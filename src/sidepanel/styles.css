@@ -97,7 +97,7 @@ body {
     var(--canvas);
   color: var(--text);
   font: 14px/1.48 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Avenir Next", "Segoe UI", sans-serif;
-  text-wrap: pretty;
+  text-wrap: wrap;
 }
 
 button,
@@ -713,6 +713,11 @@ h2 {
   box-shadow:
     0 8px 18px rgba(42, 38, 31, 0.06),
     inset 0 1px 0 color-mix(in srgb, #ffffff 34%, transparent);
+}
+
+.recap-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 132px;
 }
 
 .recap-summary-card {
@@ -1935,6 +1940,8 @@ details[open] > summary::before {
   box-shadow:
     0 8px 18px rgba(42, 38, 31, 0.07),
     inset 0 1px 0 color-mix(in srgb, #ffffff 34%, transparent);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 66px;
 }
 
 .cleanup-preview {
@@ -2023,6 +2030,8 @@ details[open] > summary::before {
   box-shadow:
     0 8px 18px rgba(42, 38, 31, 0.06),
     inset 0 1px 0 color-mix(in srgb, #ffffff 34%, transparent);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 132px;
 }
 
 .cleanup-preview-body {

@@ -116,6 +116,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 
   await expect(page.getByRole("heading", { name: "TabRecap" })).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("text-wrap", "wrap");
   await expect(page.locator(".app-shell")).toHaveCSS("border-top-width", "0px");
   await expect(page.locator(".app-shell")).not.toHaveCSS("box-shadow", "none");
   await expect(page.locator(".topbar")).toHaveCSS("border-bottom-width", "0px");
@@ -394,6 +395,45 @@ test("side panel stays within a 320px viewport", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "看看最近主要在忙什么" })).toBeVisible();
   await expectNoHorizontalOverflow();
   await expectPrimaryActionInViewport();
+});
+
+test("large result lists stay contained while the side panel is resized", async ({ page }) => {
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await page.evaluate(() => {
+    const list = document.createElement("section");
+    list.className = "cleanup-preview-list";
+    list.id = "resizeStressList";
+    const fragment = document.createDocumentFragment();
+    for (let index = 0; index < 240; index += 1) {
+      const row = document.createElement("article");
+      row.className = "cleanup-preview-row";
+      row.innerHTML = `
+        <div class="cleanup-preview-body">
+          <div class="cleanup-title-line"><strong>标签页 ${index}：连续缩放下仍需保持流畅的较长网页标题</strong></div>
+          <small>example.com · 分组：技术调研 · 最近活跃约 1 小时前</small>
+          <div class="cleanup-reason"><p>模拟 AI 生成的标签页判断说明，宽度变化时需要重新换行。</p></div>
+        </div>`;
+      fragment.append(row);
+    }
+    list.append(fragment);
+    document.querySelector(".scroll-region")?.replaceChildren(list);
+  });
+
+  await expect(page.locator("#resizeStressList .cleanup-preview-row")).toHaveCount(240);
+  await expect(page.locator("#resizeStressList .cleanup-preview-row").first()).toHaveCSS("content-visibility", "auto");
+
+  for (const width of [680, 520, 390, 320, 460, 340, 620, 360]) {
+    await page.setViewportSize({ width, height: 680 });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <= window.innerWidth &&
+            document.body.scrollWidth <= window.innerWidth
+        )
+      )
+      .toBe(true);
+  }
 });
 
 test("settings changed back during an in-flight save are persisted", async ({ page }) => {
@@ -2393,6 +2433,8 @@ test("cleanup candidates are returned with the generated plan and can be closed 
   await expect(page.locator(".cleanup-preview").getByText("停留约 45 秒", { exact: true })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("浏览轨迹", { exact: false })).toBeVisible();
   await expect(page.locator(".cleanup-preview").getByText("相邻标签页", { exact: false })).toBeVisible();
+  await expect(page.locator(".cleanup-preview-row").first()).toHaveCSS("content-visibility", "auto");
+  await expect(page.locator(".group-row").first()).toHaveCSS("content-visibility", "auto");
 
   await expect(page.locator(".cleanup-preview-actions")).toHaveCount(0);
   await expect(page.locator(".cleanup-select")).toHaveCount(0);
