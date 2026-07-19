@@ -22,7 +22,7 @@ const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 await rm(extensionDir, { recursive: true, force: true });
 await mkdir(extensionDir, { recursive: true });
 
-for (const path of ["manifest.json", "src", "icons"]) {
+for (const path of ["manifest.json", "src", "icons", "_locales"]) {
   const sourcePath = join(rootDir, path);
   if (existsSync(sourcePath)) {
     await cp(sourcePath, join(extensionDir, path), { recursive: true });

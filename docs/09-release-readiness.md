@@ -8,6 +8,9 @@ extension that can be published after the gates below are satisfied.
 Implemented:
 
 - Manifest V3 extension shell with a native side panel.
+- Package metadata is localized through Chrome i18n for `en` and `zh_CN`.
+  English is the manifest fallback locale; the side panel prefers
+  `chrome.i18n.getUILanguage()` before its existing manual language override.
 - Current-window organization by default.
 - Explicit consolidate-to-one-window mode for all eligible normal-window tabs.
 - Metadata-only inventory and URL sanitization.
@@ -148,7 +151,10 @@ Blocking gates:
   secret values.
 - Extension package contains no `node_modules`, test outputs, or local secrets.
 - Extension zip entries exactly match their unpacked build directories and only
-  contain publishable extension assets: `manifest.json`, `src/`, and `icons/`.
+  contain publishable extension assets: `manifest.json`, `src/`, `icons/`, and
+  `_locales/`.
+- Both release channels contain matching `en` and `zh_CN` message catalogs, and
+  all user-facing manifest metadata resolves through `__MSG_*__` references.
 - Store packages remove `activeTab` and all optional extension permissions,
   including `scripting`, so page-body sampling controls are unavailable in that
   channel. Store packages keep optional host permissions so a user-selected

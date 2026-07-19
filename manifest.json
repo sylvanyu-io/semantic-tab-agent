@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "TabRecap",
+  "name": "__MSG_extName__",
+  "short_name": "__MSG_extShortName__",
   "version": "0.3.2",
-  "description": "AI tab organizer for Chrome that groups messy tabs and turns local tab activity into private work recaps.",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "minimum_chrome_version": "116",
   "permissions": ["tabs", "tabGroups", "storage", "activeTab", "alarms", "sidePanel"],
   "host_permissions": ["https://cliproxy.sylvanyu.io/*"],
@@ -22,7 +24,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "TabRecap",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

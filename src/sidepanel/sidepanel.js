@@ -881,7 +881,11 @@ function readStoredUiLanguage() {
 }
 
 function browserUiLanguage() {
-  const languages = [navigator.language, ...(navigator.languages || [])].filter(Boolean);
+  let extensionUiLanguage = "";
+  try {
+    extensionUiLanguage = globalThis.chrome?.i18n?.getUILanguage?.() || "";
+  } catch {}
+  const languages = [extensionUiLanguage, navigator.language, ...(navigator.languages || [])].filter(Boolean);
   return languages.some((language) => String(language).toLowerCase().startsWith("zh")) ? "zh-CN" : "en-US";
 }
 

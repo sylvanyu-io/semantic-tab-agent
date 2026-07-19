@@ -1,0 +1,18 @@
+{
+  "extName": {
+    "message": "TabRecap",
+    "description": "Extension name shown by Chrome and in the Chrome Web Store."
+  },
+  "extShortName": {
+    "message": "TabRecap",
+    "description": "Short extension name used where Chrome has limited space."
+  },
+  "extDescription": {
+    "message": "AI tab organizer that groups messy tabs, suggests cleanup, and turns local tab activity into private work recaps.",
+    "description": "Short extension summary shown in Chrome and the Chrome Web Store."
+  },
+  "actionTitle": {
+    "message": "Open TabRecap",
+    "description": "Tooltip for the toolbar action that opens the side panel."
+  }
+}

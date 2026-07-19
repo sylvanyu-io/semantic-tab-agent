@@ -25,7 +25,7 @@ const artifacts = [
   }
 ];
 
-const allowedTopLevel = new Set(["manifest.json", "src", "icons"]);
+const allowedTopLevel = new Set(["manifest.json", "src", "icons", "_locales"]);
 const allowedExtensions = new Set([".css", ".html", ".js", ".json", ".png", ".svg"]);
 const textExtensions = new Set([".css", ".html", ".js", ".json", ".svg"]);
 const forbiddenProductCopy = [
@@ -101,6 +101,17 @@ function auditManifest(channel, manifest, files) {
   if (manifest.manifest_version !== 3) fail(`${channel}: manifest_version must be 3.`);
   if (manifest.name !== rootManifest.name) fail(`${channel}: manifest name changed unexpectedly.`);
   if (manifest.version !== rootManifest.version) fail(`${channel}: manifest version does not match package source.`);
+  if (manifest.default_locale !== "en") fail(`${channel}: default_locale must be en.`);
+
+  const localizedManifestFields = [manifest.name, manifest.short_name, manifest.description, manifest.action?.default_title];
+  if (localizedManifestFields.some((value) => !/^__MSG_[A-Za-z0-9_]+__$/.test(String(value || "")))) {
+    fail(`${channel}: user-facing manifest metadata must use __MSG_*__ localization references.`);
+  }
+
+  for (const locale of ["en", "zh_CN"]) {
+    const messagesPath = `_locales/${locale}/messages.json`;
+    if (!files.includes(messagesPath)) fail(`${channel}: localization file is missing ${messagesPath}.`);
+  }
 
   const requiredPaths = [
     manifest.background?.service_worker,

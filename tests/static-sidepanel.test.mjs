@@ -33,6 +33,13 @@ test("side panel Chinese and English copy tables expose the same keys", async ()
   assert.deepEqual([...enKeys].filter((key) => !zhKeys.has(key)), []);
 });
 
+test("automatic UI language prefers the Chrome extension locale", async () => {
+  const source = await readFile(new URL("../src/sidepanel/sidepanel.js", import.meta.url), "utf8");
+
+  assert.match(source, /chrome\?\.i18n\?\.getUILanguage\?\.\(\)/);
+  assert.match(source, /extensionUiLanguage, navigator\.language/);
+});
+
 test("side panel static copy references resolve to localized strings", async () => {
   const source = await readFile(new URL("../src/sidepanel/sidepanel.js", import.meta.url), "utf8");
   const keys = copyKeysForLocale(source, "zh-CN");
