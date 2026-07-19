@@ -61,7 +61,7 @@ jobs:
           name: tab-recap-extension-package
           path: |
             dist/*.zip
-            !dist/*-store.zip
+            !dist/*-store*.zip
           if-no-files-found: error
           retention-days: 7
 

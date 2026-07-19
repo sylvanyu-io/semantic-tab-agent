@@ -24,7 +24,7 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /uses: actions\/upload-artifact@v7/);
   assert.match(workflow, /name: tab-recap-extension-package/);
   assert.match(workflow, /dist\/\*\.zip/);
-  assert.match(workflow, /!dist\/\*-store\.zip/);
+  assert.match(workflow, /!dist\/\*-store\*\.zip/);
 
   assert.match(workflow, /startsWith\(github\.ref, 'refs\/tags\/v'\)/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.full_gate/);
