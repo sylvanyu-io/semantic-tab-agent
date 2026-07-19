@@ -141,7 +141,7 @@ npm run release:check:live
 
 它会优先读取 `MONITOR_TOKEN`，其次读取 `MONITOR_TOKEN_FILE`，最后读取这台机器上的默认 runtime secret 文件。
 
-GitHub Actions 会在 push 和 PR 上运行标准 `release:check`。需要远端复现真实扩展压力测试时，手动触发 `CI` workflow 并勾选 `full_gate`。
+GitHub Actions 会在 push 和 PR 上运行标准 `release:check`，但只上传公开安装包；商店提交包不会作为 GitHub Artifact 或 Release Asset 发布。需要远端复现真实扩展压力测试时，手动触发 `CI` workflow 并勾选 `full_gate`。
 
 生成 README 图片资源：
 
@@ -155,7 +155,7 @@ npm run assets:readme
 npm run build:extension:store
 ```
 
-正式 tag 构建输出 `dist/tab-recap-<version>-store.zip`；未打 tag 的构建会在文件名中加入 `-dev-<commit>`（工作树未提交时再加 `-dirty`），避免与已发布版本混淆。未打包目录为 `dist/extension-store`；本地调试继续使用 `dist/extension`。
+正式 tag 构建输出 `dist/tab-recap-<version>-store.zip`；未打 tag 的构建会在文件名中加入 `-dev-<commit>`（工作树未提交时再加 `-dirty`），避免与已发布版本混淆。商店包仅供维护者在本地审核并提交 Chrome Web Store / Edge Add-ons，不上传 GitHub。未打包目录为 `dist/extension-store`；本地调试继续使用 `dist/extension`。
 
 ## 压力测试
 

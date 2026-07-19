@@ -84,7 +84,9 @@ Blocking gates:
 - `npm run check` passes.
 - `npm run release:check` passes and produces a clean extension package.
 - GitHub Actions runs `npm run release:check` on push and pull requests, then
-  uploads the generated extension zip artifacts.
+  uploads only the public extension zip. The store submission package remains
+  local-only and must not be published as a GitHub Actions artifact or Release
+  asset.
 - `npm run release:check:full` passes before public release packaging. It adds
   the real-extension stress runner to the standard package gate.
 - `npm run release:publish-check` passes before creating a public tag. It
@@ -206,8 +208,9 @@ Latest patch release and live-gateway evidence:
   [Default AI gateway runbook](12-default-ai-gateway-runbook.md): local main,
   API-only proxy, public origin, Worker `/readyz`, monitor status, and a real
   `gpt-5.4` high-reasoning chat request all passed on 2026-07-09.
-- `v0.2.6` release assets uploaded:
-  `tab-recap-0.2.6.zip` and `tab-recap-0.2.6-store.zip`.
+- Historical note: `v0.2.6` exposed both package variants before the
+  local-only store-package policy was adopted. Current releases publish only
+  the regular extension zip.
 
 Post-release hardening verification:
 

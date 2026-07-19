@@ -55,11 +55,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: REQUIRE_RELEASE_TAG=1 node scripts/verify-release-version.mjs
 
-      - name: Upload extension packages
+      - name: Upload public extension package
         uses: actions/upload-artifact@v7
         with:
-          name: tab-recap-extension-packages
-          path: dist/*.zip
+          name: tab-recap-extension-package
+          path: |
+            dist/*.zip
+            !dist/*-store.zip
           if-no-files-found: error
           retention-days: 7
 
