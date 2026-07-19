@@ -72,6 +72,11 @@ const FIELD_NAME_PATTERNS = {
   audible: /\baudible\b/gi
 };
 
+const CLEANUP_CHINESE_STORAGE_STATE_PATTERN =
+  /(?:(?:(?:该|此|这个)?(?:标签页|页面|候选项?)\s*)?(?:(?:本地\s*)?(?:已经?|曾经?|正在|当前)\s*(?:被|在本地|于本地)?|(?:本地|被|在本地|于本地)\s*)\s*(?:暂存|缓存)(?:中|过|完成|了|于本地|在本地|到本地)?(?:\s*(?:约\s*)?\d+(?:\.\d+)?\s*(?:秒|分钟|小时|天|周|月))?|(?:(?:该|此|这个)?(?:标签页|页面|候选项?)\s*)(?:被|在本地|于本地)?\s*(?:暂存|缓存)(?:中|过|完成|了|于本地|在本地|到本地)?(?:\s*(?:约\s*)?\d+(?:\.\d+)?\s*(?:秒|分钟|小时|天|周|月))?|(?:暂存|缓存)(?:中|完成|状态|记录|数据))(?=\s*(?:[，,。.!！？?；;:：]|且|并且|而且|以及|$))/gi;
+const CLEANUP_ENGLISH_STORAGE_STATE_PATTERN =
+  /(?:(?:(?:(?:this|the)\s+)?(?:tab|page|candidate)\s+)?(?:is|was|were|are|has\s+been|have\s+been|currently|locally)\s+(?:staged|cached|caching)(?:\s+(?:locally|for\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?)))?|(?:(?:this|the)\s+)?(?:tab|page|candidate)\s+(?:staged|cached|caching)(?:\s+(?:locally|for\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?)))?|(?:staged|cached)(?:\s+(?:locally|for\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?)|state|status|record))|\b(?:staged|cached)\b)(?=\s*(?:[,.!?;:]|and\b|but\b|or\b|$))/gi;
+
 export function normalizeModelProductText(value, settings = {}, maxLength = 120) {
   let text = String(value || "").trim().replace(/\s+/g, " ");
   if (!text) return "";
@@ -213,6 +218,31 @@ export function normalizeModelProductText(value, settings = {}, maxLength = 120)
     .replace(/\s{2,}/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+export function normalizeCleanupProductText(value, settings = {}, maxLength = 120) {
+  const languageMode = settings?.languageMode === "en-US" ? "en-US" : "zh-CN";
+  let text = normalizeModelProductText(value, settings, Math.max(512, maxLength * 2));
+  if (!text) return "";
+
+  const withoutStorageState = text
+    .replace(CLEANUP_CHINESE_STORAGE_STATE_PATTERN, " ")
+    .replace(CLEANUP_ENGLISH_STORAGE_STATE_PATTERN, " ");
+  const removedStorageState = withoutStorageState !== text;
+  text = withoutStorageState
+    .replace(/^\s*(?:[，,。.!！？?；;:：-]\s*)+/, "")
+    .replace(/\s*(?:且|并且|而且|以及|and|but|or)\s*([。.!?]|$)/gi, "$1")
+    .replace(/^\s*(?:且|并且|而且|以及|and|but|or)\s+/i, "")
+    .replace(/^\s*is\s+/i, "")
+    .replace(/\s+([，,。.!；;:：])/g, "$1")
+    .replace(/([，,。.!！？?；;:：])\s*([，,。.!！？?；;:：])/g, "$2")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (removedStorageState && languageMode === "en-US" && /^[a-z]/.test(text)) {
+    text = `${text[0].toUpperCase()}${text.slice(1)}`;
+  }
+  return text.slice(0, maxLength);
 }
 
 function formatNumberValue(value) {

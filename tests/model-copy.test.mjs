@@ -1,7 +1,43 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../src/shared/model-copy.js";
+import {
+  MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING,
+  normalizeCleanupProductText,
+  normalizeModelProductText
+} from "../src/shared/model-copy.js";
+
+test("cleanup product copy removes storage state while preserving useful clauses", () => {
+  const zh = normalizeCleanupProductText(
+    "该标签页已暂存，近期没有再打开；浏览器缓存策略文档仍然值得保留。",
+    { languageMode: "zh-CN" },
+    240
+  );
+  const en = normalizeCleanupProductText(
+    "This page was cached locally and is rarely reopened.",
+    { languageMode: "en-US" },
+    240
+  );
+
+  assert.doesNotMatch(zh, /暂存|已缓存/);
+  assert.match(zh, /近期没有再打开/);
+  assert.match(zh, /浏览器缓存策略文档/);
+  assert.doesNotMatch(en, /cached|staged/i);
+  assert.equal(en, "Rarely reopened.");
+});
+
+test("cleanup product copy removes standalone storage metadata variants", () => {
+  for (const value of ["已暂存 7 天", "标签页已经暂存", "该页面已在本地缓存", "缓存中", "page was cached locally", "staged"]) {
+    assert.equal(normalizeCleanupProductText(value, { languageMode: "zh-CN" }, 120), "", value);
+  }
+  for (const value of ["浏览器缓存策略文档", "页面缓存策略文档", "缓存中间件"]) {
+    assert.equal(normalizeCleanupProductText(value, { languageMode: "zh-CN" }, 120), value);
+  }
+  assert.equal(
+    normalizeCleanupProductText("This page documents cached response headers.", { languageMode: "en-US" }, 120),
+    "This page documents cached response headers."
+  );
+});
 
 test("model product copy removes internal identity fields and localizes common signals", () => {
   const zh = normalizeModelProductText(

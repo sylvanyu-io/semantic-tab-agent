@@ -9,7 +9,7 @@ import {
 } from "../shared/settings.js";
 import { STORAGE_KEYS } from "../core/storage.js";
 import { isReviewLikeGroup, localizedText, reviewGroupReason, reviewGroupTitle } from "../shared/language.js";
-import { normalizeModelProductText } from "../shared/model-copy.js";
+import { normalizeCleanupProductText } from "../shared/model-copy.js";
 import { shouldShowPageSampleCount } from "../shared/page-sampling-copy.js";
 import { redactSensitiveText } from "../shared/redaction.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
@@ -2864,15 +2864,14 @@ const CLEANUP_ACTIVE_COUNT_FIELD_PATTERN = /\bactive(?:Count|[_\s-]?count)\s*(?:
 const CLEANUP_AGE_DAYS_FIELD_PATTERN = /\bage(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
 const CLEANUP_IDLE_DAYS_FIELD_PATTERN = /\bidle(?:Days|[_\s-]?days?)\s*(?:约|为|=|is|:)?\s*([\d.]+)/i;
 const CLEANUP_SAMPLEABLE_FIELD_PATTERN = /不可采样|cannot sample|not sampleable|sample(?:able|[_\s-]?able)/i;
-const CLEANUP_INTERNAL_STORAGE_STATE_PATTERN =
-  /^(?:(?:(?:该|此|这个)?(?:标签页|页面|候选项?)\s*)?(?:(?:已|曾|正在|当前|本地)\s*)?(?:被\s*)?(?:暂存|缓存)(?:中|过|完成)?(?:\s*(?:约\s*)?\d+(?:\.\d+)?\s*(?:秒|分钟|小时|天|周|月))?(?:\s*(?:的)?(?:记录|状态|数据))?|(?:(?:this|the)\s+)?(?:(?:tab|page|candidate)\s+)?(?:(?:is|was|has\s+been|currently|locally)\s+)?(?:stag(?:ed|ing)|cach(?:e|ed|ing))(?:\s+(?:locally|for\s+\d+(?:\.\d+)?\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?)))?)[。.!]?$/i;
 const CLEANUP_INTERNAL_FIELD_PATTERN =
   /active(?:Count|[_\s-]?count)|age(?:Days|[_\s-]?days?)|idle(?:Days|[_\s-]?days?)|sample(?:able|[_\s-]?able)|tab(?:Ids?|[_\s-]?ids?)|page(?:Ids?|[_\s-]?ids?)|window(?:Ids?|[_\s-]?ids?)|sequence(?:Index(?:es)?|Indices|[_\s-]?index(?:es)?|[_\s-]?indices)|current(?:Group|[_\s-]?group)|(?:hostname|host(?:Name|[_\s-]?name))|activation(?:Flow|[_\s-]?flow)|nearby(?:Ids?|[_\s-]?ids?)|return(?:ToId|[_\s-]?to[_\s-]?id)|returned(?:ToCount|[_\s-]?to[_\s-]?count)|repeated(?:Ids?|[_\s-]?ids?)|dwell(?:Seconds|[_\s-]?seconds?)|(?:total|avg|max)?(?:Active|Dwell)(?:Seconds|[_\s-]?seconds?)|transition(?:Count|[_\s-]?count)|from(?:Id|[_\s-]?id)|to(?:Id|[_\s-]?id)|started(?:At|[_\s-]?at)|ended(?:At|[_\s-]?at)|last(?:At|[_\s-]?at)|clues?/i;
 
 function cleanupEvidenceLabel(value) {
   const text = String(value || "").trim();
   if (!text) return "";
-  if (CLEANUP_INTERNAL_STORAGE_STATE_PATTERN.test(text)) return "";
+  const productText = cleanupProductCopy(text, 48);
+  if (!productText) return "";
 
   const activeMatch = text.match(CLEANUP_ACTIVE_COUNT_FIELD_PATTERN);
   if (activeMatch) return cleanupOpenCountLabel(Number(activeMatch[1]));
@@ -2892,7 +2891,6 @@ function cleanupEvidenceLabel(value) {
   if (/无直接|关系弱|不相关|weak fit|unrelated|low relevance/i.test(text)) return t("cleanup.clue.weakRelation");
   if (/重新|找回|恢复|recover|find again|refind|rerun/i.test(text)) return t("cleanup.clue.refindable");
   if (/主页|入口|总览|列表|overview|home page|entry page|index page|repository list/i.test(text)) return t("cleanup.clue.entryPage");
-  const productText = cleanupProductCopy(text, 48);
   if (productText && productText !== text && !CLEANUP_INTERNAL_FIELD_PATTERN.test(productText)) return productText;
   if (CLEANUP_INTERNAL_FIELD_PATTERN.test(text)) return "";
 
@@ -2900,7 +2898,7 @@ function cleanupEvidenceLabel(value) {
 }
 
 function cleanupProductCopy(value, maxLength = 160) {
-  return normalizeModelProductText(value, { languageMode: uiLanguage }, maxLength).trim();
+  return normalizeCleanupProductText(value, { languageMode: uiLanguage }, maxLength).trim();
 }
 
 function cleanupOpenCountLabel(count) {
@@ -4162,7 +4160,7 @@ function mockAnalysisJob(settings = {}) {
 
 function mockCleanupPreview(grouping = true) {
   return {
-    summary: grouping ? "AI 找到 2 个可能是旧任务遗留的标签页，你可以先检查。" : "本次按要求不自动分组，优先检查这些低价值或已完成页面。",
+    summary: grouping ? "本地已缓存，AI 找到 2 个可能是旧任务遗留的标签页，你可以先检查。" : "本次按要求不自动分组，优先检查这些低价值或已完成页面。",
     candidateCount: 2,
     candidates: [
       {
@@ -4175,7 +4173,7 @@ function mockCleanupPreview(grouping = true) {
         idleMs: 9 * 24 * 60 * 60 * 1000,
         activeCount: 1,
         priority: "high",
-        reason: "上一轮对比调研留下的页面，近期没有再打开。",
+        reason: "该标签页已暂存，上一轮对比调研留下的页面，近期没有再打开。",
         evidence: ["旧任务线索", "标签页已暂存", "已暂存 7 天", "page was cached locally", "浏览器缓存策略文档"]
       },
       {

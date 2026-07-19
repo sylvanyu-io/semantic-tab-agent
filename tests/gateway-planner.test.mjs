@@ -720,13 +720,13 @@ test("AI gateway planner normalizes cleanup copy away from implementation field 
                 ],
                 review: [],
                 cleanup: {
-                  summary: "activeCount cleanup summary.",
+                  summary: "Cached locally. Review old records.",
                   candidates: [
                     {
                       id: 10,
                       priority: "high",
-                      reason: "activeCount=0, pageId 10, sampleable false and ageDays 18.",
-                      evidence: ["activeCount=0", "ageDays 18", "tabId 10", "sampleable false"]
+                      reason: "This page was cached locally and activeCount=0, pageId 10, sampleable false and ageDays 18.",
+                      evidence: ["activeCount=0", "ageDays 18", "tabId 10", "sampleable false", "staged"]
                     }
                   ]
                 }
@@ -758,9 +758,11 @@ test("AI gateway planner normalizes cleanup copy away from implementation field 
     ...plan.cleanup.candidates[0].evidence
   ].join(" ");
   assert.doesNotMatch(visibleCleanupCopy, /\b(?:activeCount|ageDays|idleDays|sampleable|tabId|pageId|windowId|sequenceIndex)\b/i);
-  assert.match(visibleCleanupCopy, /rarely reopened/);
+  assert.doesNotMatch(visibleCleanupCopy, /\b(?:cached|staged)\b/i);
+  assert.match(plan.cleanup.summary, /review old records/i);
+  assert.match(visibleCleanupCopy, /rarely reopened/i);
   assert.match(visibleCleanupCopy, /kept about 18 days/);
-  assert.match(visibleCleanupCopy, /page summary unavailable/);
+  assert.match(visibleCleanupCopy, /page summary unavailable/i);
   assert.equal(plan.cleanup.candidates[0].activeCount, 1);
 });
 

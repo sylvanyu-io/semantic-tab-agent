@@ -306,6 +306,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".preview").getByText("另有 1 个固定、无痕或受限标签页未参与整理。")).toBeVisible();
   await expect(page.locator(".activity-panel")).toHaveCount(0);
   await expect(page.locator(".cleanup-preview").getByText("清理建议", { exact: true })).toBeVisible();
+  await expect(page.locator(".cleanup-preview")).not.toContainText("本地已缓存");
   await expect(page.locator(".cleanup-preview").getByText("旧方案对比笔记")).toBeVisible();
   await expect(page.locator(".cleanup-row-actions .icon-action").first()).toBeVisible();
   await expect(page.locator(".cleanup-row-actions").first().locator(".icon-action")).toHaveText(["定位", "关闭标签页"]);

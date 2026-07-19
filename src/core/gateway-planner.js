@@ -14,7 +14,11 @@ import {
   resolveGatewayModel
 } from "../shared/settings.js";
 import { languageInstruction, localizedText, targetWindowTitle } from "../shared/language.js";
-import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
+import {
+  MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING,
+  normalizeCleanupProductText,
+  normalizeModelProductText
+} from "../shared/model-copy.js";
 import { redactSensitiveText } from "../shared/redaction.js";
 import { fetchJsonWithTimeout } from "./fetch-timeout.js";
 import { ACTION_PLAN_JSON_SCHEMA } from "./plan-schema.js";
@@ -994,7 +998,7 @@ function normalizeCleanupAnalysis(parsed, inventory, activityOverview = {}, sett
       pinned: Boolean(tab.pinned),
       priority: normalizeCleanupPriority(raw?.priority),
       reason:
-        normalizeModelProductText(raw?.reason || raw?.rationale, settings, 220) ||
+        normalizeCleanupProductText(raw?.reason || raw?.rationale, settings, 220) ||
         localizedText(settings.languageMode, "AI 建议优先复核这个标签页。", "AI suggests reviewing this tab first."),
       evidence: normalizeCleanupEvidence(raw?.evidence || raw?.signals || raw?.clues, settings),
       summary: activity.summary || null
@@ -1005,7 +1009,7 @@ function normalizeCleanupAnalysis(parsed, inventory, activityOverview = {}, sett
 
   return {
     schema: "tab_recap_cleanup_v1",
-    summary: normalizeModelProductText(
+    summary: normalizeCleanupProductText(
       source?.summary ||
         localizedText(
           settings.languageMode,
@@ -1097,7 +1101,7 @@ function normalizeCleanupPriority(value) {
 
 function normalizeCleanupEvidence(value, settings = {}) {
   const values = Array.isArray(value) ? value : value ? [value] : [];
-  return values.map((item) => normalizeModelProductText(item, settings, 120)).filter(Boolean).slice(0, 4);
+  return values.map((item) => normalizeCleanupProductText(item, settings, 120)).filter(Boolean).slice(0, 4);
 }
 
 function daysFromMs(value) {
