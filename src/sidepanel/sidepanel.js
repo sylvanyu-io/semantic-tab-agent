@@ -17,6 +17,8 @@ import { isGenericRecapThemeTitle, stripCleanupRecommendationsFromRecapText } fr
 
 const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
+const GROUP_PREVIEW_INITIAL_LIMIT = 4;
+const CLEANUP_PRIORITY_ORDER = Object.freeze(["high", "medium", "low"]);
 const UI_COPY = Object.freeze({
   "zh-CN": {
     "document.title": "TabRecap",
@@ -136,10 +138,15 @@ const UI_COPY = Object.freeze({
     "activity.priority.high": "优先检查",
     "activity.priority.medium": "稍后检查",
     "activity.priority.low": "最后扫一眼",
-    "cleanup.preview.title": "建议先检查",
+    "preview.expandGroups": "展开其余 {count} 个分组",
+    "preview.collapseGroups": "收起分组",
+    "cleanup.preview.title": "清理建议",
     "cleanup.preview.subtitle": "这些标签页可能已经过期、重复或属于已完成任务；是否关闭由你决定。",
     "cleanup.preview.subtitleOnly": "AI 只做清理检查：帮你挑出建议先检查的标签页，是否关闭由你决定。",
     "cleanup.preview.empty": "这次没有发现明显需要清理的标签页。",
+    "cleanup.expandAll": "展开全部",
+    "cleanup.collapseOthers": "收起其余",
+    "cleanup.groupCount": "{count} 个标签页",
     "cleanup.clue.openCount": "打开过 {count} 次",
     "cleanup.clue.notReopened": "基本没再打开",
     "cleanup.clue.rarelyOpened": "很少回看",
@@ -153,7 +160,7 @@ const UI_COPY = Object.freeze({
     "cleanup.clue.entryPage": "入口页",
     "cleanup.clue.sameGroup": "同组已有更具体页面",
     "cleanup.clue.ungrouped": "还没归类",
-    "cleanup.closeOne": "关闭",
+    "cleanup.closeOne": "关闭标签页",
     "cleanup.focus": "定位",
     "cleanup.closeOneAria": "关闭这个标签页",
     "cleanup.focusAria": "定位这个标签页",
@@ -415,10 +422,15 @@ const UI_COPY = Object.freeze({
     "activity.priority.high": "Check first",
     "activity.priority.medium": "Check later",
     "activity.priority.low": "Quick scan",
-    "cleanup.preview.title": "Check first",
+    "preview.expandGroups": "Show {count} more groups",
+    "preview.collapseGroups": "Collapse groups",
+    "cleanup.preview.title": "Cleanup suggestions",
     "cleanup.preview.subtitle": "These tabs may be stale, duplicate, or from completed work. You decide what to close.",
     "cleanup.preview.subtitleOnly": "AI is only checking cleanup candidates here. You decide what to close.",
     "cleanup.preview.empty": "No obvious cleanup candidates in this run.",
+    "cleanup.expandAll": "Expand all",
+    "cleanup.collapseOthers": "Collapse others",
+    "cleanup.groupCount": "{count} tabs",
     "cleanup.clue.openCount": "Opened {count} times",
     "cleanup.clue.notReopened": "Rarely reopened",
     "cleanup.clue.rarelyOpened": "Lightly used",
@@ -432,7 +444,7 @@ const UI_COPY = Object.freeze({
     "cleanup.clue.entryPage": "Entry page",
     "cleanup.clue.sameGroup": "More specific pages nearby",
     "cleanup.clue.ungrouped": "Not yet grouped",
-    "cleanup.closeOne": "Close",
+    "cleanup.closeOne": "Close tab",
     "cleanup.focus": "Find",
     "cleanup.closeOneAria": "Close this tab",
     "cleanup.focusAria": "Find this tab",
@@ -2452,12 +2464,15 @@ function renderPreview(job) {
   nodes.previewCount.textContent = cleanupOnly
     ? localizedText(uiLanguage, `${cleanupCandidateCount} 项`, formatCount(cleanupCandidateCount, "item"))
     : localizedText(uiLanguage, `${visibleGroupCount} 组`, formatCount(visibleGroupCount, "group"));
+  const groupRows = [
+    ...groups.map((group, index) => groupRow(group, swatchForIndex(index), uiLanguage)),
+    ...(reviewGroupWillBeCreated ? [reviewGroupRow(reviewTabsCount, resultLanguageMode, preview)] : [])
+  ];
   const groupNodes = !groupingEnabled
     ? []
     : [
         previewSummary(summaryPreview, groups.length, reviewTabsCount, reviewGroupWillBeCreated, resultLanguageMode),
-        ...groups.map((group, index) => groupRow(group, swatchForIndex(index), uiLanguage)),
-        ...(reviewGroupWillBeCreated ? [reviewGroupRow(reviewTabsCount, resultLanguageMode, preview)] : [])
+        ...(groupRows.length ? [previewGroupList(groupRows)] : [])
       ];
   const cleanupNodes = cleanupEnabled ? [cleanupPreviewSection(cleanup, { cleanupOnly })] : [];
   nodes.previewRoot.replaceChildren(...groupNodes, ...cleanupNodes);
@@ -2584,6 +2599,37 @@ function groupRow(group, swatchColor, languageMode = "auto") {
   return row;
 }
 
+function previewGroupList(rows) {
+  const list = document.createElement("section");
+  list.className = "preview-group-list";
+  let expanded = false;
+
+  const update = () => {
+    rows.forEach((row, index) => {
+      row.hidden = !expanded && index >= GROUP_PREVIEW_INITIAL_LIMIT;
+    });
+    if (!toggle) return;
+    toggle.textContent = expanded
+      ? t("preview.collapseGroups")
+      : t("preview.expandGroups", { count: rows.length - GROUP_PREVIEW_INITIAL_LIMIT });
+    toggle.setAttribute("aria-expanded", String(expanded));
+  };
+
+  const toggle = rows.length > GROUP_PREVIEW_INITIAL_LIMIT ? document.createElement("button") : null;
+  if (toggle) {
+    toggle.type = "button";
+    toggle.className = "preview-list-toggle";
+    toggle.addEventListener("click", () => {
+      expanded = !expanded;
+      update();
+    });
+  }
+
+  list.append(...rows, ...(toggle ? [toggle] : []));
+  update();
+  return list;
+}
+
 function formatCount(count, noun) {
   const numeric = Number(count) || 0;
   return `${numeric} ${noun}${numeric === 1 ? "" : "s"}`;
@@ -2625,8 +2671,6 @@ function cleanupPreviewSection(cleanup, options = {}) {
   header.append(copy);
 
   const candidates = cleanup?.candidates || [];
-  const list = document.createElement("div");
-  list.className = "cleanup-preview-list";
   if (!candidates.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
@@ -2635,12 +2679,67 @@ function cleanupPreviewSection(cleanup, options = {}) {
     return section;
   }
 
+  const candidatesByPriority = new Map(CLEANUP_PRIORITY_ORDER.map((priority) => [priority, []]));
   for (const candidate of candidates) {
-    list.append(cleanupPreviewRow(candidate));
+    candidatesByPriority.get(normalizeCleanupPriority(candidate.priority)).push(candidate);
+  }
+  const populatedPriorities = CLEANUP_PRIORITY_ORDER.filter((priority) => candidatesByPriority.get(priority).length);
+  const defaultOpenPriority = populatedPriorities.includes("high") ? "high" : populatedPriorities[0];
+  const groups = populatedPriorities.map((priority) =>
+    cleanupPriorityGroup(priority, candidatesByPriority.get(priority), { open: priority === defaultOpenPriority })
+  );
+
+  if (groups.length > 1) {
+    const expandToggle = document.createElement("button");
+    expandToggle.type = "button";
+    expandToggle.className = "cleanup-expand-toggle";
+    const updateExpandToggle = () => {
+      const allOpen = groups.every((group) => group.open);
+      expandToggle.textContent = t(allOpen ? "cleanup.collapseOthers" : "cleanup.expandAll");
+      expandToggle.setAttribute("aria-expanded", String(allOpen));
+    };
+    expandToggle.addEventListener("click", () => {
+      const allOpen = groups.every((group) => group.open);
+      for (const group of groups) {
+        group.open = allOpen ? group.dataset.priority === defaultOpenPriority : true;
+      }
+      updateExpandToggle();
+    });
+    for (const group of groups) group.addEventListener("toggle", updateExpandToggle);
+    updateExpandToggle();
+    header.append(expandToggle);
   }
 
-  section.append(header, list);
+  const groupList = document.createElement("div");
+  groupList.className = "cleanup-priority-groups";
+  groupList.append(...groups);
+
+  section.append(header, groupList);
   return section;
+}
+
+function cleanupPriorityGroup(priority, candidates, options = {}) {
+  const group = document.createElement("details");
+  group.className = "cleanup-priority-group";
+  group.dataset.priority = priority;
+  group.open = Boolean(options.open);
+
+  const summary = document.createElement("summary");
+  summary.append(cleanupPriorityChip(priority));
+  const count = document.createElement("span");
+  count.className = "cleanup-priority-count";
+  count.textContent = t("cleanup.groupCount", { count: candidates.length });
+  summary.append(count);
+
+  const list = document.createElement("div");
+  list.className = "cleanup-preview-list";
+  list.append(...candidates.map((candidate) => cleanupPreviewRow(candidate)));
+  group.append(summary, list);
+  return group;
+}
+
+function normalizeCleanupPriority(priority) {
+  return CLEANUP_PRIORITY_ORDER.includes(priority) ? priority : "medium";
 }
 
 function cleanupSummaryForPreview(cleanup, { cleanupOnly = false } = {}) {
@@ -2693,7 +2792,6 @@ function cleanupPreviewRow(candidate) {
 
   const actions = document.createElement("div");
   actions.className = "cleanup-row-actions";
-  actions.append(cleanupPriorityChip(candidate.priority));
   const focus = iconButton("focus", t("cleanup.focusAria"));
   focus.addEventListener("click", () => focusActivityTab(candidate));
   const close = iconButton("close", t("cleanup.closeOneAria"));
@@ -2709,6 +2807,7 @@ function iconButton(icon, label) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "icon-action";
+  button.dataset.action = icon;
   button.setAttribute("aria-label", label);
   button.setAttribute("title", label);
   const text = document.createElement("span");
@@ -2771,6 +2870,7 @@ const CLEANUP_INTERNAL_FIELD_PATTERN =
 function cleanupEvidenceLabel(value) {
   const text = String(value || "").trim();
   if (!text) return "";
+  if (/^(?:已?暂存|暂存中|已缓存|缓存中|staged|cached)$/i.test(text)) return "";
 
   const activeMatch = text.match(CLEANUP_ACTIVE_COUNT_FIELD_PATTERN);
   if (activeMatch) return cleanupOpenCountLabel(Number(activeMatch[1]));
@@ -2884,7 +2984,7 @@ function cleanupMetaChip(text) {
 }
 
 function cleanupPriorityChip(priority) {
-  const value = ["high", "medium", "low"].includes(priority) ? priority : "medium";
+  const value = normalizeCleanupPriority(priority);
   const chip = cleanupMetaChip(t(`activity.priority.${value}`));
   chip.classList.add("cleanup-priority");
   chip.dataset.priority = value;
@@ -4074,7 +4174,7 @@ function mockCleanupPreview(grouping = true) {
         activeCount: 1,
         priority: "high",
         reason: "上一轮对比调研留下的页面，近期没有再打开。",
-        evidence: ["旧任务线索", "近期未活跃"]
+        evidence: ["旧任务线索", "近期未活跃", "已暂存"]
       },
       {
         tabId: 32,

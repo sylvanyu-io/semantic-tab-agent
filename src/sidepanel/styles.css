@@ -1904,6 +1904,35 @@ details[open] > summary::before {
   gap: 8px;
 }
 
+.preview-group-list {
+  display: grid;
+  gap: 8px;
+}
+
+.preview-list-toggle,
+.cleanup-expand-toggle {
+  width: auto;
+  min-height: 30px;
+  padding: 4px 10px;
+  color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  box-shadow: none;
+  font-size: 11.5px;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.preview-list-toggle {
+  justify-self: center;
+}
+
+.preview-list-toggle:hover,
+.cleanup-expand-toggle:hover {
+  background: color-mix(in srgb, var(--primary-soft) 66%, transparent);
+}
+
 .preview-summary {
   display: grid;
   gap: 4px;
@@ -1954,6 +1983,7 @@ details[open] > summary::before {
 
 .cleanup-preview-header {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 2px;
   align-items: start;
 }
@@ -1972,6 +2002,11 @@ details[open] > summary::before {
   color: var(--muted);
   font-size: 11.5px;
   line-height: 1.35;
+}
+
+.cleanup-expand-toggle {
+  align-self: center;
+  white-space: nowrap;
 }
 
 .cleanup-row-actions {
@@ -2009,15 +2044,46 @@ details[open] > summary::before {
   transform: translateY(-0.5px);
 }
 
-.cleanup-row-actions button:last-child {
-  color: var(--muted);
-  background: color-mix(in srgb, var(--surface-soft) 76%, transparent);
-  border-color: color-mix(in srgb, var(--line) 26%, transparent);
+.cleanup-row-actions button[data-action="close"] {
+  color: var(--danger);
+  background: var(--coral-soft);
+  border-color: color-mix(in srgb, var(--danger) 44%, var(--line));
 }
 
+.cleanup-priority-groups,
 .cleanup-preview-list {
   display: grid;
   gap: 8px;
+}
+
+.cleanup-priority-group {
+  overflow: clip;
+  border-top: 1px solid var(--soft-rule);
+}
+
+.cleanup-priority-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 4px 2px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.cleanup-priority-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cleanup-priority-group > .cleanup-preview-list {
+  padding-bottom: 4px;
+}
+
+.cleanup-priority-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
 }
 
 .cleanup-preview-row {
@@ -2074,6 +2140,18 @@ details[open] > summary::before {
   white-space: nowrap;
 }
 
+.cleanup-priority[data-priority="high"] {
+  color: var(--danger);
+  background: var(--coral-soft);
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--line));
+}
+
+.cleanup-priority[data-priority="medium"] {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--line));
+}
+
 .cleanup-reason {
   margin-top: 3px;
 }
@@ -2105,14 +2183,6 @@ details[open] > summary::before {
   margin: -2px 0 4px 10px;
   shape-outside: inset(0 round 999px);
   shape-margin: 8px;
-}
-
-.cleanup-row-actions .cleanup-priority {
-  min-height: 28px;
-  padding: 0 9px;
-  line-height: 1;
-  vertical-align: initial;
-  white-space: nowrap;
 }
 
 .group-swatch {
