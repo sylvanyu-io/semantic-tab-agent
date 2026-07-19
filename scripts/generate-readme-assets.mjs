@@ -186,7 +186,7 @@ async function renderScreenshotShowcase() {
           }
           .showcase {
             width: 1480px;
-            height: 760px;
+            height: 660px;
             display: grid;
             grid-template-rows: auto minmax(0, 1fr) auto;
             gap: 14px;
