@@ -14,8 +14,8 @@
 8. [Agent harness research](08-agent-harness-research.md) - 外部 agent harness 模式如何映射到 TabRecap。
 9. [Release readiness](09-release-readiness.md) - 发布前检查清单和残余风险。
 10. [Time recap status](10-time-recap-plan.md) - 基于本地活动和页面摘要生成时间段回顾的产品边界、落地状态与后续增强。
-11. [Local-origin gateway stability](11-local-origin-gateway-stability.md) - 默认 AI 服务继续使用本地机器作为源站时的稳定性、健康检查和排障策略。
-12. [Default AI gateway runbook](12-default-ai-gateway-runbook.md) - 当前公网 AI 网关、Cloudflare Worker、Tunnel、本机服务、监控告警和迁移步骤的运维手册。
+11. [Shared gateway reliability](11-local-origin-gateway-stability.md) - Cloudflare Worker 到 OpenCode Go 的健康检查、限流和失败边界。
+12. [Shared gateway runbook](12-default-ai-gateway-runbook.md) - 共享地址、模型、Secret 和部署检查。
 
 ## Benchmark 入口
 

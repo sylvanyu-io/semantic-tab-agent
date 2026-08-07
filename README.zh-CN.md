@@ -47,9 +47,7 @@ TabRecap 是一个 Chrome MV3 侧边栏扩展。整理页按任务重排当前�
 
 ## 页面内容与隐私
 
-普通整理只需要标签页元数据。Chrome Web Store 构建不包含脚本注入权限，无法读取网页正文。
-
-开发构建可以显示页面摘要选项。开启后，扩展只读取已授权、未休眠、非无痕页面的少量可见文字；密码、表单内容、Cookie、本地存储和完整 HTML 不在读取范围内。未授权页面继续使用标题和网址。
+普通整理只需要标签页元数据。页面摘要默认关闭。主动开启后，Chrome 会先询问站点权限；TabRecap 只读取已授权、未休眠、非无痕页面的少量可见文字。密码、表单内容、Cookie、本地存储和完整 HTML 不在读取范围内。没有授权的页面继续只使用标题和网址。
 
 标签页活动、切换记录、设置和回退信息保存在 Chrome 扩展存储中。发起整理或回顾时，完成任务所需的精简信息会发送到当前选择的模型服务。详细的数据范围、保留时间和网关限流方式见[隐私政策](PRIVACY.md)。
 
@@ -65,21 +63,28 @@ npm run build
 
 在 Chrome 中打开 `chrome://extensions`，开启 Developer mode，点击 **Load unpacked**，选择 `dist/extension`。点击扩展图标后，侧边栏会从浏览器右侧打开。
 
-## 模型与网关
+## 接入模型
 
-网关地址和密钥留空时使用内置服务。高级设置接受兼容 Chat Completions 的自定义地址、密钥和模型名。
+TabRecap 不内置服务商密钥，也不做服务商预设。设置中填写兼容 OpenAI Chat Completions 的 Base URL 和模型 ID 即可。公开接口或本机接口可以不填 API Key。点 **读取模型** 会请求该地址的 `/models`；接口不支持模型列表时，仍可手动填写。
 
-默认模型为 `gpt-5.4`，默认思考强度为高。内置预设包括：
+这套方式可以接自建网关，也能用于火山引擎、阿里云、智谱、DeepSeek、Moonshot 等提供的兼容接口。账号开通和服务商配置不塞进扩展里。
 
-- `gpt-5.4`
-- `gpt-5.5`
-- `gpt-5.4-mini`
-- `claude-opus-4-8`
-- `claude-sonnet-4-6`
+### 限量共享网关
 
-使用自定义网关时，模型名不受这份预设列表限制。例如 GLM 可以填写 `https://open.bigmodel.cn/api/paas/v4` 和 `glm-5.2`，前提是所用网关兼容当前请求格式。
+想先试用，可以填写：
 
-不要提交网关密钥。密钥一旦出现在聊天、日志、截图、shell history 或测试输出中，应立即轮换。
+```text
+Base URL: https://cliproxy.sylvanyu.io/v1
+API Key:  留空
+主要模型: glm-5.2
+次要模型: deepseek-v4-flash
+```
+
+点 **读取模型** 可以看到当前列表。共享网关目前通过 [OpenCode Go](https://opencode.ai/docs/go/) 提供 `glm-5.2`、`kimi-k3`、`deepseek-v4-pro` 和 `deepseek-v4-flash`。服务有 IP 小时/每日额度、请求内容、token 和全局额度限制，只接受 TabRecap 的固定请求格式，不保证一直可用。共享订阅额度用完后，请换成自己的兼容接口。
+
+这个地址只写在 README 和商店简介里，不会作为隐藏默认值塞进扩展。选择它后，请求会先经过 TabRecap 的 Cloudflare Worker，再交给 OpenCode Go。上游 Key 只保存在 Worker Secret 中，不进入源码和安装包。
+
+个人 API Key 不要提交到仓库。密钥如果出现在聊天、日志、截图、shell history 或测试输出中，应立即轮换。
 
 ## 开发与发布
 
@@ -97,9 +102,9 @@ npm run test:ui
 | `npm run release:check` | 测试、密钥扫描、开发包与商店包构建、产物审计 |
 | `npm run release:check:full` | 标准门禁，加隔离 Chromium 扩展压力测试 |
 | `npm run release:publish-check` | 完整门禁，加版本号与 Git tag 检查 |
-| `npm run release:check:live` | 完整门禁，加默认网关、Tunnel、监控和真实模型请求 |
+| `npm run release:check:live` | 完整门禁，加一次显式配置网关的真实模型请求 |
 
-在线门禁读取 `MONITOR_TOKEN` 或 `MONITOR_TOKEN_FILE`。GitHub Actions 在 push 和 PR 上运行标准门禁；手动触发 `CI` workflow 并勾选 `full_gate`，可以在远端复跑扩展压力测试。
+在线门禁读取 `GATEWAY_BASE_URL`、`GATEWAY_MODEL` 和可选的 `GATEWAY_API_KEY`。GitHub Actions 在 push 和 PR 上运行标准门禁；手动触发 `CI` workflow 并勾选 `full_gate`，可以在远端复跑扩展压力测试。
 
 生成图片和安装包：
 
@@ -109,7 +114,7 @@ npm run assets:store
 npm run build:extension:store
 ```
 
-正式 tag 上构建的商店包位于 `dist/tab-recap-<version>-store.zip`。非 tag 构建会在文件名中加入 commit 标识，工作区不干净时还会加上 `dirty`。商店包只在本地生成，不作为 GitHub Artifact 或 Release Asset 上传。商店文案和截图路径见 [Chrome Web Store listing](docs/store-listing.md)。
+正式 tag 的完整包位于 `dist/tab-recap-<version>.zip`。单独的 `store` channel 继续作为精简后备方案，本次不使用。非 tag 构建会在文件名中加入 commit 标识，工作区不干净时还会加上 `dirty`。商店文案和截图路径见 [Chrome Web Store listing](docs/store-listing.md)。
 
 ## 压力测试
 
@@ -126,7 +131,7 @@ npm run stress:extension
 STRESS_GATEWAY=1 STRESS_GATEWAY_TABS=60 npm run stress:extension
 ```
 
-测试自定义网关时传入地址、模型和对应密钥：
+测试网关时传入地址和模型。接口需要鉴权时再提供 Key：
 
 ```bash
 STRESS_GATEWAY=1 \

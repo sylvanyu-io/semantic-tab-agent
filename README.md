@@ -47,9 +47,7 @@ Activity is supporting evidence. Titles, page meaning, original order, and user 
 
 ## Page access and privacy
 
-Normal organization uses tab metadata. The Chrome Web Store build has no script-injection permission and cannot read page bodies.
-
-Development builds can expose optional page summaries. When enabled, TabRecap reads a small amount of visible text from authorized, awake, non-incognito pages. It does not read passwords, form values, cookies, local storage, or full HTML. Unauthorized pages remain title-and-URL only.
+Normal organization uses tab metadata. Page summaries are optional and off by default. When you turn them on, Chrome asks for access to the selected sites before TabRecap reads a small amount of visible text from awake, non-incognito pages. It does not read passwords, form values, cookies, local storage, or full HTML. Pages without permission remain title-and-URL only.
 
 Tab activity, transitions, settings, and undo data stay in Chrome extension storage. Starting an organization or recap request sends the compact data needed for that job to the selected model service. See the [privacy policy](PRIVACY.md) for retention, gateway rate limiting, and the complete data boundary.
 
@@ -65,21 +63,28 @@ npm run build
 
 Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select `dist/extension`. The toolbar icon opens TabRecap in Chrome's right side panel.
 
-## Models and gateways
+## Connect a model
 
-Leaving the gateway URL and key empty selects the built-in service. Advanced settings accept a Chat Completions-compatible endpoint, API key, and model name.
+TabRecap does not ship with a provider key or a vendor preset list. Enter any OpenAI Chat Completions-compatible Base URL and model ID. The API key is optional for public and local endpoints. **Load models** reads the endpoint's `/models` response; you can still type an ID by hand when an API does not expose model discovery.
 
-The default model is `gpt-5.4` with high reasoning effort. Built-in presets include:
+This works with self-hosted gateways and compatible services from providers such as Volcengine, Alibaba Cloud, Zhipu, DeepSeek, and Moonshot. Provider-specific account setup stays outside the extension.
 
-- `gpt-5.4`
-- `gpt-5.5`
-- `gpt-5.4-mini`
-- `claude-opus-4-8`
-- `claude-sonnet-4-6`
+### Limited shared gateway
 
-A custom gateway can use a model outside this preset list. For example, a compatible GLM setup can use `https://open.bigmodel.cn/api/paas/v4` with `glm-5.2`.
+For a quick trial, use the public TabRecap gateway:
 
-Do not commit gateway keys. Rotate any key exposed in chat, logs, screenshots, shell history, or test output.
+```text
+Base URL: https://cliproxy.sylvanyu.io/v1
+API key:  leave blank
+Primary:  glm-5.2
+Auxiliary: deepseek-v4-flash
+```
+
+Click **Load models** to see the current list. The shared gateway currently exposes `glm-5.2`, `kimi-k3`, `deepseek-v4-pro`, and `deepseek-v4-flash` through [OpenCode Go](https://opencode.ai/docs/go/). It has per-IP, per-day, payload, token, and global limits. It accepts only TabRecap request formats, has no uptime guarantee, and may stop working when the shared subscription quota is exhausted. Switch to your own compatible endpoint when that happens.
+
+The public gateway address appears only in this README and the store description; it is not a hidden default in the extension. Requests sent through it pass through the TabRecap Cloudflare Worker and then OpenCode Go. The upstream provider key stays in a Worker Secret and is not included in source code or extension packages.
+
+Do not commit personal API keys. Rotate any key exposed in chat, logs, screenshots, shell history, or test output.
 
 ## Development and release
 
@@ -97,9 +102,9 @@ Release gates:
 | `npm run release:check` | Tests, secret scans, dev/store builds, artifact audit |
 | `npm run release:check:full` | Standard gate plus an isolated Chromium extension stress run |
 | `npm run release:publish-check` | Full gate plus package version and Git tag checks |
-| `npm run release:check:live` | Full gate plus the default gateway, Tunnel, monitor state, and a real model request |
+| `npm run release:check:live` | Full gate plus a real request to the explicitly configured gateway |
 
-The live gate reads `MONITOR_TOKEN` or `MONITOR_TOKEN_FILE`. GitHub Actions runs the standard gate on pushes and pull requests. To repeat the extension stress run remotely, dispatch the `CI` workflow with `full_gate` enabled.
+The live gate reads `GATEWAY_BASE_URL`, `GATEWAY_MODEL`, and an optional `GATEWAY_API_KEY`. GitHub Actions runs the standard gate on pushes and pull requests. To repeat the extension stress run remotely, dispatch the `CI` workflow with `full_gate` enabled.
 
 Generate documentation images and the store package:
 
@@ -109,7 +114,7 @@ npm run assets:store
 npm run build:extension:store
 ```
 
-A tagged release produces `dist/tab-recap-<version>-store.zip`. Untagged filenames include the commit identity and add `dirty` when the worktree has changes. Store packages stay local and are excluded from GitHub artifacts and release assets. Dashboard copy and image paths are listed in [Chrome Web Store listing](docs/store-listing.md).
+A tagged release produces the complete package at `dist/tab-recap-<version>.zip`. The separate `store` channel remains a reduced fallback and is not the current submission target. Untagged filenames include the commit identity and add `dirty` when the worktree has changes. Dashboard copy and image paths are listed in [Chrome Web Store listing](docs/store-listing.md).
 
 ## Stress test
 
@@ -126,7 +131,7 @@ Enable the real gateway branch:
 STRESS_GATEWAY=1 STRESS_GATEWAY_TABS=60 npm run stress:extension
 ```
 
-For a custom gateway, pass its URL, model, and key:
+Pass the gateway URL and model. Add a key only when the endpoint requires one:
 
 ```bash
 STRESS_GATEWAY=1 \

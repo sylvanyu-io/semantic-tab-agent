@@ -1,6 +1,6 @@
 # Chrome Web Store listing
 
-This file is the source of truth for the Chrome Web Store dashboard fields.
+Source copy for the Chrome Web Store dashboard.
 
 ## Shared fields
 
@@ -17,42 +17,43 @@ TabRecap
 
 ### Summary
 
-AI tab organizer that groups messy tabs, suggests cleanup, and turns local tab activity into private work recaps.
+Sort crowded Chrome windows by task, review cleanup candidates, and recap recent tab activity.
 
 ### Detailed description
 
-Turn a crowded browser into a clear plan.
-
-TabRecap groups open tabs by task, topic, or project, highlights tabs worth reviewing, and turns recent local tab activity into a readable recap.
+TabRecap is for the point where a working session has spread across too many tabs. It proposes task-based groups, keeps uncertain pages visible for review, and builds a recap from activity recorded on this device.
 
 Organize with a preview
 
-- Group tabs by meaning, not just domain or keywords.
-- Review the full plan before anything moves.
-- Preserve existing groups or consolidate tabs into one window.
+- Group tabs by meaning instead of domain alone.
+- Check the complete plan before anything moves.
+- Keep existing groups or consolidate tabs into one window.
 - Undo supported organization changes.
 
-Clean up with control
+Clean up on your terms
 
-- Surface likely duplicates, stale searches, and low-value pages.
-- See a reason for every suggestion.
+- Review likely duplicates, stale searches, and low-value pages.
+- See the reason behind each suggestion.
 - Close only the tabs you select. TabRecap never closes tabs automatically.
 
-Understand where your time went
+Review a recent session
 
-- Choose a recent time period and generate a compact recap.
-- See themes, a timeline, and practical next steps.
-- Use best-effort local activity clues instead of pretending to be a complete browser history.
+- Choose a recent period and generate a compact recap.
+- See themes and a timeline grounded in recorded activity.
+- Treat the result as a working note, not a complete Chrome history.
 
-Local-first privacy
+Data and control
 
-- No account required.
-- Settings, activity clues, and undo data stay in Chrome extension storage on your device.
-- Compact tab metadata is sent to the configured AI service only when you start an analysis or recap.
-- The Chrome Web Store build does not read page-body text.
-- Custom AI endpoints are optional and remain under your control.
+- No TabRecap account is required.
+- Settings, activity clues, and undo data stay in Chrome extension storage on this device.
+- Compact tab data is sent to the selected AI endpoint only after you start an analysis or recap.
+- Page summaries are off by default and require a separate Chrome permission prompt.
 
-TabRecap is built for people who research, compare, plan, and work across too many tabs but still want to stay in charge of every browser change.
+AI connection
+
+Enter any OpenAI Chat Completions-compatible Base URL and model ID. TabRecap can read the endpoint's model list, but model IDs may also be typed manually. There are no vendor presets.
+
+For a quick trial, use `https://cliproxy.sylvanyu.io/v1`, leave the API key blank, and load the available models. The shared endpoint is limited by IP, payload size, token count, and total quota. It accepts only TabRecap requests and may be unavailable after the shared quota is used. You can switch to your own endpoint at any time.
 
 ## Simplified Chinese (`zh_CN`)
 
@@ -62,42 +63,43 @@ TabRecap
 
 ### Summary
 
-用 AI 归类杂乱标签页、提供清理建议，并根据本地标签页活动生成私密工作回顾。
+按任务整理杂乱标签页，检查清理候选，根据本地活动记录回顾最近的工作。
 
 ### Detailed description
 
-把拥挤的浏览器重新变成一份清楚的计划。
+当一次工作逐渐铺满多个窗口和几十个标签页时，TabRecap 会给出按任务划分的分组方案，把拿不准的页面留给你复查，再用本机记录的活动生成近期回顾。
 
-TabRecap 会按任务、主题或项目整理已打开的标签页，找出值得复查的页面，并根据近期本机标签页活动生成一份易读的回顾。
+整理前先看方案
 
-先预览，再整理
-
-- 按页面语义分组，而不是只看域名或标题关键词。
-- 移动标签页前完整检查整理方案。
-- 可以保留现有分组，也可以把多个窗口合并整理。
+- 按页面含义分组，不只看域名。
+- 移动标签页前检查完整方案。
+- 保留现有分组，或把多个窗口收进一个窗口。
 - 支持撤销已经执行的整理操作。
 
-清理建议由你决定
+清理哪些页面由你决定
 
-- 集中列出可能重复、长期闲置或价值较低的页面。
-- 每条建议都会说明原因。
-- 只关闭你明确选择的标签页，TabRecap 绝不会自动关闭页面。
+- 检查可能重复、长期闲置或价值较低的页面。
+- 每条候选都附有原因。
+- 只关闭你明确选择的标签页；TabRecap 不会自动关页。
 
-看清最近在忙什么
+回看近期工作
 
-- 选择一段近期时间并生成简洁回顾。
-- 查看主要主题、时间线和可执行的下一步。
-- 使用尽力记录的本机活动线索，不把它伪装成完整浏览器历史。
+- 选择时间范围，生成简短回顾。
+- 查看有活动记录支撑的主题和时间线。
+- 回顾是一份工作线索，不冒充完整的 Chrome 历史记录。
 
-本机优先的隐私设计
+数据与控制
 
-- 无需注册账号。
-- 设置、活动线索和撤销数据保存在设备上的 Chrome 扩展存储中。
-- 只有当你主动开始分析或回顾时，才会向配置的 AI 服务发送精简标签页信息。
-- Chrome 应用商店版本不读取网页正文。
-- 可以自行配置 AI 接口，是否使用完全由你决定。
+- 不需要注册 TabRecap 账号。
+- 设置、活动线索和撤销数据保存在本机 Chrome 扩展存储中。
+- 只有主动开始分析或回顾后，精简标签页数据才会发送到所选 AI 接口。
+- 页面摘要默认关闭，开启时 Chrome 会单独询问站点权限。
 
-TabRecap 适合经常在大量标签页之间做调研、比较、规划和工作，同时希望保留每一步控制权的人。
+AI 接口
+
+填写兼容 OpenAI Chat Completions 的 Base URL 和模型 ID 即可。扩展可以读取接口返回的模型列表，也允许手动输入；界面不提供服务商预设。
+
+快速试用可填写 `https://cliproxy.sylvanyu.io/v1`，API Key 留空，再读取模型。共享接口有 IP、请求大小、token 和总额度限制，只接受 TabRecap 的固定请求。额度耗尽或服务不可用时，可以随时换成自己的接口。
 
 ## Privacy tab
 
@@ -110,10 +112,11 @@ Organize the user's open Chrome tabs, present user-controlled cleanup suggestion
 - `tabs`: Read open-tab titles, URLs, order, and window membership so the extension can build an organization plan and restore supported state.
 - `tabGroups`: Read, create, update, and restore Chrome tab groups selected by the user.
 - `storage`: Store settings, local activity clues, analysis jobs, diagnostics, and rollback snapshots on the user's device.
+- `activeTab`: Access the currently selected page only after the user enables page summaries and starts a supported action.
 - `alarms`: Reconcile best-effort local activity and lifecycle records when the MV3 service worker wakes.
 - `sidePanel`: Provide the extension's primary interface in Chrome's native side panel.
-- `https://cliproxy.sylvanyu.io/*`: Send validated, compact analysis and recap requests to the built-in AI gateway only after a user starts the action.
-- Optional `https://*/*` and `http://*/*`: Request access only to a custom AI endpoint explicitly configured by the user. The store build does not include script-injection permission and cannot use these grants to read page bodies.
+- Optional `scripting`: Extract a short visible-text summary from pages the user has authorized. It is not used for normal title-and-URL organization.
+- Optional `https://*/*` and `http://*/*`: Request the exact AI API origin entered by the user. When page summaries are enabled, Chrome separately asks for the page origins the user chooses to summarize.
 
 ### Data disclosures
 
@@ -121,20 +124,23 @@ Declare these categories because the extension handles them:
 
 - Web history: open-tab URLs, titles, hostnames, tab order, and locally recorded first/last-seen activity clues.
 - User activity: tab activation runs, transitions, visit counts, and user-triggered organization or recap actions.
+- Website content: a short amount of visible text only after the user enables page summaries and grants site access. The extension does not read form values, passwords, cookies, local storage, or full HTML.
 
-The Chrome Web Store build does not collect website content because it does not include script-injection permission or page-body sampling.
+Certify that data is not sold, is not used for advertising or credit decisions, is used only for the extension's disclosed single purpose, and is transmitted securely. Disclose that compact tab metadata, activity clues, and any user-enabled page summaries are sent to the selected AI service when the user starts an analysis or recap.
 
-Certify that data is not sold, is not used for advertising or credit decisions, is used only for the extension's disclosed single purpose, and is transmitted securely. Disclose that compact tab metadata and activity clues are sent to the selected AI service when the user starts an analysis or recap.
+Remote code: `No`. All executable extension code is packaged in the submitted ZIP. AI responses are treated as data and validated before browser changes.
 
 ## Reviewer test instructions
 
-No account or paid subscription is required.
+No account or paid subscription is required for the limited shared endpoint.
 
 1. Open several normal `https://` pages in one Chrome window.
 2. Click the TabRecap toolbar icon to open the side panel.
-3. In Organize mode, keep the current-window scope and click Analyze.
-4. Review the proposed groups and cleanup suggestions, then apply the organization.
-5. Use Undo to restore the supported tab state.
-6. Switch to Recap, choose a recent period, and generate a recap.
+3. Open advanced settings. Enter `https://cliproxy.sylvanyu.io/v1` as the Base URL and leave API Key blank.
+4. Click Load models. Use `glm-5.2` as the primary model and `deepseek-v4-flash` as the auxiliary model.
+5. Keep the current-window scope and click Analyze.
+6. Review the proposed groups and cleanup suggestions, then apply the organization.
+7. Use Undo to restore the supported tab state.
+8. Switch to Recap, choose a recent period, and generate a recap.
 
-The built-in AI gateway is required for AI results. If it is temporarily unavailable, the extension shows a recoverable error; Recap can still fall back to local signals where supported.
+The shared endpoint is quota-limited. If its quota is exhausted, the extension shows a recoverable error and accepts any reviewer-provided Chat Completions-compatible endpoint instead.

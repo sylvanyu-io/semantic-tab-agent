@@ -1,288 +1,130 @@
-# TabRecap Gateway Worker
+# TabRecap shared gateway
 
-Cloudflare Worker wrapper for the default free TabRecap AI gateway.
+This Cloudflare Worker backs the optional trial endpoint documented in the project README. It is deliberately narrower than a general OpenAI proxy.
 
-The extension sends chat-completions-compatible planner requests to this Worker.
-The Worker validates the request, applies coarse anti-abuse limits, injects the
-real upstream API key on the server side, and forwards only to the configured
-upstream base URL.
+The extension does not contain this URL as a default and does not contain the upstream provider key. Users who choose the shared endpoint enter `https://cliproxy.sylvanyu.io/v1` themselves.
 
-The validator intentionally retains a narrow compatibility path for the
-published `v0.2.6` extension. That release omitted the input `schema` field on
-coarse-planner and progress-copy payloads. The Worker accepts those two legacy
-shapes only when their exact TabRecap prompt markers, root fields, row types,
-and payload bounds still match. Missing-schema generic chat remains rejected.
-Remove this path only after support for `v0.2.6` is deliberately ended.
+## What the Worker accepts
 
-For the current production hostnames, local Mac origin, Cloudflare Tunnel,
-monitoring email, logs, and migration checklist, see
-[`docs/12-default-ai-gateway-runbook.md`](../docs/12-default-ai-gateway-runbook.md).
+Public routes:
 
-## What It Protects
+- `GET /healthz`: Worker process check
+- `GET /readyz`: upstream model-list and rate-limit storage check
+- `GET /v1/models`: configured model allowlist in OpenAI list format
+- `POST /v1/chat/completions`: validated TabRecap jobs
 
-- No upstream API key is shipped in the extension.
-- Clients cannot override the upstream target.
-- Only the TabRecap text-model allowlist is accepted by default. It mirrors the
-  current CLIProxyAPI origin chat models, including `gpt-5.5`, `gpt-5.4`,
-  `gpt-5.4-mini`, `codex-auto-review`, Claude Opus/Sonnet/Haiku variants, and
-  `gpt-5.3-codex-spark`. The spark model is allowed for bounded progress UI
-  copy and compact auxiliary TabRecap planning shapes; generic chat remains
-  rejected. Image models are intentionally excluded because this Worker only
-  exposes `/v1/chat/completions`.
-- Request body size and `max_tokens` are capped before upstream forwarding.
-- A SQLite Durable Object applies global, IP, install-id, and page-summary
-  quotas atomically, so simultaneous requests cannot all pass a read-before-write
-  race. KV remains the monitor-state store.
+Protected monitor routes:
 
-This is not account-grade billing control. It is a practical free-tier abuse
-brake for an open-source browser extension before login exists.
+- `GET /llm-readyz`
+- `GET /monitor/status`
 
-## Required Cloudflare Resources
+`POST /v1/chat/completions` accepts only these shapes:
 
-Create a Workers KV namespace and bind it as `RATE_LIMIT_KV`, then bind the
-SQLite `RateLimitCounter` Durable Object as `RATE_LIMIT_DO`. This repository
-includes both bindings and the `rate-limit-v1` migration in
-`worker/wrangler.toml`. For another deployment, copy
-`worker/wrangler.toml.example` and fill in the KV namespace ID before the first
-deploy. Do not remove or rename an already-applied Durable Object migration.
+- TabRecap grouping plans;
+- TabRecap cleanup ranking;
+- TabRecap time recaps;
+- TabRecap progress copy;
+- the exact eight-token connection probe used by the settings screen.
 
-After `rate-limit-v1` has been applied, treat production fixes as forward-only.
-Cloudflare does not allow a Worker version rollback across a Durable Object
-migration, and storage resources are not restored with Worker code. Keep the
-binding and migration in every later deployment; test incompatible changes in a
-separate Wrangler environment, then deploy a compatible corrective version.
-See Cloudflare's [rollback limits](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/#limits)
-and [Durable Object migration guidance](https://developers.cloudflare.com/durable-objects/reference/durable-objects-migrations/).
+Generic chat, custom system prompts, tool calls, streaming, client-selected upstream URLs, unknown fields, oversized data, and models outside the allowlist are rejected before the upstream request.
 
-The current production Worker service name is still `tab-tidy-gateway`. That is
-intentional deploy continuity from the earlier product name, not user-facing
-branding. Rename it only when intentionally migrating to a new Cloudflare Worker.
+## Current shared models
 
-Use a Worker route for the public extension domain:
+The production allowlist is:
 
-```toml
-routes = [
-  { pattern = "cliproxy.sylvanyu.io/*", zone_name = "sylvanyu.io" }
-]
-```
+- `glm-5.2`
+- `kimi-k3`
+- `deepseek-v4-pro`
+- `deepseek-v4-flash`
 
-Keep the raw LLM gateway on a separate origin host such as
-`https://cliproxy-origin.sylvanyu.io/v1`. Do not set `UPSTREAM_BASE_URL` to
-`https://cliproxy.sylvanyu.io/v1`, because that would make the Worker call
-itself recursively.
+These are the Chat Completions models used from [OpenCode Go](https://opencode.ai/docs/go/). Keep the allowlist in `wrangler.toml` aligned with the upstream subscription and the README. `/v1/models` returns this list; it does not expose every model available from the upstream account.
 
-Set upstream values as Worker secrets:
-
-```bash
-npx wrangler secret put UPSTREAM_BASE_URL
-npx wrangler secret put UPSTREAM_API_KEY
-```
-
-For a local-machine origin, keep the retry budget small. These are normal
-Worker vars, already present in `worker/wrangler.toml`:
-
-```toml
-UPSTREAM_RETRY_ATTEMPTS = "2"
-UPSTREAM_RETRY_DELAY_MS = "1200"
-UPSTREAM_READY_TIMEOUT_MS = "8000"
-MAX_UPSTREAM_RESPONSE_BYTES = "1000000"
-LLM_READY_MODEL = "gpt-5.4-mini"
-LLM_READY_REASONING_EFFORT = "low"
-LLM_READY_MAX_TOKENS = "2"
-LLM_READY_TIMEOUT_MS = "45000"
-ALERT_TO = "me@sylvanyu.io"
-ALERT_FROM = "TabRecap Monitor <alerts@sylvanyu.io>"
-MONITOR_REMINDER_HOURS = "6"
-```
-
-The Worker retries only Cloudflare/Tunnel infrastructure failures such as
-`530` with `error code: 1033`, `502`, `503`, `504`, and Cloudflare `52x`
-origin errors. It does not retry model validation failures, `401`, `403`, or
-`429`, so it should not silently double-spend normal model requests.
-
-If the origin LLM gateway is behind Cloudflare Access, also set:
-
-```bash
-npx wrangler secret put CF_ACCESS_CLIENT_ID
-npx wrangler secret put CF_ACCESS_CLIENT_SECRET
-```
-
-Then deploy:
-
-```bash
-npx wrangler deploy --config worker/wrangler.toml
-```
-
-Health check:
-
-```bash
-curl https://cliproxy.sylvanyu.io/healthz
-```
-
-The Worker health response is `{"ok":true}`. This only proves the Worker is
-deployed. It does not prove the local origin machine, API-only proxy, or
-Cloudflare Tunnel is reachable.
-
-Readiness check:
-
-```bash
-curl https://cliproxy.sylvanyu.io/readyz
-```
-
-`/readyz` verifies both request-metering availability and the configured
-upstream health endpoint. It returns `503` if the Durable Object rate-limit
-binding is missing or unavailable, because public AI requests must fail closed
-when usage cannot be metered. By default the upstream check uses `/healthz` at
-the `UPSTREAM_BASE_URL` origin, so
-`UPSTREAM_BASE_URL=https://cliproxy-origin.sylvanyu.io/v1` checks
-`https://cliproxy-origin.sylvanyu.io/healthz`. Override with
-`UPSTREAM_HEALTH_URL` only if the origin uses a different health path.
-
-LLM readiness check:
-
-```bash
-npx wrangler secret put MONITOR_TOKEN --config worker/wrangler.toml
-curl -H "x-monitor-token: $MONITOR_TOKEN" https://cliproxy.sylvanyu.io/llm-readyz
-```
-
-`/llm-readyz` is intentionally separate from `/readyz`:
-
-- `/readyz` is free and verifies the Worker rate-limit binding plus the
-  Worker -> Tunnel -> local origin health path.
-- `/llm-readyz` spends a tiny amount of model usage by sending one protected
-  `gpt-5.4-mini`, `reasoning_effort=low`, `max_tokens=2` chat request through
-  the real upstream path.
-- The endpoint returns `401` unless the request includes `x-monitor-token` or
-  `Authorization: Bearer ...` matching the `MONITOR_TOKEN` Worker secret.
-
-Use `/llm-readyz` as a low-frequency external monitor. The current production
-policy is every 30 minutes with email alerts, while `/readyz` can run every
-1-3 minutes.
-
-Latest monitor status:
-
-```bash
-curl -H "x-monitor-token: $MONITOR_TOKEN" https://cliproxy.sylvanyu.io/monitor/status
-```
-
-`/monitor/status` reads the last Cron monitor snapshot from KV. It does not call
-the upstream origin and does not spend model usage. Use it when an email says
-the gateway is down, or when the extension shows the default AI service as
-temporarily unavailable. The response reports the last `readyz` and
-`llm-readyz` result codes, the last alert event, and whether email/upstream/state
-storage are configured. It intentionally does not expose the upstream URL,
-gateway keys, Resend key, alert mailbox, prompts, page titles, or page text.
-
-Scheduled email monitoring:
-
-```bash
-npx wrangler secret put RESEND_API_KEY --config worker/wrangler.toml
-npx wrangler deploy --config worker/wrangler.toml
-```
-
-The Worker has a Cron Trigger:
-
-```toml
-[triggers]
-crons = ["*/30 * * * *"]
-```
-
-Every 30 minutes it first checks the free local-origin readiness path. Only
-when that passes does it run the tiny real LLM probe, so a broken Tunnel or
-offline local origin will not spend model usage. It sends email through the
-Resend HTTP API only when state changes:
-
-- first detected outage;
-- recovery after an outage;
-- reminder after `MONITOR_REMINDER_HOURS` while still down.
-
-This Cron runs inside the same Worker it monitors. It detects local origin,
-Tunnel, model, and email-delivery failures while the Worker is running, but it
-cannot send an alert if the Worker route, Cloudflare account, or Cron execution
-itself is completely unavailable. Use an independent uptime monitor against
-`/healthz` for that dead-man check; keep `/monitor/status` for inspecting the
-last internal probe after an alert.
-
-If `RESEND_API_KEY`, `ALERT_TO`, or `ALERT_FROM` is missing, the scheduled job
-returns early and does not run the real LLM probe, so it will not spend model
-usage before email delivery is configured.
-
-Each chat request now carries an `x-tab-recap-request-id` response header. The
-extension sends the side-panel operation id as this header for default gateway
-traffic, so a user-visible error can be matched with Worker logs and local
-origin logs. The side panel keeps this request id in localized gateway error
-copy, including custom provider errors, while still hiding raw upstream details.
-
-When the upstream path fails, the Worker converts raw upstream failures into
-redacted TabRecap JSON errors instead of relaying text or HTML bodies to the
-extension. This covers Cloudflare Tunnel failures, origin auth failures, model
-gateway bad requests, and upstream rate limits. For example, when the local
-Tunnel is down the extension receives JSON such as:
-
-```json
-{
-  "error": {
-    "code": "origin_tunnel_unavailable",
-    "message": "The local TabRecap AI origin is offline or its Cloudflare Tunnel has no healthy connection.",
-    "requestId": "recap_..."
-  }
-}
-```
-
-That is intentionally different from relaying an HTML/`error code: 1033` body
-to the extension. Upstream raw text is not copied into these product errors
-because it can contain provider internals, prompt fragments, or local service
-details. Use `x-tab-recap-request-id`, `upstreamStatus`, and `upstreamCode` to
-correlate the visible error with Worker tail logs and local origin logs.
-
-## Local-Machine Origin Checklist
-
-The production-facing hostname can still use a local Mac as the origin, but the
-chain must stay up:
+Recommended TabRecap settings:
 
 ```text
-extension -> cliproxy.sylvanyu.io Worker -> cliproxy-origin.sylvanyu.io tunnel -> 127.0.0.1:18317 -> 127.0.0.1:8317
+Primary model:   glm-5.2
+Auxiliary model: deepseek-v4-flash
 ```
 
-Operational checks, in order:
+The auxiliary field can be left blank to reuse the primary model.
+
+## Abuse controls
+
+The Worker enforces all limits before forwarding a request:
+
+- 1 MB request body;
+- 8,192 output tokens;
+- 20 requests per IP per hour;
+- 100 requests per IP per day;
+- 20 page-summary jobs per IP per day;
+- 3,000 requests across the service per day;
+- strict payload schemas, row counts, nesting depth, field lengths, and model allowlisting.
+
+Counters are updated atomically in a Durable Object. The connection IP is converted to a keyed HMAC digest before it is used in a storage key. Raw IP addresses and request bodies are not written to Durable Object or monitor state.
+
+`RATE_LIMIT_HASH_KEY` should be a separate random Worker Secret. If it is absent, the Worker uses `UPSTREAM_API_KEY` as the HMAC key so production does not fall back to an unkeyed IP hash.
+
+Do not set `ALLOW_UNMETERED=true` in production.
+
+## Secrets
+
+Set values interactively in the Cloudflare dashboard or with Wrangler. Never put values in `wrangler.toml`, a shell command argument, source control, screenshots, or release notes.
+
+Required:
+
+- `UPSTREAM_BASE_URL` — `https://opencode.ai/zen/go/v1`
+- `UPSTREAM_API_KEY` — the OpenCode Go subscription key
+- `RATE_LIMIT_HASH_KEY` — a separate random value used only for IP counter digests
+
+Optional monitoring:
+
+- `MONITOR_TOKEN`
+- `RESEND_API_KEY`
+
+Wrangler prompts for each value without placing it in the command itself:
 
 ```bash
-curl -sS http://127.0.0.1:8317/healthz
-curl -sS http://127.0.0.1:18317/healthz
-curl -sS https://cliproxy-origin.sylvanyu.io/healthz
-curl -sS https://cliproxy.sylvanyu.io/readyz
+npx wrangler secret put UPSTREAM_BASE_URL --config worker/wrangler.toml
+npx wrangler secret put UPSTREAM_API_KEY --config worker/wrangler.toml
+npx wrangler secret put RATE_LIMIT_HASH_KEY --config worker/wrangler.toml
+npx wrangler secret put MONITOR_TOKEN --config worker/wrangler.toml
+npx wrangler secret put RESEND_API_KEY --config worker/wrangler.toml
 ```
 
-If `/healthz` on `cliproxy.sylvanyu.io` is 200 but `/readyz` is 503, the Worker
-is alive and the local origin path is not. Restart the local CLIProxyAPI stack
-and Cloudflare Tunnel before changing extension code or model settings.
+A provider key pasted into chat, logs, screenshots, or shell history should be rotated before production use.
 
-## Local Tests
+## Deploy
+
+Confirm the account, secrets, KV namespace, Durable Object binding, route, and zone before deployment:
+
+```bash
+npx wrangler whoami
+npx wrangler secret list --config worker/wrangler.toml
+npx wrangler deploy --config worker/wrangler.toml
+```
+
+The service name remains `tab-tidy-gateway` to preserve the existing Cloudflare deployment and Durable Object migration. The public product name is TabRecap.
+
+After deployment:
+
+```bash
+curl -fsS https://cliproxy.sylvanyu.io/healthz
+curl -fsS https://cliproxy.sylvanyu.io/readyz
+curl -fsS https://cliproxy.sylvanyu.io/v1/models
+```
+
+Do not send a provider key to the public Worker. The Worker ignores client authorization for upstream authentication and injects its own secret.
+
+## Tests
 
 ```bash
 npm run test:worker
 ```
 
-The tests use an in-memory KV and mocked upstream fetch. They never call the
-real LLM gateway.
+The test suite covers request-contract enforcement, model discovery, connection probes, provider-compatible requests without `response_format`, secret replacement, error redaction, response bounds, CORS, monitoring, atomic quotas, hourly and daily IP limits, and hashed IP storage keys.
 
-Production gateway smoke:
+## CORS and permissions
 
-```bash
-npm run smoke:gateway
-```
+The Worker returns CORS permission only to Chrome/Firefox extension origins and local development origins. The extension requests the exact endpoint origin at runtime. There is no fixed gateway host permission in `manifest.json`.
 
-For the built-in gateway, the smoke script checks `/healthz`, `/readyz`, reads
-`/monitor/status` when a token is available, and sends a real
-chat-completions request. The monitor snapshot is reported for diagnosis, but a
-stale scheduled outage does not block the live smoke when the current readiness
-and chat checks pass. It reads `MONITOR_TOKEN`, then `MONITOR_TOKEN_FILE`, then
-this machine's default local runtime token file. On another machine, point it
-at the copied monitor token:
-
-```bash
-MONITOR_TOKEN_FILE="/path/to/cliproxy-monitor-token" npm run smoke:gateway
-```
-
-Use `GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway` for release-blocking
-checks that also require a fresh healthy monitor snapshot.
+The public URL is still reachable by non-browser clients, so CORS is not the abuse boundary. Schema validation, model allowlisting, size limits, token limits, IP quotas, and global quotas provide that boundary.
