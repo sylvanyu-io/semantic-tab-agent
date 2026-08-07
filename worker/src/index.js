@@ -995,7 +995,7 @@ function upstreamRequest(bodyText, upstream, signal, requestId = "") {
     headers["cf-access-client-id"] = upstream.accessClientId;
     headers["cf-access-client-secret"] = upstream.accessClientSecret;
   }
-  return { method: "POST", headers, body: bodyText, signal, redirect: "error" };
+  return { method: "POST", headers, body: bodyText, signal, redirect: "manual" };
 }
 
 async function fetchUpstreamWithRetries(fetchImpl, upstream, bodyText, request, limits, requestId) {
@@ -1197,7 +1197,7 @@ async function checkUpstreamReadiness(env, options = {}) {
     const response = await fetchWithTimeout(
       fetchImpl,
       url,
-      { method: "GET", headers: upstreamHealthHeaders(upstream), redirect: "error" },
+      { method: "GET", headers: upstreamHealthHeaders(upstream), redirect: "manual" },
       limits.upstreamReadyTimeoutMs
     );
     const bodyResult = await readResponseText(response, limits.upstreamResponseBytes, {

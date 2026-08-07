@@ -48,7 +48,7 @@ test("worker readiness check reaches the configured local origin health endpoint
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "https://raw-llm.example/v1/models");
   assert.equal(calls[0].options.headers.authorization, "Bearer upstream-secret");
-  assert.equal(calls[0].options.redirect, "error");
+  assert.equal(calls[0].options.redirect, "manual");
   assert.equal(body.rateLimit.ok, true);
 });
 
@@ -897,7 +897,7 @@ test("worker forwards with upstream secret and strips client authorization", asy
   assert.match(calls[0].options.headers["x-tab-recap-request-id"], /.+/);
   assert.equal(calls[0].options.headers["cf-access-client-id"], "access-id");
   assert.equal(calls[0].options.headers["cf-access-client-secret"], "access-secret");
-  assert.equal(calls[0].options.redirect, "error");
+  assert.equal(calls[0].options.redirect, "manual");
   assert.deepEqual(Object.keys(JSON.parse(calls[0].options.body)).sort(), [
     "max_tokens",
     "messages",
