@@ -4,8 +4,8 @@ The gateway is no longer an extension default. Its public URL appears only in th
 
 ## Production values
 
-- Worker service: `tab-tidy-gateway` (kept for deployment continuity)
-- Public Base URL: `https://cliproxy.sylvanyu.io/v1`
+- Worker service: `tab-recap-gateway`
+- Public Base URL: `https://tab-recap-gateway.sylvan-yu.workers.dev/v1`
 - Upstream Base URL: `https://opencode.ai/zen/go/v1`
 - Primary model: `glm-5.2`
 - Auxiliary and health model: `deepseek-v4-flash`
@@ -31,9 +31,9 @@ Never add secret values to this file, `wrangler.toml`, source code, shell argume
 ## Post-deploy check
 
 ```bash
-curl -fsS https://cliproxy.sylvanyu.io/healthz
-curl -fsS https://cliproxy.sylvanyu.io/readyz
-curl -fsS https://cliproxy.sylvanyu.io/v1/models
+curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/healthz
+curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/readyz
+curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/v1/models
 ```
 
 Then use the extension's **Test connection** action with the shared Base URL, no client key, `glm-5.2` as primary, and `deepseek-v4-flash` as auxiliary.

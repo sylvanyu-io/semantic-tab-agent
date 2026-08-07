@@ -2,7 +2,7 @@
 
 This Cloudflare Worker backs the optional trial endpoint documented in the project README. It is deliberately narrower than a general OpenAI proxy.
 
-The extension does not contain this URL as a default and does not contain the upstream provider key. Users who choose the shared endpoint enter `https://cliproxy.sylvanyu.io/v1` themselves.
+The extension does not contain this URL as a default and does not contain the upstream provider key. Users who choose the shared endpoint enter `https://tab-recap-gateway.sylvan-yu.workers.dev/v1` themselves.
 
 ## What the Worker accepts
 
@@ -103,14 +103,14 @@ npx wrangler secret list --config worker/wrangler.toml
 npx wrangler deploy --config worker/wrangler.toml
 ```
 
-The service name remains `tab-tidy-gateway` to preserve the existing Cloudflare deployment and Durable Object migration. The public product name is TabRecap.
+The service is deployed as the dedicated `tab-recap-gateway` Worker. It does not share the retired `cliproxy.sylvanyu.io` route.
 
 After deployment:
 
 ```bash
-curl -fsS https://cliproxy.sylvanyu.io/healthz
-curl -fsS https://cliproxy.sylvanyu.io/readyz
-curl -fsS https://cliproxy.sylvanyu.io/v1/models
+curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/healthz
+curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/readyz
+curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/v1/models
 ```
 
 Do not send a provider key to the public Worker. The Worker ignores client authorization for upstream authentication and injects its own secret.
