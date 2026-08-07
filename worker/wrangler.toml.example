@@ -1,13 +1,9 @@
-# Production Cloudflare Worker service name. Keep this only when deploying to
-# the existing TabRecap gateway; rename it for a separate deployment.
-name = "tab-tidy-gateway"
+# Dedicated public trial gateway. Use a separate workers.dev hostname instead
+# of attaching it to an unrelated production domain.
+name = "tab-recap-gateway"
 main = "src/index.js"
 compatibility_date = "2026-06-24"
-workers_dev = false
-
-routes = [
-  { pattern = "cliproxy.sylvanyu.io/*", zone_name = "sylvanyu.io" }
-]
+workers_dev = true
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"

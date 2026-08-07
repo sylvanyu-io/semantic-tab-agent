@@ -1647,7 +1647,7 @@ function monitorEmailText(event, summary, checks, now) {
     `- llm-readyz sends a tiny real ${checks.llm?.model || DEFAULT_LLM_READY_MODEL} / low / max_tokens=2 request only after readyz passes.`,
     "",
     "Runbook:",
-    "1. Check https://cliproxy.sylvanyu.io/readyz",
+    "1. Check the TabRecap Worker's /readyz endpoint",
     "2. If rate-limit fails, verify the RATE_LIMIT_DO binding and Durable Object migration.",
     "3. If readyz fails, restart the local CLIProxyAPI stack and Cloudflare Tunnel.",
     "4. If readyz passes but llm-readyz fails, inspect model availability and CLIProxyAPI logs."

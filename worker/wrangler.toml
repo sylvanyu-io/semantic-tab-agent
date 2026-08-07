@@ -1,13 +1,9 @@
-# Production Cloudflare Worker service name. Kept for deploy continuity after
-# the product rename to TabRecap; do not rename unless migrating the Worker.
-name = "tab-tidy-gateway"
+# Dedicated public trial gateway. It intentionally uses a workers.dev hostname
+# instead of sharing the retired cliproxy.sylvanyu.io route.
+name = "tab-recap-gateway"
 main = "src/index.js"
 compatibility_date = "2026-06-24"
-workers_dev = false
-
-routes = [
-  { pattern = "cliproxy.sylvanyu.io/*", zone_name = "sylvanyu.io" }
-]
+workers_dev = true
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
