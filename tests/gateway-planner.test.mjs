@@ -4,12 +4,14 @@ import {
   buildPlannerPayload,
   buildPlannerSystemPrompt,
   createGatewayPlan,
+  gatewayModelsUrl,
+  listGatewayModels,
   shouldRequestJsonResponseFormat,
   testGatewayConnection
 } from "../src/core/gateway-planner.js";
 import { validatePlan } from "../src/core/plan-validator.js";
 import {
-  DEFAULT_SETTINGS,
+  DEFAULT_SETTINGS as BASE_DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
   GATEWAY_PROVIDER_MODES,
   GROUPING_GRANULARITIES,
@@ -17,6 +19,13 @@ import {
   PROMPT_PRESETS,
   URL_PRIVACY_MODES
 } from "../src/shared/settings.js";
+
+const DEFAULT_SETTINGS = Object.freeze({
+  ...BASE_DEFAULT_SETTINGS,
+  gatewayBaseUrl: "https://api.example.test/v1",
+  gatewayCustomModel: "test-model",
+  gatewayApiKey: "gateway-test-key"
+});
 
 const inventory = {
   scope: { kind: "current_window", currentWindowId: 1, windowIds: [1] },
@@ -159,7 +168,7 @@ test("custom prompt is framed as preferences, not permission or capability grant
 });
 
 test("custom gateway base URLs use compatible JSON prompting without OpenAI-only response format", () => {
-  assert.equal(shouldRequestJsonResponseFormat({ ...DEFAULT_SETTINGS }), true);
+  assert.equal(shouldRequestJsonResponseFormat({ ...DEFAULT_SETTINGS }), false);
   assert.equal(
     shouldRequestJsonResponseFormat({
       ...DEFAULT_SETTINGS,
@@ -216,7 +225,7 @@ test("AI gateway planner posts a custom chat-completions JSON request", async ()
     assert.equal(options.method, "POST");
     assert.equal(options.headers.authorization, "Bearer gateway-test-key");
     const body = JSON.parse(options.body);
-    assert.equal(body.model, "gpt-5.4");
+    assert.equal(body.model, "test-model");
     assert.equal(body.response_format, undefined);
     assert.equal(body.reasoning_effort, undefined);
     assert.match(body.messages[0].content, /JSON-only planner/);
@@ -1072,7 +1081,7 @@ test("AI gateway planner sends a custom model name to custom gateways", async ()
     assert.equal(url, "https://open.bigmodel.cn/api/paas/v4/chat/completions");
     const body = JSON.parse(options.body);
     assert.equal(body.model, "glm-5.2");
-    assert.deepEqual(body.thinking, { type: "enabled" });
+    assert.equal(body.thinking, undefined);
     assert.equal(body.response_format, undefined);
     assert.equal(body.reasoning_effort, undefined);
     assert.equal(options.headers.authorization, "Bearer glm-key");
@@ -1162,7 +1171,7 @@ test("AI gateway planner prefers manual model names when a custom base URL is se
   assert.deepEqual(plan, expectedPlan);
 });
 
-test("AI gateway planner ignores custom model names unless a custom provider is selected", async () => {
+test("AI gateway planner accepts a full chat-completions endpoint", async () => {
   const expectedPlan = {
     schemaVersion: 1,
     mode: "current_window",
@@ -1190,10 +1199,10 @@ test("AI gateway planner ignores custom model names unless a custom provider is 
   };
 
   const fetchImpl = async (url, options) => {
-    assert.equal(url, "https://cliproxy.sylvanyu.io/v1/chat/completions");
+    assert.equal(url, "https://proxy.example.test/v1/chat/completions");
     const body = JSON.parse(options.body);
-    assert.equal(body.model, DEFAULT_SETTINGS.gatewayModel);
-    assert.equal(options.headers.authorization, undefined);
+    assert.equal(body.model, "claude-opus-4-7");
+    assert.equal(options.headers.authorization, "Bearer custom-key");
     return {
       ok: true,
       async json() {
@@ -1207,8 +1216,10 @@ test("AI gateway planner ignores custom model names unless a custom provider is 
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "https://proxy.example.test/v1/chat/completions",
       gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
-      gatewayCustomModel: "claude-opus-4-7"
+      gatewayCustomModel: "claude-opus-4-7",
+      gatewayApiKey: "custom-key"
     },
     fetchImpl
   );
@@ -1232,7 +1243,7 @@ test("AI gateway planner rejects blank custom model names", async () => {
         throw new Error("fetch should not be called");
       }
     ),
-    /请填写自定义模型名/
+    /请填写模型 ID/
   );
 });
 
@@ -1276,6 +1287,54 @@ test("AI gateway connection test sends a minimal custom API ping", async () => {
     auxiliaryModel: "glm-5.2",
     baseUrl: "https://api.deepseek.com/v1"
   });
+});
+
+test("AI gateway model list comes from the user API and remains provider-neutral", async () => {
+  assert.equal(
+    gatewayModelsUrl({ ...DEFAULT_SETTINGS, gatewayBaseUrl: "https://opencode.ai/zen/go/v1/chat/completions" }),
+    "https://opencode.ai/zen/go/v1/models"
+  );
+
+  const result = await listGatewayModels(
+    {
+      ...DEFAULT_SETTINGS,
+      gatewayBaseUrl: "https://opencode.ai/zen/go/v1",
+      gatewayApiKey: "model-list-test-key"
+    },
+    async (url, options) => {
+      assert.equal(url, "https://opencode.ai/zen/go/v1/models");
+      assert.equal(options.method, "GET");
+      assert.equal(options.headers.authorization, "Bearer model-list-test-key");
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            data: [
+              { id: "glm-5.2" },
+              { id: "kimi-k3" },
+              { id: "deepseek-v4-pro" },
+              { id: "kimi-k3" }
+            ]
+          };
+        }
+      };
+    }
+  );
+
+  assert.deepEqual(result.models, ["glm-5.2", "kimi-k3", "deepseek-v4-pro"]);
+});
+
+test("AI gateway model list accepts a simple models array", async () => {
+  const result = await listGatewayModels(DEFAULT_SETTINGS, async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return { models: ["qwen-plus", { id: "deepseek-v4-flash" }] };
+    }
+  }));
+
+  assert.deepEqual(result.models, ["qwen-plus", "deepseek-v4-flash"]);
 });
 
 test("AI gateway connection test keeps custom auxiliary model with default primary model", async () => {
@@ -1333,7 +1392,7 @@ test("AI gateway connection test hides raw network failures and secrets", async 
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.equal(message, "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。");
+      assert.equal(message, "API 暂时连不上。请检查地址、模型 ID、密钥或上游服务后重试。");
       assert.equal(message.includes(privateKey), false);
       assert.equal(message.includes(privateUrl), false);
       assert.equal(message.includes("Bearer"), false);
@@ -1360,7 +1419,7 @@ test("AI gateway connection test maps custom API timeout to product copy", async
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.equal(message, "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
+      assert.equal(message, "API 连接超时。请检查地址、模型 ID、密钥或上游服务后重试。");
       assert.equal(message.includes("AI gateway connection test timed out"), false);
       assert.equal(message.includes("timed out after"), false);
       return true;
@@ -1436,10 +1495,10 @@ test("AI gateway payload omits excluded tab titles", async () => {
   assert.deepEqual(plan.excludedTabs, expectedPlan.excludedTabs);
 });
 
-test("AI gateway planner maps ultra thinking to gateway-compatible high effort", async () => {
+test("custom gateways keep ultra thinking in the prompt without provider-specific fields", async () => {
   const fetchImpl = async (_url, options) => {
     const body = JSON.parse(options.body);
-    assert.equal(body.reasoning_effort, "high");
+    assert.equal(body.reasoning_effort, undefined);
     assert.match(body.messages[0].content, /ultra-high/);
     assert.match(body.messages[1].content, /"thinkingIntensity":"ultra"/);
     return {
@@ -1718,145 +1777,31 @@ test("AI gateway planner deduplicates compact review refs", async () => {
   ]);
 });
 
-test("AI gateway planner can call a no-key custom gateway with the default model", async () => {
-  const fetchImpl = async (url, options) => {
-    assert.equal(url, "http://localhost:8317/v1/chat/completions");
-    assert.equal(options.headers.authorization, undefined);
-    assert.equal(options.headers["content-type"], "application/json");
-    assert.equal(JSON.parse(options.body).model, DEFAULT_SETTINGS.gatewayModel);
-    return {
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  schemaVersion: 1,
-                  mode: "current_window",
-                  scope: { kind: "current_window", windowIds: [1] },
-                  targetWindow: { kind: "current_window", windowId: 1, title: "Current Window" },
-                  eligibleTabs: [
-                    { tabId: 10, windowId: 1 },
-                    { tabId: 11, windowId: 1 }
-                  ],
-                  excludedTabs: [],
-                  groups: [],
-                  reviewTabs: [
-                    { tabId: 10, windowId: 1, reason: "Review." },
-                    { tabId: 11, windowId: 1, reason: "Review." }
-                  ]
-                })
-              }
-            }
-          ]
-        };
-      }
-    };
-  };
-
+test("AI gateway planner supports endpoints that do not require an API key", async () => {
+  let requestHeaders;
   const plan = await createGatewayPlan(
     inventory,
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
-      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayBaseUrl: "http://localhost:8317/v1",
       gatewayApiKey: ""
     },
-    fetchImpl
+    async (_url, init) => {
+      requestHeaders = init.headers;
+      return {
+        ok: true,
+        async json() {
+          return {
+            choices: [{ message: { content: JSON.stringify({ schema: "tab_recap_plan_compact_v1", groups: [], review: [10, 11] }) } }]
+          };
+        }
+      };
+    }
   );
-  assert.equal(plan.reviewTabs.length, 2);
-});
 
-test("AI gateway planner uses the default gateway without exposing authorization", async () => {
-  const fetchImpl = async (url, options) => {
-    assert.equal(url, "https://cliproxy.sylvanyu.io/v1/chat/completions");
-    assert.equal(options.headers.authorization, undefined);
-    assert.equal(options.headers["x-tab-recap-install-id"], "install-test");
-    assert.equal(options.headers["x-tab-recap-page-summary"], "1");
-    return {
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  schemaVersion: 1,
-                  mode: "current_window",
-                  scope: { kind: "current_window", windowIds: [1] },
-                  targetWindow: { kind: "current_window", windowId: 1, title: "Current Window" },
-                  eligibleTabs: [
-                    { tabId: 10, windowId: 1 },
-                    { tabId: 11, windowId: 1 }
-                  ],
-                  excludedTabs: [],
-                  groups: [],
-                  reviewTabs: [
-                    { tabId: 10, windowId: 1, reason: "Review." },
-                    { tabId: 11, windowId: 1, reason: "Review." }
-                  ]
-                })
-              }
-            }
-          ]
-        };
-      }
-    };
-  };
-
-  const plan = await createGatewayPlan(
-    inventory,
-    { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "" },
-    fetchImpl,
-    { installId: "install-test" }
-  );
-  assert.equal(plan.reviewTabs.length, 2);
-});
-
-test("AI gateway planner ignores stale user keys for the built-in gateway", async () => {
-  const fetchImpl = async (_url, options) => {
-    assert.equal(options.headers.authorization, undefined);
-    assert.equal(options.headers["x-tab-recap-install-id"], "install-test");
-    return {
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  schemaVersion: 1,
-                  mode: "current_window",
-                  scope: { kind: "current_window", windowIds: [1] },
-                  targetWindow: { kind: "current_window", windowId: 1, title: "Current Window" },
-                  eligibleTabs: [
-                    { tabId: 10, windowId: 1 },
-                    { tabId: 11, windowId: 1 }
-                  ],
-                  excludedTabs: [],
-                  groups: [],
-                  reviewTabs: [
-                    { tabId: 10, windowId: 1, reason: "Review." },
-                    { tabId: 11, windowId: 1, reason: "Review." }
-                  ]
-                })
-              }
-            }
-          ]
-        };
-      }
-    };
-  };
-
-  const plan = await createGatewayPlan(
-    inventory,
-    { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "stale-key" },
-    fetchImpl,
-    { installId: "install-test" }
-  );
-  assert.equal(plan.reviewTabs.length, 2);
+  assert.equal(requestHeaders.authorization, undefined);
+  assert.deepEqual(plan.reviewTabs.map((item) => item.tabId), [10, 11]);
 });
 
 test("AI gateway planner surfaces auth failures as product copy", async () => {
@@ -1881,7 +1826,7 @@ test("AI gateway planner surfaces auth failures as product copy", async () => {
         },
         fetchImpl
       ),
-    /请检查自定义网关地址和密钥/
+    /请检查 API 地址和密钥/
   );
 });
 
@@ -1907,11 +1852,11 @@ test("AI gateway planner surfaces infrastructure failures as product copy", asyn
         },
         fetchImpl
       ),
-    /自定义 AI 网关暂时连不上/
+    /AI 网关暂时连不上/
   );
 });
 
-test("AI gateway planner maps built-in tunnel errors to retry copy", async () => {
+test("AI gateway planner maps tunnel errors to retry copy", async () => {
   const fetchImpl = async () => ({
     ok: false,
     status: 530,
@@ -1930,17 +1875,17 @@ test("AI gateway planner maps built-in tunnel errors to retry copy", async () =>
         },
         fetchImpl
       ),
-    /默认 AI 服务的本地源站暂时离线/
+    /AI 网关的源站暂时离线/
   );
 });
 
-test("AI gateway planner maps built-in model allowlist failures to model copy", async () => {
+test("AI gateway planner maps model allowlist failures to model copy", async () => {
   const fetchImpl = async () => ({
     ok: false,
     status: 400,
     headers: {
       get(name) {
-        return name.toLowerCase() === "x-tab-recap-request-id" ? "req_builtin_model" : "";
+        return name.toLowerCase() === "x-tab-recap-request-id" ? "req_custom_model" : "";
       }
     },
     async text() {
@@ -1967,8 +1912,8 @@ test("AI gateway planner maps built-in model allowlist failures to model copy", 
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.match(message, /默认 AI 服务暂时不支持这个模型/);
-      assert.match(message, /req_builtin_model/);
+      assert.match(message, /这个 API 不支持当前模型/);
+      assert.match(message, /req_custom_model/);
       assert.doesNotMatch(message, /这次没有成功完成/);
       return true;
     }
@@ -2007,7 +1952,7 @@ test("AI gateway planner localizes request ids in English error copy", async () 
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.match(message, /The default AI service does not support this model right now/);
+      assert.match(message, /This API does not support the current model/);
       assert.match(message, /\(request id req_en_model\)/);
       assert.doesNotMatch(message, /请求号/);
       return true;
@@ -2046,7 +1991,7 @@ test("AI gateway planner maps custom model allowlist failures to custom model co
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.match(message, /自定义 API 不支持这个模型/);
+      assert.match(message, /这个 API 不支持当前模型/);
       assert.doesNotMatch(message, /This model is not available/);
       assert.doesNotMatch(message, /这次没有完成请求/);
       return true;
@@ -2076,7 +2021,7 @@ test("AI gateway planner accepts common non-infrastructure string error payloads
         },
         fetchImpl
       ),
-    /自定义 AI 网关这次没有完成请求（400）。bad prompt shape/
+    /AI 服务没有完成请求（400）。bad prompt shape/
   );
 });
 
@@ -2107,7 +2052,7 @@ test("AI gateway planner keeps request ids on custom provider error details", as
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.match(message, /自定义 AI 网关这次没有完成请求（400）。bad prompt shape/);
+      assert.match(message, /AI 服务没有完成请求（400）。bad prompt shape/);
       assert.match(message, /请求号 req_custom_generic/);
       return true;
     }
@@ -2176,7 +2121,7 @@ test("AI gateway planner redacts custom provider error details before surfacing 
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.match(message, /自定义 AI 网关这次没有完成请求（400）。/);
+      assert.match(message, /AI 服务没有完成请求（400）。/);
       assert.match(message, /\[redacted-url\]/);
       assert.match(message, /Bearer \[redacted\]/);
       assert.equal(message.includes(providerKey), false);
@@ -2216,7 +2161,7 @@ test("AI gateway planner caps custom provider error details before surfacing the
       ),
     (error) => {
       const message = String(error?.message || "");
-      assert.match(message, /自定义 AI 网关这次没有完成请求（500）。/);
+      assert.match(message, /AI 服务没有完成请求（500）。/);
       assert.equal(message.length < 340, true);
       assert.match(message, /\.\.\.$/);
       assert.equal(message.includes(providerKey), false);
@@ -2394,8 +2339,8 @@ test("AI gateway planner uses coarse then refine planning for large inventories"
   const validation = validatePlan(plan, largeInventory, settings);
 
   assert.equal(requests.length, 3);
-  assert.equal(requests[0].reasoning_effort, "low");
-  assert.equal(requests[1].reasoning_effort, "medium");
+  assert.equal(requests[0].reasoning_effort, undefined);
+  assert.equal(requests[1].reasoning_effort, undefined);
   assert.match(requests[0].messages[0].content, /fast first-pass/);
   assert.match(requests[0].messages[0].content, /Write every user-facing string in English/);
   assert.match(requests[1].messages[0].content, /JSON-only planner/);
@@ -2677,7 +2622,7 @@ test("AI gateway planner routes 50-tab product sessions through hierarchical wor
   const validation = validatePlan(plan, thresholdInventory, settings);
 
   assert.equal(requests.length, 2);
-  assert.equal(requests.every((request) => request.model === "gpt-5.3-codex-spark"), true);
+  assert.equal(requests.every((request) => request.model === "test-model"), true);
   assert.match(requests[0].messages[0].content, /fast first-pass/);
   assert.match(requests[1].messages[0].content, /cleanup ranking planner/);
   assert.equal(validation.ok, true, validation.errors.join(" "));
@@ -2749,172 +2694,6 @@ test("AI gateway planner does not turn hierarchical cleanup cancellation into fa
     () =>
       createGatewayPlan(
         thresholdInventory,
-        { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
-        fetchImpl,
-        { signal: abortController.signal }
-      ),
-    /canceled|aborted/i
-  );
-  assert.equal(cleanupStarted, true);
-});
-
-test("AI gateway planner splits sub-50 cleanup ranking to the auxiliary model", async () => {
-  const plannerTabs = Array.from({ length: 33 }, (_, index) => ({
-    tabId: 30_000 + index,
-    windowId: 1,
-    index,
-    sequenceIndex: index,
-    title: `Small cleanup tab ${index}`,
-    hostname: "example.com"
-  }));
-  const smallInventory = { ...inventory, plannerTabs, tabs: plannerTabs, pageSamples: [] };
-  const requests = [];
-
-  const fetchImpl = async (_url, options) => {
-    const body = JSON.parse(options.body);
-    requests.push(body);
-    const payload = JSON.parse(body.messages[1].content.slice(body.messages[1].content.indexOf("{")));
-
-    if (/cleanup ranking planner/.test(body.messages[0].content)) {
-      assert.equal(body.model, "gpt-5.3-codex-spark");
-      assert.equal(payload.schema, "tab_recap_cleanup_ranking_v1");
-      assert.equal(payload.cleanupInstructions.actionLimit, 33);
-      assert.equal(payload.proposedGroups.length, 2);
-      return {
-        ok: true,
-        async json() {
-          return {
-            choices: [
-              {
-                message: {
-                  content: JSON.stringify({
-                    summary: "Review checklist.",
-                    candidates: [{ id: 30_032, priority: "high", reason: "Old tail tab.", evidence: ["end of session"] }]
-                  })
-                }
-              }
-            ]
-          };
-        }
-      };
-    }
-
-    assert.equal(body.model, "gpt-5.4");
-    assert.equal(payload.analysisFeatures.cleanup, false);
-    assert.equal(payload.cleanupInstructions, undefined);
-    return {
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  groups: [
-                    {
-                      key: "small-a",
-                      title: "Small A",
-                      color: "blue",
-                      confidence: 0.95,
-                      ids: plannerTabs.slice(0, 18).map((tab) => tab.tabId),
-                      reason: "First small group."
-                    },
-                    {
-                      key: "small-b",
-                      title: "Small B",
-                      color: "green",
-                      confidence: 0.95,
-                      ids: plannerTabs.slice(18).map((tab) => tab.tabId),
-                      reason: "Second small group."
-                    }
-                  ],
-                  review: []
-                })
-              }
-            }
-          ]
-        };
-      }
-    };
-  };
-
-  const settings = {
-    ...DEFAULT_SETTINGS,
-    plannerProvider: PLANNER_PROVIDERS.GATEWAY,
-    gatewayApiKey: "gateway-test-key"
-  };
-  const plan = await createGatewayPlan(smallInventory, settings, fetchImpl);
-  const validation = validatePlan(plan, smallInventory, settings);
-
-  assert.equal(requests.length, 2);
-  assert.match(requests[0].messages[0].content, /JSON-only planner/);
-  assert.match(requests[1].messages[0].content, /cleanup ranking planner/);
-  assert.equal(validation.ok, true, validation.errors.join(" "));
-  assert.deepEqual(
-    plan.groups.map((group) => group.tabRefs.length),
-    [18, 15]
-  );
-  assert.equal(plan.cleanup.candidates.length, 33);
-  assert.equal(plan.cleanup.candidates[0].tabId, 30_032);
-  assert.equal(plan.cleanup.candidates[1].priority, "low");
-});
-
-test("AI gateway planner does not turn split cleanup cancellation into fallback", async () => {
-  const plannerTabs = Array.from({ length: 33 }, (_, index) => ({
-    tabId: 41_000 + index,
-    windowId: 1,
-    index,
-    sequenceIndex: index,
-    title: `Cancelable split tab ${index}`,
-    hostname: "example.com"
-  }));
-  const smallInventory = { ...inventory, plannerTabs, tabs: plannerTabs, pageSamples: [] };
-  const abortController = new AbortController();
-  let cleanupStarted = false;
-
-  const fetchImpl = async (_url, options) => {
-    const body = JSON.parse(options.body);
-    if (/cleanup ranking planner/.test(body.messages[0].content)) {
-      cleanupStarted = true;
-      const pending = new Promise((_resolve, reject) => {
-        options.signal.addEventListener("abort", () => reject(new Error("cleanup fetch aborted")), { once: true });
-      });
-      abortController.abort();
-      return pending;
-    }
-
-    return {
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  groups: [
-                    {
-                      key: "split-main",
-                      title: "Split Main",
-                      color: "blue",
-                      confidence: 0.95,
-                      ids: plannerTabs.map((tab) => tab.tabId),
-                      reason: "Grouping completed before cleanup."
-                    }
-                  ],
-                  review: []
-                })
-              }
-            }
-          ]
-        };
-      }
-    };
-  };
-
-  await assert.rejects(
-    () =>
-      createGatewayPlan(
-        smallInventory,
         { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY, gatewayApiKey: "gateway-test-key" },
         fetchImpl,
         { signal: abortController.signal }
@@ -3045,8 +2824,8 @@ test("AI gateway planner splits oversized coarse buckets before refinement", asy
   const validation = validatePlan(plan, largeInventory, settings);
 
   assert.equal(requests.length, 4);
-  assert.equal(requests[0].reasoning_effort, "low");
-  assert.equal(requests.slice(1).every((request) => request.reasoning_effort === "medium"), true);
+  assert.equal(requests[0].reasoning_effort, undefined);
+  assert.equal(requests.slice(1).every((request) => request.reasoning_effort === undefined), true);
   assert.equal(validation.ok, true, validation.errors.join(" "));
   assert.equal(plan.groups.length, 3);
 });
@@ -3206,7 +2985,7 @@ test("AI gateway planner keeps refinement errors out of uncertain review reasons
   assert.equal(plan.reviewTabs.every((tab) => /left for review/i.test(tab.reason)), true);
 });
 
-test("AI gateway planner caps large-job refinement thinking at medium by default", async () => {
+test("custom gateways keep large-job thinking provider-neutral", async () => {
   const plannerTabs = [10, 11, 12].map((tabId) => ({
     tabId,
     windowId: 1,
@@ -3259,8 +3038,8 @@ test("AI gateway planner caps large-job refinement thinking at medium by default
   );
 
   assert.equal(requests.length, 2);
-  assert.equal(requests[0].reasoning_effort, "low");
-  assert.equal(requests[1].reasoning_effort, "medium");
+  assert.equal(requests[0].reasoning_effort, undefined);
+  assert.equal(requests[1].reasoning_effort, undefined);
 });
 
 test("AI gateway media-type refinement preserves the media axis", async () => {

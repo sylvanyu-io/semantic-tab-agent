@@ -17,7 +17,6 @@ const extensionDir = join(distDir, channel === "store" ? "extension-store" : "ex
 const zipName = artifactZipName(rootDir, manifest.version, channel);
 const zipPath = join(distDir, zipName);
 const storeForbiddenPermissions = new Set(["activeTab", "scripting"]);
-const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 
 await rm(extensionDir, { recursive: true, force: true });
 await mkdir(extensionDir, { recursive: true });
@@ -52,9 +51,7 @@ console.log(`Channel: ${channel}`);
 async function writeStoreManifest(manifestPath) {
   const storeManifest = JSON.parse(await readFile(manifestPath, "utf8"));
   storeManifest.permissions = (storeManifest.permissions || []).filter((permission) => !storeForbiddenPermissions.has(permission));
-  storeManifest.host_permissions = (storeManifest.host_permissions || []).filter((permission) =>
-    storeHostPermissions.includes(permission)
-  );
+  delete storeManifest.host_permissions;
   delete storeManifest.optional_permissions;
   await writeFile(manifestPath, `${JSON.stringify(storeManifest, null, 2)}\n`);
 }

@@ -1,5 +1,4 @@
 import {
-  BUILTIN_GATEWAY_BASE_URL,
   GROUPING_GRANULARITIES,
   ORGANIZE_MODES,
   PROMPT_PRESET_TEXT,
@@ -8,7 +7,6 @@ import {
   TARGET_WINDOW_MODES,
   THINKING_INTENSITIES,
   URL_PRIVACY_MODES,
-  isCustomGatewayProvider,
   normalizeSettings,
   resolveGatewayAuxiliaryModel,
   resolveGatewayModel
@@ -120,7 +118,7 @@ async function createSingleGatewayPlan(inventory, settings, fetchImpl, options =
     gatewayChatCompletionsUrl(settings),
     {
       method: "POST",
-      headers: gatewayHeaders(settings, gatewayRequestMeta(inventory, options)),
+      headers: gatewayHeaders(settings),
       body: JSON.stringify(body)
     },
     "AI gateway planner",
@@ -244,13 +242,25 @@ async function createHierarchicalGatewayPlan(inventory, settings, fetchImpl, opt
 export function gatewayChatCompletionsUrl(settings) {
   const baseUrl = effectiveGatewayBaseUrl(settings);
   if (!baseUrl) {
-    throw new Error(localizedText(settings.languageMode, "请先填写自定义 API 地址。", "Enter a custom API URL first."));
+    throw new Error(localizedText(settings.languageMode, "请先填写 API 地址。", "Enter an API URL first."));
   }
-  return `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const normalized = baseUrl.replace(/\/+$/, "");
+  return /\/chat\/completions$/i.test(normalized) ? normalized : `${normalized}/chat/completions`;
+}
+
+export function gatewayModelsUrl(settings) {
+  const baseUrl = effectiveGatewayBaseUrl(settings);
+  if (!baseUrl) {
+    throw new Error(localizedText(settings.languageMode, "请先填写 API 地址。", "Enter an API URL first."));
+  }
+  const normalized = baseUrl.replace(/\/+$/, "");
+  return /\/chat\/completions$/i.test(normalized)
+    ? normalized.replace(/\/chat\/completions$/i, "/models")
+    : `${normalized}/models`;
 }
 
 export function effectiveGatewayBaseUrl(settings) {
-  return isCustomGatewayProvider(settings) ? settings.gatewayBaseUrl : BUILTIN_GATEWAY_BASE_URL;
+  return settings.gatewayBaseUrl || "";
 }
 
 export function requireGatewayModel(settings) {
@@ -259,8 +269,8 @@ export function requireGatewayModel(settings) {
     throw new Error(
       localizedText(
         settings.languageMode,
-        "请填写自定义模型名。",
-        "Enter a custom model name."
+        "请填写模型 ID。",
+        "Enter a model ID."
       )
     );
   }
@@ -271,28 +281,11 @@ function requireGatewayAuxiliaryModel(settings) {
   return resolveGatewayAuxiliaryModel(settings) || requireGatewayModel(settings);
 }
 
-export function gatewayHeaders(settings, requestMeta = {}) {
-  const headers = { "content-type": "application/json" };
-  if (isCustomGatewayProvider(settings) && settings.gatewayApiKey) {
-    headers.authorization = `Bearer ${settings.gatewayApiKey}`;
-  }
-  if (requestMeta.requestId) {
-    headers["x-tab-recap-request-id"] = requestMeta.requestId;
-  }
-  if (!isCustomGatewayProvider(settings) && requestMeta.installId) {
-    headers["x-tab-recap-install-id"] = requestMeta.installId;
-  }
-  if (!isCustomGatewayProvider(settings) && requestMeta.hasPageSamples) {
-    headers["x-tab-recap-page-summary"] = "1";
-  }
-  return headers;
-}
-
-export function gatewayRequestMeta(inventory, options = {}) {
+export function gatewayHeaders(settings) {
+  const apiKey = String(settings.gatewayApiKey || "").trim();
   return {
-    installId: options.installId || "",
-    requestId: options.operationId || options.requestId || "",
-    hasPageSamples: (inventory.pageSamples || []).some((sample) => sample.status === "ok")
+    "content-type": "application/json",
+    ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
   };
 }
 
@@ -303,8 +296,8 @@ export function attachJsonResponseFormat(body, settings) {
   return body;
 }
 
-export function shouldRequestJsonResponseFormat(settings) {
-  return !usesCustomCompatibleGateway(settings);
+export function shouldRequestJsonResponseFormat() {
+  return false;
 }
 
 export async function testGatewayConnection(rawSettings = {}, fetchImpl = globalThis.fetch, options = {}) {
@@ -312,8 +305,8 @@ export async function testGatewayConnection(rawSettings = {}, fetchImpl = global
   if (typeof fetchImpl !== "function") {
     throw new Error("Fetch is not available in this environment.");
   }
-  if (!isCustomGatewayProvider(settings) || !settings.gatewayBaseUrl) {
-    throw new Error(localizedText(settings.languageMode, "请先填写自定义 API 地址。", "Enter a custom API URL first."));
+  if (!settings.gatewayBaseUrl) {
+    throw new Error(localizedText(settings.languageMode, "请先填写 API 地址。", "Enter an API URL first."));
   }
 
   const model = requireGatewayModel(settings);
@@ -358,32 +351,70 @@ export async function testGatewayConnection(rawSettings = {}, fetchImpl = global
   };
 }
 
+export async function listGatewayModels(rawSettings = {}, fetchImpl = globalThis.fetch, options = {}) {
+  const settings = normalizeSettings(rawSettings);
+  if (typeof fetchImpl !== "function") {
+    throw new Error("Fetch is not available in this environment.");
+  }
+  if (!settings.gatewayBaseUrl) {
+    throw new Error(localizedText(settings.languageMode, "请先填写 API 地址。", "Enter an API URL first."));
+  }
+
+  let response;
+  let data;
+  try {
+    ({ response, data } = await fetchJsonWithTimeout(
+      fetchImpl,
+      gatewayModelsUrl(settings),
+      {
+        method: "GET",
+        headers: gatewayHeaders(settings)
+      },
+      "AI gateway model list",
+      options.timeoutMs ?? 15_000,
+      options.signal
+    ));
+  } catch (error) {
+    throw new Error(gatewayConnectionErrorMessage(error, settings));
+  }
+  if (!response.ok) {
+    throw new Error(gatewayErrorMessage(response, data, settings));
+  }
+
+  const entries = Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : [];
+  const models = [...new Set(entries.map((entry) => String(entry?.id || entry || "").trim()).filter(Boolean))].slice(0, 500);
+  if (!models.length) {
+    throw new Error(
+      localizedText(
+        settings.languageMode,
+        "这个 API 没有返回模型列表。仍可直接填写模型 ID。",
+        "This API did not return a model list. You can still enter a model ID directly."
+      )
+    );
+  }
+  return {
+    models,
+    baseUrl: effectiveGatewayBaseUrl(settings)
+  };
+}
+
 function gatewayConnectionErrorMessage(error, settings) {
   const message = sanitizeGatewayErrorDetail(error?.message || error || "");
-  const isCustomProvider = isCustomGatewayProvider(settings);
   if (/was canceled|aborted|cancel/i.test(message)) {
     return localizedText(settings.languageMode, "连接测试已取消。", "Connection test was canceled.");
   }
   if (/timed out/i.test(message)) {
-    return isCustomProvider
-      ? localizedText(
-          settings.languageMode,
-          "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
-          "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again."
-        )
-      : localizedText(
-          settings.languageMode,
-          "默认 AI 服务连接超时。请稍后重试。",
-          "The default AI service connection timed out. Try again later."
-        );
+    return localizedText(
+      settings.languageMode,
+      "API 连接超时。请检查地址、模型 ID、密钥或上游服务后重试。",
+      "The API connection timed out. Check the URL, model ID, key, or upstream service and try again."
+    );
   }
-  return isCustomProvider
-    ? localizedText(
-        settings.languageMode,
-        "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。",
-        "The custom API is not reachable right now. Check the URL, model name, key, or upstream service and try again."
-      )
-    : localizedText(settings.languageMode, "默认 AI 服务暂时不可用。请稍后重试。", "The default AI service is temporarily unavailable. Try again later.");
+  return localizedText(
+    settings.languageMode,
+    "API 暂时连不上。请检查地址、模型 ID、密钥或上游服务后重试。",
+    "The API is not reachable right now. Check the URL, model ID, key, or upstream service and try again."
+  );
 }
 
 export function gatewayErrorMessage(response, data, settings) {
@@ -391,82 +422,44 @@ export function gatewayErrorMessage(response, data, settings) {
   const providerMessage = sanitizeGatewayErrorDetail(rawProviderMessage);
   const requestId = extractGatewayRequestId(response, data);
   const suffix = gatewayRequestIdSuffix(settings, requestId);
-  const isCustomProvider = isCustomGatewayProvider(settings);
   if (response.status === 401 || response.status === 403) {
-    return isCustomProvider
-      ? `${localizedText(
-          settings.languageMode,
-          "AI 服务拒绝访问。请检查自定义网关地址和密钥。",
-          "The AI service rejected access. Check the custom gateway URL and key."
-        )}${suffix}`
-      : `${localizedText(
-          settings.languageMode,
-          "默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。",
-          "The default AI service rejected access. Try again later, or switch to a custom gateway in More options."
-        )}${suffix}`;
+    return `${localizedText(
+      settings.languageMode,
+      "AI 服务拒绝访问。请检查 API 地址和密钥。",
+      "The AI service rejected access. Check the API URL and key."
+    )}${suffix}`;
   }
   if (isModelNotAllowedError(data, rawProviderMessage)) {
-    return isCustomProvider
-      ? `${localizedText(
-          settings.languageMode,
-          "自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。",
-          "The custom API does not support this model. Check the model name or run Test connection first."
-        )}${suffix}`
-      : `${localizedText(
-          settings.languageMode,
-          "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
-          "The default AI service does not support this model right now. Try again later, or switch models in More options."
-        )}${suffix}`;
+    return `${localizedText(
+      settings.languageMode,
+      "这个 API 不支持当前模型。请检查模型 ID，或先点「测试连接」。",
+      "This API does not support the current model. Check the model ID or run Test connection first."
+    )}${suffix}`;
   }
   if (isLocalOriginOffline(response, rawProviderMessage, data)) {
-    return isCustomProvider
-      ? `${localizedText(
-          settings.languageMode,
-          "自定义 AI 网关的本地源站暂时离线。请检查本机服务、Cloudflare Tunnel 和上游模型。",
-          "The custom AI gateway local origin is offline. Check the local service, Cloudflare Tunnel, and upstream model."
-        )}${suffix}`
-      : `${localizedText(
-          settings.languageMode,
-          "默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。",
-          "The default AI service local origin is offline. Try again later; if it keeps failing, the local gateway or Cloudflare Tunnel needs recovery."
-        )}${suffix}`;
+    return `${localizedText(
+      settings.languageMode,
+      "AI 网关的源站暂时离线。请检查网关、隧道和上游模型。",
+      "The AI gateway origin is offline. Check the gateway, tunnel, and upstream model."
+    )}${suffix}`;
   }
   if (isGatewayInfrastructureError(response, rawProviderMessage)) {
-    return isCustomProvider
-      ? `${localizedText(
-          settings.languageMode,
-          "自定义 AI 网关暂时连不上。请检查网关地址、隧道或上游服务是否在线。",
-          "The custom AI gateway is not reachable right now. Check the gateway URL, tunnel, or upstream service."
-        )}${suffix}`
-      : `${localizedText(
-          settings.languageMode,
-          "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
-          "The default AI service is temporarily unavailable. Try again later, or temporarily switch to a custom AI gateway in More options."
-        )}${suffix}`;
-  }
-  if (isCustomProvider) {
-    return providerMessage
-      ? `${localizedText(
-          settings.languageMode,
-          `自定义 AI 网关这次没有完成请求（${response.status}）。`,
-          `The custom AI gateway did not complete this request (${response.status}). `
-        )}${providerMessage}${suffix}`
-      : `${localizedText(
-          settings.languageMode,
-          `自定义 AI 网关这次没有完成请求（${response.status}）。请检查网关服务后重试。`,
-          `The custom AI gateway did not complete this request (${response.status}). Check the gateway service and try again.`
-        )}${suffix}`;
+    return `${localizedText(
+      settings.languageMode,
+      "AI 网关暂时连不上。请检查地址、隧道或上游服务是否在线。",
+      "The AI gateway is not reachable right now. Check the URL, tunnel, or upstream service."
+    )}${suffix}`;
   }
   return providerMessage
     ? `${localizedText(
         settings.languageMode,
-        "默认 AI 服务这次没有成功完成。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
-        "The default AI service did not complete this request. Try again later, or temporarily switch to a custom AI gateway in More options."
-      )}${suffix}`
+        `AI 服务没有完成请求（${response.status}）。`,
+        `The AI service did not complete this request (${response.status}). `
+      )}${providerMessage}${suffix}`
     : `${localizedText(
         settings.languageMode,
-        "默认 AI 服务这次没有成功响应。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
-        "The default AI service did not respond successfully. Try again later, or temporarily switch to a custom AI gateway in More options."
+        `AI 服务没有完成请求（${response.status}）。请检查接口后重试。`,
+        `The AI service did not complete this request (${response.status}). Check the API and try again.`
       )}${suffix}`;
 }
 
@@ -1126,7 +1119,7 @@ async function createCoarseGatewayBuckets(inventory, settings, fetchImpl, option
     gatewayChatCompletionsUrl(settings),
     {
       method: "POST",
-      headers: gatewayHeaders(settings, gatewayRequestMeta(inventory, options)),
+      headers: gatewayHeaders(settings),
       body: JSON.stringify(body)
     },
     "AI gateway coarse planner",
@@ -1155,7 +1148,7 @@ async function createCleanupGatewayAnalysis(inventory, settings, fetchImpl, opti
     gatewayChatCompletionsUrl(settings),
     {
       method: "POST",
-      headers: gatewayHeaders(settings, gatewayRequestMeta(inventory, options)),
+      headers: gatewayHeaders(settings),
       body: JSON.stringify(body)
     },
     "AI gateway cleanup planner",
@@ -2125,17 +2118,8 @@ function clampConfidence(value) {
   return Math.min(1, Math.max(0, numeric));
 }
 
-export function applyThinkingIntensity(body, settings, intensity = settings.gatewayThinkingIntensity) {
-  if (usesGlmThinking(settings)) {
-    body.thinking = { type: intensity === THINKING_INTENSITIES.LOW ? "disabled" : "enabled" };
-    return;
-  }
-
-  if (!supportsReasoningEffort(settings)) {
-    return;
-  }
-
-  body.reasoning_effort = intensity === THINKING_INTENSITIES.ULTRA ? THINKING_INTENSITIES.HIGH : intensity;
+export function applyThinkingIntensity() {
+  // Custom endpoints receive only the provider-neutral Chat Completions fields.
 }
 
 function throwIfAborted(signal) {
@@ -2148,26 +2132,6 @@ function isAbortLikeError(error, signal = null) {
   if (signal?.aborted) return true;
   if (error?.name === "AbortError") return true;
   return /abort|cancel|已停止生成/i.test(String(error?.message || error || ""));
-}
-
-function usesGlmThinking(settings) {
-  const model = resolveGatewayModel(settings).toLowerCase();
-  if (model.startsWith("glm-")) return true;
-
-  try {
-    const hostname = new URL(effectiveGatewayBaseUrl(settings)).hostname.toLowerCase();
-    return hostname.endsWith("bigmodel.cn") || hostname.endsWith("z.ai");
-  } catch {
-    return false;
-  }
-}
-
-function supportsReasoningEffort(settings) {
-  return !usesCustomCompatibleGateway(settings);
-}
-
-function usesCustomCompatibleGateway(settings) {
-  return isCustomGatewayProvider(settings);
 }
 
 function thinkingIntensityText(value) {

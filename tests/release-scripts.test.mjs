@@ -18,9 +18,9 @@ test("public release scripts include real extension stress and live gateway gate
   assert.match(scripts["release:publish-check"], /verify-release-version\.mjs/);
   assert.match(scripts["release:publish-check"], /release:check:full/);
 
-  assert.match(scripts["release:check:live"], /node scripts\/require-monitor-token\.mjs/);
+  assert.doesNotMatch(scripts["release:check:live"], /require-monitor-token/);
   assert.match(scripts["release:check:live"], /npm run release:check:full/);
-  assert.match(scripts["release:check:live"], /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
+  assert.match(scripts["release:check:live"], /npm run smoke:gateway/);
 
   assert.equal(scripts["stress:summary"], "node scripts/summarize-stress-artifact.mjs");
 });
@@ -398,13 +398,12 @@ test("release artifact audit fails store artifacts with required content-reading
   }
 });
 
-test("release artifact audit locks store host permissions to the default gateway", async () => {
+test("release artifact audit rejects fixed host permissions", async () => {
   const auditScript = await readFile("scripts/audit-release-artifacts.mjs", "utf8");
 
-  assert.match(auditScript, /storeHostPermissions/);
   assert.match(auditScript, /storeOptionalHostPermissions/);
-  assert.match(auditScript, /https:\/\/cliproxy\.sylvanyu\.io\/\*/);
-  assert.match(auditScript, /store build must only request the default AI gateway host permission/);
+  assert.doesNotMatch(auditScript, /cliproxy\.sylvanyu\.io/);
+  assert.match(auditScript, /store build must not request fixed host permissions/);
   assert.match(auditScript, /store build must not request optional extension permissions/);
   assert.match(auditScript, /store build must keep optional host permissions for custom AI API origins/);
 });
@@ -442,7 +441,7 @@ test("release scripts honor custom extension dist directories", async () => {
     const storeManifest = JSON.parse(await readFile(join(tempDist, "extension-store", "manifest.json"), "utf8"));
     assert.equal((storeManifest.permissions || []).includes("activeTab"), false);
     assert.equal((storeManifest.permissions || []).includes("scripting"), false);
-    assert.deepEqual(storeManifest.host_permissions, ["https://cliproxy.sylvanyu.io/*"]);
+    assert.deepEqual(storeManifest.host_permissions || [], []);
     assert.equal(Object.hasOwn(storeManifest, "optional_permissions"), false);
     assert.deepEqual(storeManifest.optional_host_permissions, ["https://*/*", "http://*/*"]);
 
@@ -499,19 +498,21 @@ test("real extension stress can find UI sampling jobs across scoped storage", as
   assert.match(stressScript, /tabs:clearAnalysisState[^]*page\.reload\(\{ waitUntil: "domcontentloaded" \}\)/);
 });
 
-test("live release gate explicitly enables the keyless built-in gateway stress branch", async () => {
+test("live release gate requires an explicitly configured custom gateway", async () => {
   const stressScript = await readFile("scripts/stress-extension.mjs", "utf8");
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   const readme = await readFile("README.md", "utf8");
 
   assert.match(stressScript, /gatewayStressEnabled = process\.env\.STRESS_GATEWAY === "1"/);
   assert.doesNotMatch(stressScript, /gatewayStressEnabled = .*Boolean\(gatewayKey\)/);
+  assert.match(stressScript, /STRESS_GATEWAY requires GATEWAY_BASE_URL and GATEWAY_MODEL\. GATEWAY_API_KEY is optional/);
   assert.match(stressScript, /gatewayTabs: gatewayStressEnabled \? gatewayTabs : 0/);
   assert.doesNotMatch(stressScript, /gatewayTabs: gatewayKey \? gatewayTabs : 0/);
   assert.match(stressScript, /type: "activity:generateTimeRecap"/);
   assert.match(stressScript, /gatewayRecap\.source === "ai"/);
   assert.match(stressScript, /reason: "STRESS_GATEWAY is not enabled"/);
   assert.match(packageJson.scripts["release:check:live"], /STRESS_GATEWAY=1 npm run release:check:full/);
+  assert.doesNotMatch(packageJson.scripts["release:check:live"], /require-monitor-token|GATEWAY_REQUIRE_MONITOR/);
   assert.match(readme, /STRESS_GATEWAY=1 STRESS_GATEWAY_TABS=60 npm run stress:extension/);
   assert.doesNotMatch(readme, /GATEWAY_BASE_URL=http:\/\/127\.0\.0\.1:8317\/v1 STRESS_GATEWAY_TABS=60/);
 });

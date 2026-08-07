@@ -8,7 +8,7 @@
     "description": "Short extension name used where Chrome has limited space."
   },
   "extDescription": {
-    "message": "AI tab organizer that groups messy tabs, suggests cleanup, and turns local tab activity into private work recaps.",
+    "message": "Sort crowded Chrome windows by task, review cleanup candidates, and recap recent tab activity.",
     "description": "Short extension summary shown in Chrome and the Chrome Web Store."
   },
   "actionTitle": {

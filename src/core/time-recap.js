@@ -1,4 +1,4 @@
-import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, isCustomGatewayProvider, normalizeSettings } from "../shared/settings.js";
+import { PLANNER_PROVIDERS, URL_PRIVACY_MODES, normalizeSettings } from "../shared/settings.js";
 import { TIME_RECAP_GATEWAY_TIMEOUT_MS } from "../shared/task-constants.js";
 import { localizedText } from "../shared/language.js";
 import { MODEL_PRODUCT_COPY_INTERNAL_FIELD_WARNING, normalizeModelProductText } from "../shared/model-copy.js";
@@ -11,7 +11,6 @@ import {
   gatewayChatCompletionsUrl,
   gatewayErrorMessage,
   gatewayHeaders,
-  gatewayRequestMeta,
   parsePlanFromResponse,
   requireGatewayModel
 } from "./gateway-planner.js";
@@ -101,12 +100,10 @@ function safeTimeRecapFallbackError(error, settings) {
   if (!message) return genericTimeRecapFallbackError(settings);
 
   if (/AI gateway time recap timed out|timed out/i.test(message)) {
-    return isCustomGatewayProvider(settings)
-      ? customTimeRecapTimeoutError(settings)
-      : genericTimeRecapFallbackError(settings);
+    return customTimeRecapTimeoutError(settings);
   }
   if (
-    /默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务拒绝访问|The default AI service|The custom API|The AI service/i.test(message) ||
+    /AI 网关|自定义 API|这个 API|AI 服务|The AI gateway|The custom API|This API|The AI service/i.test(message) ||
     /model.*not available|not available.*model|unsupported.*model|model.*unsupported|model_not_allowed|planner_model_not_allowed|recap_model_not_allowed|不支持.*模型/i.test(message)
   ) {
     return message;
@@ -126,8 +123,8 @@ function genericTimeRecapFallbackError(settings) {
 function customTimeRecapTimeoutError(settings) {
   return localizedText(
     settings.languageMode,
-    "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
-    "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again."
+    "API 连接超时。请检查地址、模型 ID、密钥或上游服务后重试。",
+    "The API connection timed out. Check the URL, model ID, key, or upstream service and try again."
   );
 }
 
@@ -392,10 +389,7 @@ export async function createGatewayTimeRecap(input, rawSettings = {}, fetchImpl 
       gatewayChatCompletionsUrl(settings),
       {
         method: "POST",
-        headers: gatewayHeaders(settings, {
-          ...gatewayRequestMeta({ pageSamples: input.pages.filter((page) => page.summary).map(() => ({ status: "ok" })) }, options),
-          feature: "time_recap"
-        }),
+        headers: gatewayHeaders(settings),
         body: JSON.stringify(body)
       },
       "AI gateway time recap",

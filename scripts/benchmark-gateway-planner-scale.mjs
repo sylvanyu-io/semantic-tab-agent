@@ -86,7 +86,6 @@ async function runStrategy({ inventory, tabCount, scenario, strategy }) {
     plan = await withTimeout(
       createGatewayPlan(inventory, settings, measuredFetch(requests), {
         ...strategy.options,
-        installId: `benchmark-${runId}`,
         signal: abortController.signal,
         timeoutMs: Number(process.env.BENCHMARK_TIMEOUT_MS || DEFAULT_BENCHMARK_TIMEOUT_MS),
         onProgress: (event) => {
@@ -210,7 +209,7 @@ async function writeOutputs({ partial }) {
     scenarioFilter: process.env.BENCHMARK_SCENARIOS || "",
     environment: {
       node: process.version,
-      gatewayBaseUrl: settings.gatewayBaseUrl || "built-in default",
+      gatewayBaseUrl: settings.gatewayBaseUrl || "not configured",
       gatewayModel: settings.gatewayModel,
       gatewayAuxiliaryModel: settings.gatewayAuxiliaryModel,
       gatewayThinkingIntensity: settings.gatewayThinkingIntensity,

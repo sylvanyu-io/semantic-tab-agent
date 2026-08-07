@@ -8,7 +8,7 @@
     "description": "空间有限时显示的扩展简称。"
   },
   "extDescription": {
-    "message": "用 AI 归类杂乱标签页、提供清理建议，并根据本地标签页活动生成私密工作回顾。",
+    "message": "按任务整理杂乱标签页，检查清理候选，根据本地活动记录回顾最近的工作。",
     "description": "Chrome 和 Chrome 应用商店中显示的扩展摘要。"
   },
   "actionTitle": {

@@ -72,17 +72,10 @@ export const PLANNER_PROVIDERS = Object.freeze({
 });
 
 export const GATEWAY_PROVIDER_MODES = Object.freeze({
-  BUILTIN: "builtin",
   CUSTOM: "custom"
 });
 
-export const BUILTIN_GATEWAY_BASE_URL = "https://cliproxy.sylvanyu.io/v1";
-export const DEFAULT_GATEWAY_BASE_URL = "";
-const LEGACY_DEFAULT_GATEWAY_BASE_URLS = new Set([BUILTIN_GATEWAY_BASE_URL]);
-
-export const GATEWAY_MODELS = Object.freeze(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "claude-opus-4-8", "claude-sonnet-4-6"]);
 export const GATEWAY_CUSTOM_MODEL_VALUE = "custom";
-export const GATEWAY_AUXILIARY_MODELS = Object.freeze(["gpt-5.3-codex-spark", "gpt-5.4-mini", "same_as_primary"]);
 const MAX_CUSTOM_GATEWAY_MODEL_LENGTH = 160;
 
 export const THINKING_INTENSITIES = Object.freeze({
@@ -127,11 +120,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
   customPrompt: "",
   selectedTargetWindowId: null,
   plannerProvider: PLANNER_PROVIDERS.GATEWAY,
-  gatewayProviderMode: GATEWAY_PROVIDER_MODES.BUILTIN,
+  gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
   rememberProviderKeys: false,
-  gatewayBaseUrl: DEFAULT_GATEWAY_BASE_URL,
-  gatewayModel: "gpt-5.4",
-  gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+  gatewayBaseUrl: "",
+  gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+  gatewayAuxiliaryModel: "same_as_primary",
   gatewayCustomModel: "",
   gatewayCustomAuxiliaryModel: "",
   gatewayThinkingIntensity: THINKING_INTENSITIES.HIGH,
@@ -157,14 +150,11 @@ const enumValues = {
   groupingGranularity: Object.values(GROUPING_GRANULARITIES),
   plannerProvider: Object.values(PLANNER_PROVIDERS),
   gatewayProviderMode: Object.values(GATEWAY_PROVIDER_MODES),
-  gatewayAuxiliaryModel: GATEWAY_AUXILIARY_MODELS,
   gatewayThinkingIntensity: Object.values(THINKING_INTENSITIES)
 };
 
 export function normalizeSettings(input = {}) {
   const rawInput = input && typeof input === "object" ? input : {};
-  const hadExplicitBuiltinGatewayProviderMode =
-    rawInput.gatewayProviderMode === GATEWAY_PROVIDER_MODES.BUILTIN;
   const merged = { ...DEFAULT_SETTINGS, ...(input || {}) };
 
   for (const [key, values] of Object.entries(enumValues)) {
@@ -190,26 +180,19 @@ export function normalizeSettings(input = {}) {
   merged.maxTabsPerGroup = Math.max(1, Number.parseInt(merged.maxTabsPerGroup, 10) || DEFAULT_SETTINGS.maxTabsPerGroup);
   merged.languageMode = normalizeLanguageMode(merged.languageMode);
   merged.customPrompt = String(merged.customPrompt || "").slice(0, 4000);
-  const hadLegacyDefaultGatewayBaseUrl = isLegacyDefaultGatewayBaseUrl(merged.gatewayBaseUrl);
+  const hadRetiredBuiltinGateway = rawInput.gatewayProviderMode === "builtin";
   merged.gatewayBaseUrl = normalizeOptionalBaseUrl(merged.gatewayBaseUrl);
-  if (hadLegacyDefaultGatewayBaseUrl) {
-    merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.BUILTIN;
-  }
   merged.gatewayCustomModel = normalizeGatewayCustomModel(merged.gatewayCustomModel);
   merged.gatewayCustomAuxiliaryModel = normalizeGatewayCustomModel(merged.gatewayCustomAuxiliaryModel);
-  merged.gatewayModel = normalizeGatewayModel(merged.gatewayModel);
-  if (shouldUseCustomGatewayProvider(merged, { allowBaseUrlFallback: !hadExplicitBuiltinGatewayProviderMode })) {
-    merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.CUSTOM;
-    merged.gatewayAuxiliaryModel = "same_as_primary";
-    if (shouldPreferManualGatewayModel(merged)) {
-      merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
-    }
-  } else {
-    merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.BUILTIN;
+  const legacyModel = normalizeGatewayCustomModel(rawInput.gatewayModel);
+  if (!merged.gatewayCustomModel && legacyModel && legacyModel !== GATEWAY_CUSTOM_MODEL_VALUE) {
+    merged.gatewayCustomModel = legacyModel;
+  }
+  merged.gatewayProviderMode = GATEWAY_PROVIDER_MODES.CUSTOM;
+  merged.gatewayModel = GATEWAY_CUSTOM_MODEL_VALUE;
+  merged.gatewayAuxiliaryModel = "same_as_primary";
+  if (hadRetiredBuiltinGateway) {
     merged.gatewayBaseUrl = "";
-    if (merged.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE) {
-      merged.gatewayModel = DEFAULT_SETTINGS.gatewayModel;
-    }
     merged.gatewayCustomModel = "";
     merged.gatewayCustomAuxiliaryModel = "";
   }
@@ -264,12 +247,7 @@ function clampNumber(value, min, max, fallback) {
 }
 
 function normalizeOptionalBaseUrl(value) {
-  const normalized = normalizeHttpBaseUrl(value);
-  return LEGACY_DEFAULT_GATEWAY_BASE_URLS.has(normalized) ? "" : normalized;
-}
-
-function isLegacyDefaultGatewayBaseUrl(value) {
-  return LEGACY_DEFAULT_GATEWAY_BASE_URLS.has(normalizeHttpBaseUrl(value));
+  return normalizeHttpBaseUrl(value);
 }
 
 function normalizeHttpBaseUrl(value) {
@@ -288,12 +266,6 @@ function normalizeHttpBaseUrl(value) {
   }
 }
 
-function normalizeGatewayModel(value) {
-  const model = String(value || "").trim();
-  if (model === GATEWAY_CUSTOM_MODEL_VALUE) return GATEWAY_CUSTOM_MODEL_VALUE;
-  return GATEWAY_MODELS.includes(model) ? model : DEFAULT_SETTINGS.gatewayModel;
-}
-
 function normalizeGatewayCustomModel(value) {
   return String(value || "")
     .replace(/[\u0000-\u001f\u007f]/g, "")
@@ -302,42 +274,12 @@ function normalizeGatewayCustomModel(value) {
 }
 
 export function resolveGatewayModel(settings = DEFAULT_SETTINGS) {
-  if (usesManualGatewayModel(settings)) {
-    return settings.gatewayCustomModel || "";
-  }
-  return settings.gatewayModel || DEFAULT_SETTINGS.gatewayModel;
-}
-
-function shouldPreferManualGatewayModel(settings = {}) {
-  return settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE || Boolean(settings.gatewayCustomModel);
-}
-
-function shouldUseCustomGatewayProvider(settings = {}, options = {}) {
-  const allowBaseUrlFallback = options.allowBaseUrlFallback !== false;
-  return settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM || (allowBaseUrlFallback && Boolean(settings.gatewayBaseUrl));
-}
-
-function usesManualGatewayModel(settings = {}) {
-  return isCustomGatewayProvider(settings) && settings.gatewayModel === GATEWAY_CUSTOM_MODEL_VALUE;
-}
-
-export function isCustomGatewayProvider(settings = DEFAULT_SETTINGS) {
-  if (settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM) return true;
-  if (settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.BUILTIN) return false;
-  return Boolean(settings.gatewayBaseUrl);
+  return normalizeGatewayCustomModel(settings.gatewayCustomModel);
 }
 
 export function resolveGatewayAuxiliaryModel(settings = DEFAULT_SETTINGS) {
-  if (isCustomGatewayProvider(settings) && settings.gatewayCustomAuxiliaryModel) {
+  if (settings.gatewayCustomAuxiliaryModel) {
     return settings.gatewayCustomAuxiliaryModel;
   }
-  if (usesManualGatewayModel(settings)) {
-    return resolveGatewayModel(settings);
-  }
-  if (settings.gatewayAuxiliaryModel === "same_as_primary") {
-    return resolveGatewayModel(settings);
-  }
-  return GATEWAY_AUXILIARY_MODELS.includes(settings.gatewayAuxiliaryModel)
-    ? settings.gatewayAuxiliaryModel
-    : DEFAULT_SETTINGS.gatewayAuxiliaryModel;
+  return resolveGatewayModel(settings);
 }

@@ -1,6 +1,5 @@
 export const STORAGE_KEYS = Object.freeze({
   settings: "semanticTabAgent.settings",
-  installId: "semanticTabAgent.installId",
   activeJob: "semanticTabAgent.activeJob",
   lastJob: "semanticTabAgent.lastJob",
   lastRollback: "semanticTabAgent.lastRollback",

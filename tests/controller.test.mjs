@@ -17,7 +17,7 @@ import { applyValidatedPlan, undoFromRollback } from "../src/core/chrome-executo
 import { rememberPageSummary } from "../src/core/page-summary-cache.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
 import {
-  DEFAULT_SETTINGS,
+  DEFAULT_SETTINGS as BASE_DEFAULT_SETTINGS,
   EXISTING_GROUP_MODES,
   LANGUAGE_MODES,
   ORGANIZE_MODES,
@@ -28,6 +28,13 @@ import {
   UNDO_TARGET_WINDOW_MODES
 } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
+
+const DEFAULT_SETTINGS = Object.freeze({
+  ...BASE_DEFAULT_SETTINGS,
+  gatewayBaseUrl: "https://api.example.test/v1",
+  gatewayCustomModel: "test-model",
+  gatewayApiKey: "gateway-test-key"
+});
 
 const FAKE_PLANNER_SETTINGS = Object.freeze({
   ...DEFAULT_SETTINGS,
@@ -2329,7 +2336,7 @@ test("startAnalyzeTabs returns immediately while the background job writes final
   assert.equal(lastJob.preview.groups.length > 0, true);
 });
 
-test("gateway analyses create and reuse an anonymous install id", async () => {
+test("gateway analyses send only standard bearer authentication headers", async () => {
   const chrome = createFakeChrome({
     windows: [
       {
@@ -2388,40 +2395,34 @@ test("gateway analyses create and reuse an anonymous install id", async () => {
   };
 
   try {
-    const settings = { ...DEFAULT_SETTINGS, plannerProvider: PLANNER_PROVIDERS.GATEWAY };
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayCustomModel: "test-model",
+      gatewayApiKey: "gateway-test-key"
+    };
     await analyzeTabs(chrome, settings, { windowId: 1 });
-    const firstInstallId = chrome.__state.storage[STORAGE_KEYS.installId];
     await analyzeTabs(chrome, settings, { windowId: 1 });
 
-    assert.match(firstInstallId, /^install_/);
-    assert.equal(chrome.__state.storage[STORAGE_KEYS.installId], firstInstallId);
     assert.equal(requestHeaders.length, 2);
-    assert.equal(requestHeaders[0].authorization, undefined);
-    assert.equal(requestHeaders[0]["x-tab-recap-install-id"], firstInstallId);
-    assert.equal(requestHeaders[1]["x-tab-recap-install-id"], firstInstallId);
+    assert.equal(requestHeaders[0].authorization, "Bearer gateway-test-key");
+    assert.equal(requestHeaders[0]["x-tab-recap-install-id"], undefined);
+    assert.equal(requestHeaders[0]["x-tab-recap-request-id"], undefined);
+    assert.equal(requestHeaders[1].authorization, "Bearer gateway-test-key");
+    assert.equal(chrome.__state.storage["semanticTabAgent.installId"], undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test("progress copy generation uses spark without tab metadata", async () => {
+test("progress copy stays local and does not make a hidden AI request", async () => {
   const chrome = createFakeChrome();
   const originalFetch = globalThis.fetch;
-  const messages = Array.from({ length: 12 }, (_, index) => `整理线索${index}`);
-  const calls = [];
-  globalThis.fetch = async (url, options) => {
-    calls.push({ url, options });
-    const body = JSON.parse(options.body);
-    assert.equal(body.model, "gpt-5.3-codex-spark");
-    assert.equal(body.max_tokens, 1200);
-    assert.match(body.messages[0].content, /Return strict JSON only/);
-    assert.equal(JSON.parse(body.messages[1].content).schema, "tab_recap_progress_copy_v1");
-    assert.doesNotMatch(options.body, /Chrome tabs API docs|https?:\/\//);
-    assert.equal(options.headers["x-tab-recap-install-id"].startsWith("install_"), true);
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ messages }) } }] }), {
-      status: 200,
-      headers: { "content-type": "application/json" }
-    });
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    throw new Error("progress copy must stay local");
   };
 
   try {
@@ -2431,15 +2432,16 @@ test("progress copy generation uses spark without tab metadata", async () => {
       windowCount: 4,
       languageMode: "zh-CN"
     });
-    assert.equal(result.model, "gpt-5.3-codex-spark");
-    assert.deepEqual(result.messages, messages);
-    assert.equal(calls[0].url, "https://cliproxy.sylvanyu.io/v1/chat/completions");
+    assert.equal(result.model, "local");
+    assert.equal(result.source, "local");
+    assert.equal(result.messages.length, 90);
+    assert.equal(fetchCalls, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test("progress copy generation falls back locally without leaking gateway errors", async () => {
+test("local progress copy does not contain gateway errors", async () => {
   const chrome = createFakeChrome();
   const originalFetch = globalThis.fetch;
   const fakeSkKey = ["sk", "progress", "copy", "token", "1234567890"].join("-");
@@ -2461,8 +2463,8 @@ test("progress copy generation falls back locally without leaking gateway errors
     });
     const serialized = JSON.stringify(result);
 
-    assert.equal(result.source, "local_fallback");
-    assert.equal(result.model, "gpt-5.3-codex-spark");
+    assert.equal(result.source, "local");
+    assert.equal(result.model, "local");
     assert.equal(result.messages.length, 90);
     assert.match(result.messages[0], /timeline/i);
     assert.equal(serialized.includes(fakeSkKey), false);

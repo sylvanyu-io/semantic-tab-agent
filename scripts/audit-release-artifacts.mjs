@@ -39,7 +39,6 @@ const forbiddenProductCopy = [
   { label: "tab-tidy", pattern: /tab-tidy/i }
 ];
 const storeForbiddenPermissions = ["activeTab", "scripting"];
-const storeHostPermissions = ["https://cliproxy.sylvanyu.io/*"];
 const storeOptionalHostPermissions = ["https://*/*", "http://*/*"];
 const forbiddenEntryPatterns = [
   /^docs\//,
@@ -127,11 +126,7 @@ function auditManifest(channel, manifest, files) {
     for (const permission of storeForbiddenPermissions) {
       assertNotIncludes(manifest.permissions, permission, `${channel}: store build must not request ${permission}.`);
     }
-    assertExactList(
-      manifest.host_permissions,
-      storeHostPermissions,
-      `${channel}: store build must only request the default AI gateway host permission.`
-    );
+    assertExactList(manifest.host_permissions, [], `${channel}: store build must not request fixed host permissions.`);
     assertExactList(
       manifest.optional_permissions,
       [],
@@ -144,6 +139,7 @@ function auditManifest(channel, manifest, files) {
     );
   } else {
     assertIncludes(manifest.permissions, "activeTab", `${channel}: dev build should keep activeTab for local diagnostics.`);
+    assertExactList(manifest.host_permissions, [], `${channel}: dev build must not request fixed host permissions.`);
     assertIncludes(manifest.optional_permissions, "scripting", `${channel}: dev build should keep optional scripting.`);
     assertIncludes(manifest.optional_host_permissions, "https://*/*", `${channel}: dev build should keep optional https host permissions.`);
     assertIncludes(manifest.optional_host_permissions, "http://*/*", `${channel}: dev build should keep optional http host permissions.`);

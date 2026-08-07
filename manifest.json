@@ -7,7 +7,6 @@
   "default_locale": "en",
   "minimum_chrome_version": "116",
   "permissions": ["tabs", "tabGroups", "storage", "activeTab", "alarms", "sidePanel"],
-  "host_permissions": ["https://cliproxy.sylvanyu.io/*"],
   "optional_permissions": ["scripting"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "side_panel": {

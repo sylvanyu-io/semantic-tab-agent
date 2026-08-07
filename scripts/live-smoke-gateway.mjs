@@ -1,32 +1,27 @@
 import { analyzeTabs } from "../src/core/controller.js";
-import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS, PLANNER_PROVIDERS } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS, GATEWAY_CUSTOM_MODEL_VALUE, GATEWAY_PROVIDER_MODES, PLANNER_PROVIDERS } from "../src/shared/settings.js";
 import { createFakeChrome } from "../tests/helpers/fake-chrome.mjs";
-import { checkBuiltInGatewayService } from "./lib/gateway-smoke-service-checks.mjs";
-import { resolveMonitorToken } from "./lib/monitor-token.mjs";
 
 const key = process.env.GATEWAY_API_KEY || "";
-const requestedBaseUrl = process.env.GATEWAY_BASE_URL || BUILTIN_GATEWAY_BASE_URL;
-const monitorToken = resolveMonitorToken();
+const requestedBaseUrl = process.env.GATEWAY_BASE_URL || "";
+const requestedModel = process.env.GATEWAY_MODEL || "";
+if (!requestedBaseUrl || !requestedModel) {
+  console.error("GATEWAY_BASE_URL and GATEWAY_MODEL are required. GATEWAY_API_KEY is optional.");
+  process.exit(2);
+}
 const startedAt = performance.now();
 
 const settings = {
   ...DEFAULT_SETTINGS,
   plannerProvider: PLANNER_PROVIDERS.GATEWAY,
+  gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
   gatewayApiKey: key,
   gatewayBaseUrl: requestedBaseUrl,
-  gatewayModel: process.env.GATEWAY_MODEL || DEFAULT_SETTINGS.gatewayModel,
+  gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+  gatewayCustomModel: requestedModel,
   gatewayThinkingIntensity: process.env.GATEWAY_THINKING_INTENSITY || DEFAULT_SETTINGS.gatewayThinkingIntensity,
   customPrompt: "Prefer semantic topic grouping over domain grouping. Put uncertain tabs in Review."
 };
-
-const serviceChecks = await checkBuiltInGatewayService({
-  gatewayBaseUrl: settings.gatewayBaseUrl,
-  gatewayBaseUrlExplicit: Boolean(process.env.GATEWAY_BASE_URL),
-  gatewayServiceBaseUrl: process.env.GATEWAY_SERVICE_BASE_URL || "",
-  monitorToken: monitorToken.token,
-  forceServiceCheck: process.env.GATEWAY_CHECK_SERVICE === "1",
-  requireMonitor: process.env.GATEWAY_REQUIRE_MONITOR === "1"
-});
 
 const chrome = createFakeChrome({
   windows: [
@@ -50,10 +45,9 @@ console.log(
     {
       provider: "gateway",
       baseUrl: settings.gatewayBaseUrl,
-      model: settings.gatewayModel,
+      model: settings.gatewayCustomModel,
       thinkingIntensity: settings.gatewayThinkingIntensity,
       elapsedMs: Math.round(performance.now() - startedAt),
-      serviceChecks,
       validation: job.validation,
       preview: {
         groups: job.preview.groups,

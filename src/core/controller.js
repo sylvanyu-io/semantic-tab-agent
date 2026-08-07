@@ -1,5 +1,4 @@
 import {
-  BUILTIN_GATEWAY_BASE_URL,
   DEFAULT_SETTINGS,
   ORGANIZE_MODES,
   PAGE_CONTEXT_MODES,
@@ -15,8 +14,7 @@ import { getActivityOverview, rememberOpenTabsActivity } from "./page-activity-c
 import { cachedPageSamplesForTabs, rememberPageSummary } from "./page-summary-cache.js";
 import { requestPageSample } from "./page-sampler.js";
 import { reconcileTabLifecycle, rememberTabsLifecycle } from "./tab-lifecycle-log.js";
-import { fetchJsonWithTimeout } from "./fetch-timeout.js";
-import { testGatewayConnection } from "./gateway-planner.js";
+import { listGatewayModels, testGatewayConnection } from "./gateway-planner.js";
 import { createPlan } from "./planner.js";
 import { normalizePlanForSettings } from "./plan-normalizer.js";
 import { buildPreview } from "./preview.js";
@@ -37,10 +35,7 @@ const GLOBAL_ANALYSIS_SCOPE = "all_windows";
 const ACTIVE_JOB_TERMINAL_STATUSES = new Set(["complete", "canceled", "error"]);
 const APPLY_REBASE_MAX_CHANGED_TABS = 25;
 const APPLY_REBASE_MAX_CHANGED_RATIO = 0.2;
-const PROGRESS_COPY_MODEL = "gpt-5.3-codex-spark";
 const PROGRESS_COPY_COUNT = 90;
-const PROGRESS_COPY_MAX_LENGTH = 18;
-const PROGRESS_COPY_TIMEOUT_MS = 12_000;
 const PAGE_SAMPLE_CONCURRENCY = 6;
 const PAGE_SAMPLE_TIMEOUT_MS = 1800;
 const PAGE_SAMPLE_RETRY_TIMEOUT_MS = 5000;
@@ -149,6 +144,8 @@ export async function handleRuntimeMessage(chromeApi, message) {
       return generateProgressCopy(chromeApi, message);
     case "gateway:testConnection":
       return testGatewayConnection(message.settings || {}, globalThis.fetch, { timeoutMs: message.timeoutMs || 15_000 });
+    case "gateway:listModels":
+      return listGatewayModels(message.settings || {}, globalThis.fetch, { timeoutMs: message.timeoutMs || 15_000 });
     case "activity:getOverview": {
       const settings = await getSettings(chromeApi);
       await reconcileTabLifecycle(chromeApi, { includeIncognitoTabs: settings.includeIncognitoTabs }).catch(() => null);
@@ -235,10 +232,7 @@ async function getDiagnosticsSnapshot(chromeApi) {
 
 function summarizeDiagnosticSettings(settings) {
   const normalized = normalizeSettings(settings);
-  const gatewayBaseUrl =
-    normalized.gatewayProviderMode === "builtin"
-      ? BUILTIN_GATEWAY_BASE_URL
-      : normalized.gatewayBaseUrl;
+  const gatewayBaseUrl = normalized.gatewayBaseUrl;
   return {
     languageMode: normalized.languageMode,
     organizeMode: normalized.organizeMode,
@@ -412,9 +406,6 @@ async function generateTimeRecapForMessage(chromeApi, message = {}) {
         ? requestedTimeoutMs
         : TIME_RECAP_GATEWAY_TIMEOUT_MS
     };
-    if (settings.plannerProvider === PLANNER_PROVIDERS.GATEWAY) {
-      options.installId = await getOrCreateInstallId(chromeApi);
-    }
     return await generateTimeRecap(chromeApi, settings, options);
   } catch (error) {
     if (abortController.signal.aborted) {
@@ -785,10 +776,6 @@ async function runActiveAnalysis(chromeApi, rawSettings, invocation, operationId
         ? requestedTimeoutMs
         : ORGANIZE_GATEWAY_TIMEOUT_MS
     };
-    if (settings.plannerProvider === PLANNER_PROVIDERS.GATEWAY) {
-      planOptions.installId = await getOrCreateInstallId(chromeApi);
-    }
-
     await reportProgress({ phase: "planning", progress: 40, message: "正在生成 AI 方案" });
     const { plan, validation } = await createValidatedPlan(inventory, settings, {
       ...planOptions
@@ -912,70 +899,9 @@ export async function cancelActiveJob(chromeApi, windowId = null, operationId = 
 
 export async function generateProgressCopy(chromeApi, request = {}) {
   const activeJob = await getActiveJob(chromeApi, request.windowId);
-  const installId = await getOrCreateInstallId(chromeApi);
   const languageMode = normalizeProgressLanguage(request.languageMode || activeJob?.settings?.languageMode);
   const phase = String(request.phase || activeJob?.phase || "planning");
-  if (typeof fetch !== "function") {
-    return localProgressCopyResult(languageMode, phase);
-  }
-
-  const body = {
-    model: PROGRESS_COPY_MODEL,
-    messages: [
-      {
-        role: "system",
-        content: [
-          "Return strict JSON only: {\"messages\":[\"...\"]}.",
-          "Write short loading captions for an AI browser-tab organization extension.",
-          "Do not claim real internal thoughts, exact work already completed, or user-private content.",
-          "Avoid repeating wording. No numbering, markdown, emoji, quotes, or terminal punctuation.",
-          `Return exactly ${PROGRESS_COPY_COUNT} messages. Each message must be at most ${PROGRESS_COPY_MAX_LENGTH} Chinese characters or 6 English words.`
-        ].join("\n")
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          schema: "tab_recap_progress_copy_v1",
-          languageMode,
-          phase,
-          tabCount: Number(request.tabCount || activeJob?.tabCount || 0),
-          windowCount: Number(request.windowCount || activeJob?.windowCount || 0),
-          style: "calm, varied, product-like, suitable for multi-minute progress UI"
-        })
-      }
-    ],
-    response_format: { type: "json_object" },
-    max_tokens: 1200
-  };
-
-  try {
-    const { response, data } = await fetchJsonWithTimeout(
-      fetch,
-      `${BUILTIN_GATEWAY_BASE_URL}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-tab-recap-install-id": installId,
-          "x-tab-recap-request-id": `progress_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-        },
-        body: JSON.stringify(body)
-      },
-      "Progress copy generation",
-      PROGRESS_COPY_TIMEOUT_MS
-    );
-    if (!response.ok) {
-      throw new Error("Progress copy generation failed.");
-    }
-
-    return {
-      model: PROGRESS_COPY_MODEL,
-      source: "ai",
-      messages: normalizeProgressCopyMessages(extractProgressCopyText(data))
-    };
-  } catch {
-    return localProgressCopyResult(languageMode, phase);
-  }
+  return localProgressCopyResult(languageMode, phase);
 }
 
 export async function applyLastPlan(chromeApi, options = {}) {
@@ -1325,8 +1251,8 @@ function normalizeProgressCopyMessages(text) {
 
 function localProgressCopyResult(languageMode, phase) {
   return {
-    model: PROGRESS_COPY_MODEL,
-    source: "local_fallback",
+    model: "local",
+    source: "local",
     messages: localProgressCopyMessages(languageMode, phase)
   };
 }
@@ -1793,26 +1719,6 @@ function clearActiveAnalysis(operationId) {
 
 function createOperationId() {
   return `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function getOrCreateInstallId(chromeApi) {
-  const existing = await getLocal(chromeApi, STORAGE_KEYS.installId, "");
-  if (isValidInstallId(existing)) return existing;
-
-  const installId = createInstallId();
-  await setLocal(chromeApi, STORAGE_KEYS.installId, installId);
-  return installId;
-}
-
-function createInstallId() {
-  if (globalThis.crypto?.randomUUID) {
-    return `install_${globalThis.crypto.randomUUID()}`;
-  }
-  return `install_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
-}
-
-function isValidInstallId(value) {
-  return /^install_[a-zA-Z0-9_-]{8,80}$/.test(String(value || ""));
 }
 
 async function updateActiveJob(chromeApi, operationId, patch, windowId = null) {

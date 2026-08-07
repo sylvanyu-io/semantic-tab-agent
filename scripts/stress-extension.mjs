@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { STORAGE_KEYS } from "../src/core/storage.js";
-import { BUILTIN_GATEWAY_BASE_URL, DEFAULT_SETTINGS } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS } from "../src/shared/settings.js";
 import { formatStressSummaryMarkdown, summarizeStressArtifact } from "./summarize-stress-artifact.mjs";
 
 const extensionDir = resolve("dist/extension");
@@ -13,13 +13,17 @@ const totalTabs = positiveInteger(process.env.STRESS_TABS, 240);
 const windowCount = positiveInteger(process.env.STRESS_WINDOWS, 4);
 const gatewayTabs = positiveInteger(process.env.STRESS_GATEWAY_TABS, Math.min(totalTabs, 180));
 const gatewayKey = process.env.GATEWAY_API_KEY || "";
-const gatewayBaseUrl = process.env.GATEWAY_BASE_URL || BUILTIN_GATEWAY_BASE_URL;
-const gatewayModel = process.env.GATEWAY_MODEL || DEFAULT_SETTINGS.gatewayModel;
+const gatewayBaseUrl = process.env.GATEWAY_BASE_URL || "";
+const gatewayModel = process.env.GATEWAY_MODEL || "";
 const gatewayStressEnabled = process.env.STRESS_GATEWAY === "1";
 const runId = `sta-stress-${Date.now().toString(36)}`;
 
 if (!existsSync(join(extensionDir, "manifest.json"))) {
   console.error("Missing dist/extension. Run npm run build:extension first.");
+  process.exit(2);
+}
+if (gatewayStressEnabled && (!gatewayBaseUrl || !gatewayModel)) {
+  console.error("STRESS_GATEWAY requires GATEWAY_BASE_URL and GATEWAY_MODEL. GATEWAY_API_KEY is optional.");
   process.exit(2);
 }
 

@@ -3,10 +3,16 @@ import test from "node:test";
 import { handleRuntimeMessage } from "../src/core/controller.js";
 import { buildLocalTimeRecap, buildTimeRecapInput, generateTimeRecap, normalizeTimeRecapRange } from "../src/core/time-recap.js";
 import { STORAGE_KEYS } from "../src/core/storage.js";
-import { DEFAULT_SETTINGS, GATEWAY_PROVIDER_MODES, PLANNER_PROVIDERS, URL_PRIVACY_MODES } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS as BASE_DEFAULT_SETTINGS, GATEWAY_PROVIDER_MODES, PLANNER_PROVIDERS, URL_PRIVACY_MODES } from "../src/shared/settings.js";
 import { createFakeChrome } from "./helpers/fake-chrome.mjs";
 
 const NOW = Date.parse("2026-06-27T06:00:00.000Z");
+const DEFAULT_SETTINGS = Object.freeze({
+  ...BASE_DEFAULT_SETTINGS,
+  gatewayBaseUrl: "https://api.example.test/v1",
+  gatewayCustomModel: "test-model",
+  gatewayApiKey: "gateway-test-key"
+});
 
 test("time recap input combines local activity, summaries, lifecycle, and current restricted tabs", async () => {
   const chrome = seededRecapChrome();
@@ -61,7 +67,7 @@ test("time recap explicitly asks compatible chat models to generate the recap", 
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
-      gatewayProviderMode: GATEWAY_PROVIDER_MODES.BUILTIN,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       gatewayModel: "claude-sonnet-4-6",
       languageMode: "en-US"
     },
@@ -113,7 +119,7 @@ test("time recap retries one malformed successful gateway response", async () =>
     {
       ...DEFAULT_SETTINGS,
       plannerProvider: PLANNER_PROVIDERS.GATEWAY,
-      gatewayProviderMode: GATEWAY_PROVIDER_MODES.BUILTIN,
+      gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
       languageMode: "en-US"
     },
     { range: { preset: "7d" }, now: NOW, fetchImpl, timeoutMs: 300_000 }
@@ -852,14 +858,13 @@ test("time recap gateway request parses fenced JSON and keeps page references va
     {
       range: { preset: "7d" },
       now: NOW,
-      fetchImpl,
-      installId: "install_test1234"
+      fetchImpl
     }
   );
 
   assert.equal(capturedRequest.url, "http://127.0.0.1:8317/v1/chat/completions");
   assert.equal(capturedRequest.init.headers.authorization, "Bearer test-key");
-  assert.equal(capturedRequest.body.model, "gpt-5.4");
+  assert.equal(capturedRequest.body.model, "test-model");
   assert.match(capturedRequest.body.messages[0].content, /active_count/);
   assert.match(capturedRequest.body.messages[0].content, /tab_ids/);
   assert.match(capturedRequest.body.messages[0].content, /sequence_index/);
@@ -1253,7 +1258,7 @@ test("time recap runtime message maps custom provider timeout to product copy", 
 
     assert.equal(requested, true);
     assert.equal(result.source, "local_fallback");
-    assert.equal(result.error, "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
+    assert.equal(result.error, "API 连接超时。请检查地址、模型 ID、密钥或上游服务后重试。");
     assert.doesNotMatch(JSON.stringify(result), /AI gateway time recap timed out|timed out/);
     assert.doesNotMatch(result.recap.coverageNote, /AI 增强|AI 回顾暂时不可用|timed out/);
     assert.match(result.recap.coverageNote, /本机页面线索/);
@@ -1263,7 +1268,7 @@ test("time recap runtime message maps custom provider timeout to product copy", 
   }
 });
 
-test("time recap built-in provider timeout keeps local fallback generic", async () => {
+test("time recap timeout uses configured API copy", async () => {
   const chrome = seededRecapChrome();
 
   const result = await generateTimeRecap(
@@ -1282,7 +1287,7 @@ test("time recap built-in provider timeout keeps local fallback generic", async 
   );
 
   assert.equal(result.source, "local_fallback");
-  assert.equal(result.error, "本机回顾已生成；稍后可重新生成补全表达。");
+  assert.equal(result.error, "API 连接超时。请检查地址、模型 ID、密钥或上游服务后重试。");
   assert.doesNotMatch(JSON.stringify(result), /AI gateway time recap timed out|timed out/);
 });
 
@@ -1385,7 +1390,7 @@ test("time recap fallback preserves product gateway request ids", async () => {
   );
 
   assert.equal(result.source, "local_fallback");
-  assert.match(result.error, /默认 AI 服务的本地源站暂时离线/);
+  assert.match(result.error, /AI 网关的源站暂时离线/);
   assert.match(result.error, /请求号 recap_visible_123/);
   assert.doesNotMatch(JSON.stringify(result), /Cloudflare Tunnel has no healthy connection/);
 });
@@ -1459,7 +1464,6 @@ test("time recap cancellation is scoped per source window", async () => {
   const requests = [];
   globalThis.fetch = async (_url, init = {}) => {
     const request = {
-      requestId: init.headers?.["x-tab-recap-request-id"] || "",
       aborted: false
     };
     requests.push(request);
@@ -1507,8 +1511,8 @@ test("time recap cancellation is scoped per source window", async () => {
     });
     assert.equal(canceledOne.canceled, true);
     await assert.rejects(pendingOne, /已停止生成回顾/);
-    assert.equal(requests.find((request) => request.requestId === "recap_window_one")?.aborted, true);
-    assert.equal(requests.find((request) => request.requestId === "recap_window_two")?.aborted, false);
+    assert.equal(requests[0]?.aborted, true);
+    assert.equal(requests[1]?.aborted, false);
 
     const wrongWindowCancel = await handleRuntimeMessage(chrome, {
       type: "activity:cancelTimeRecap",
@@ -1516,7 +1520,7 @@ test("time recap cancellation is scoped per source window", async () => {
       windowId: 1
     });
     assert.equal(wrongWindowCancel.canceled, false);
-    assert.equal(requests.find((request) => request.requestId === "recap_window_two")?.aborted, false);
+    assert.equal(requests[1]?.aborted, false);
 
     const canceledTwo = await handleRuntimeMessage(chrome, {
       type: "activity:cancelTimeRecap",
@@ -1525,7 +1529,7 @@ test("time recap cancellation is scoped per source window", async () => {
     });
     assert.equal(canceledTwo.canceled, true);
     await assert.rejects(pendingTwo, /已停止生成回顾/);
-    assert.equal(requests.find((request) => request.requestId === "recap_window_two")?.aborted, true);
+    assert.equal(requests[1]?.aborted, true);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -1545,11 +1549,10 @@ test("time recap newer same-window requests replace stale ones", async () => {
   const requests = [];
   globalThis.fetch = async (_url, init = {}) => {
     const request = {
-      requestId: init.headers?.["x-tab-recap-request-id"] || "",
       aborted: false
     };
     requests.push(request);
-    if (request.requestId === "recap_superseded") {
+    if (requests.length === 1) {
       return new Promise((_resolve, reject) => {
         init.signal?.addEventListener(
           "abort",
@@ -1612,7 +1615,7 @@ test("time recap newer same-window requests replace stale ones", async () => {
     });
 
     await supersededRejection;
-    assert.equal(requests.find((request) => request.requestId === "recap_superseded")?.aborted, true);
+    assert.equal(requests[0]?.aborted, true);
     assert.equal(latest.source, "ai");
     assert.equal(latest.recap.headline, "第二次回顾生效");
   } finally {
