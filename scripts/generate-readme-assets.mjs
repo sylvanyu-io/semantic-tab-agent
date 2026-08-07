@@ -7,6 +7,29 @@ const rootDir = resolve(".");
 const assetDir = resolve(rootDir, "docs/assets");
 const storeAssetDir = resolve(assetDir, "store");
 const storeOnly = process.argv.includes("--store");
+const readmeLocaleArgument = process.argv.find((argument) => argument.startsWith("--locale="));
+const requestedReadmeLocale = readmeLocaleArgument?.slice("--locale=".length) || "";
+if (requestedReadmeLocale && !new Set(["zh-CN", "en-US"]).has(requestedReadmeLocale)) {
+  throw new Error(`Unsupported README asset locale: ${requestedReadmeLocale}`);
+}
+const readmeAssetSets = Object.freeze({
+  "zh-CN": Object.freeze({
+    panel: "readme-panel.png",
+    preview: "readme-preview.png",
+    cleanup: "readme-cleanup.png",
+    recap: "readme-recap.png",
+    recapResult: "readme-recap-result.png",
+    hero: "readme-hero-zh.png"
+  }),
+  "en-US": Object.freeze({
+    panel: "readme-panel-en.png",
+    preview: "readme-preview-en.png",
+    cleanup: "readme-cleanup-en.png",
+    recap: "readme-recap-en.png",
+    recapResult: "readme-recap-result-en.png",
+    hero: "readme-hero-en.png"
+  })
+});
 await mkdir(assetDir, { recursive: true });
 await mkdir(storeAssetDir, { recursive: true });
 
@@ -36,12 +59,16 @@ try {
   if (storeOnly) {
     await renderStoreAssets();
   } else {
-    await renderPanelShot("readme-panel.png", { preview: false });
-    await renderPanelShot("readme-preview.png", { preview: true });
-    await renderCleanupResultShot("readme-cleanup.png");
-    await renderRecapShot("readme-recap.png");
-    await renderRecapResultShot("readme-recap-result.png");
-    await renderScreenshotShowcase();
+    for (const locale of requestedReadmeLocale ? [requestedReadmeLocale] : ["zh-CN", "en-US"]) {
+      const assets = readmeAssetSets[locale];
+      const mockOptions = locale === "en-US" ? storeMockOptions(locale) : {};
+      await renderPanelShot(assets.panel, { preview: false, locale, mockOptions });
+      await renderPanelShot(assets.preview, { preview: true, locale, mockOptions });
+      await renderCleanupResultShot(assets.cleanup, { locale, mockOptions });
+      await renderRecapShot(assets.recap, { locale, mockOptions });
+      await renderRecapResultShot(assets.recapResult, { locale, mockOptions });
+      await renderScreenshotShowcase({ locale, assets });
+    }
   }
 } finally {
   await browser.close();
@@ -50,15 +77,15 @@ try {
 
 console.log(`Generated ${storeOnly ? "Chrome Web Store" : "README"} assets in ${storeOnly ? storeAssetDir : assetDir}`);
 
-async function renderPanelShot(filename, { preview }) {
+async function renderPanelShot(filename, { preview, locale = "zh-CN", mockOptions = {} }) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 680 },
     deviceScaleFactor: 2,
     colorScheme: "light",
-    locale: "zh-CN"
+    locale
   });
   const page = await context.newPage();
-  await installChromeMock(page);
+  await installChromeMock(page, mockOptions);
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=42`);
   await page.evaluate(() => document.fonts?.ready);
   await focusCapturePage(page);
@@ -75,40 +102,43 @@ async function renderPanelShot(filename, { preview }) {
   await context.close();
 }
 
-async function renderRecapShot(filename) {
+async function renderRecapShot(filename, { locale = "zh-CN", mockOptions = {} } = {}) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 680 },
     deviceScaleFactor: 2,
     colorScheme: "light",
-    locale: "zh-CN"
+    locale
   });
   const page = await context.newPage();
-  await installChromeMock(page);
+  await installChromeMock(page, mockOptions);
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=42`);
   await page.evaluate(() => document.fonts?.ready);
   await focusCapturePage(page);
   await waitForPrimaryActionPaint(page, "#analyzeBtn");
-  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: locale === "en-US" ? "Recap" : "回顾" }).click();
   await focusCapturePage(page);
   await waitForPrimaryActionPaint(page, "#analyzeBtn");
   await page.screenshot({ path: resolve(assetDir, filename) });
   await context.close();
 }
 
-async function renderCleanupResultShot(filename) {
+async function renderCleanupResultShot(filename, { locale = "zh-CN", mockOptions = {} } = {}) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 680 },
     deviceScaleFactor: 2,
     colorScheme: "light",
-    locale: "zh-CN"
+    locale
   });
   const page = await context.newPage();
   await installChromeMock(page, {
+    ...mockOptions,
     settings: {
+      ...(mockOptions.settings || {}),
       analyzeGrouping: false,
       analyzeCleanup: true
     },
     preview: {
+      ...(mockOptions.preview || {}),
       analysisFeatures: { grouping: false, cleanup: true },
       groups: [],
       groupedTabsCount: 0,
@@ -129,20 +159,20 @@ async function renderCleanupResultShot(filename) {
   await context.close();
 }
 
-async function renderRecapResultShot(filename) {
+async function renderRecapResultShot(filename, { locale = "zh-CN", mockOptions = {} } = {}) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 680 },
     deviceScaleFactor: 2,
     colorScheme: "light",
-    locale: "zh-CN"
+    locale
   });
   const page = await context.newPage();
-  await installChromeMock(page);
+  await installChromeMock(page, mockOptions);
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=42`);
   await page.evaluate(() => document.fonts?.ready);
   await focusCapturePage(page);
   await waitForPrimaryActionPaint(page, "#analyzeBtn");
-  await page.getByRole("button", { name: "回顾" }).click();
+  await page.getByRole("button", { name: locale === "en-US" ? "Recap" : "回顾" }).click();
   await focusCapturePage(page);
   await waitForPrimaryActionPaint(page, "#analyzeBtn");
   await page.locator("#analyzeBtn").click();
@@ -168,7 +198,42 @@ async function waitForPrimaryActionPaint(page, selector) {
   await page.waitForTimeout(160);
 }
 
-async function renderScreenshotShowcase() {
+async function renderScreenshotShowcase({ locale = "zh-CN", assets = readmeAssetSets[locale] } = {}) {
+  const english = locale === "en-US";
+  const copy = english
+    ? {
+        brandSubtitle: "AI tab organizer and work recap",
+        title: "One side panel for a crowded browser.",
+        lead: "Review the plan before grouping or closing tabs.",
+        cards: [
+          ["Organize", "Scope and settings"],
+          ["Groups", "Preview before apply"],
+          ["Cleanup", "Locate or close"],
+          ["Recap", "Range and activity"],
+          ["Results", "Summary and timeline"]
+        ],
+        features: [
+          "Cross-window organization",
+          "Manual cleanup",
+          "Undo",
+          "Optional page summaries",
+          "Local activity recap",
+          "Custom AI gateway"
+        ]
+      }
+    : {
+        brandSubtitle: "AI 标签页整理、清理与工作回顾",
+        title: "一个侧边栏，把混乱标签页收拾清楚。",
+        lead: "整理、清理和回顾都有完整结果页；先看方案，再决定下一步。",
+        cards: [
+          ["整理设置", "范围、摘要、偏好"],
+          ["分组结果", "先预览，再整理"],
+          ["清理建议", "定位或手动关闭"],
+          ["回顾设置", "时间范围和本机线索"],
+          ["回顾结果", "文字总结、时间线、下一步"]
+        ],
+        features: ["跨窗口整理", "手动清理", "可回退", "页面摘要增强", "本机活动回顾", "自定义 AI 网关"]
+      };
   const context = await browser.newContext({
     viewport: { width: 1540, height: 820 },
     deviceScaleFactor: 2
@@ -176,7 +241,7 @@ async function renderScreenshotShowcase() {
   const page = await context.newPage();
   await page.setContent(
     `<!doctype html>
-    <html>
+    <html lang="${locale}">
       <head>
         <meta charset="utf-8" />
         <style>
@@ -355,43 +420,43 @@ async function renderScreenshotShowcase() {
               <img src="${baseUrl}/icons/icon128.png" alt="" aria-hidden="true" />
               <div>
                 <div class="brand-name">TabRecap</div>
-                <div class="brand-subtitle">AI 标签页整理、清理与工作回顾</div>
+                <div class="brand-subtitle">${copy.brandSubtitle}</div>
               </div>
             </div>
-            <h1>一个侧边栏，把混乱标签页收拾清楚。</h1>
-            <p class="lead">整理、清理和回顾都有完整结果页；先看方案，再决定下一步。</p>
+            <h1>${copy.title}</h1>
+            <p class="lead">${copy.lead}</p>
           </section>
 
           <section class="shot-grid" aria-label="TabRecap screenshots">
             <article class="shot-card" style="--tone:#1f55ff">
-              <div class="shot-title"><span><i></i>整理设置</span><small>范围、摘要、偏好</small></div>
-              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-panel.png')" role="img" aria-label="TabRecap 整理设置完整截图"></div></div>
+              <div class="shot-title"><span><i></i>${copy.cards[0][0]}</span><small>${copy.cards[0][1]}</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/${assets.panel}')" role="img" aria-label="${copy.cards[0][0]}"></div></div>
             </article>
             <article class="shot-card" style="--tone:#d94a32">
-              <div class="shot-title"><span><i></i>分组结果</span><small>先预览，再整理</small></div>
-              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-preview.png')" role="img" aria-label="TabRecap 分组结果完整截图"></div></div>
+              <div class="shot-title"><span><i></i>${copy.cards[1][0]}</span><small>${copy.cards[1][1]}</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/${assets.preview}')" role="img" aria-label="${copy.cards[1][0]}"></div></div>
             </article>
             <article class="shot-card" style="--tone:#c9ff4a">
-              <div class="shot-title"><span><i></i>清理建议</span><small>定位或手动关闭</small></div>
-              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-cleanup.png')" role="img" aria-label="TabRecap 清理建议结果完整截图"></div></div>
+              <div class="shot-title"><span><i></i>${copy.cards[2][0]}</span><small>${copy.cards[2][1]}</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/${assets.cleanup}')" role="img" aria-label="${copy.cards[2][0]}"></div></div>
             </article>
             <article class="shot-card" style="--tone:#2fa37c">
-              <div class="shot-title"><span><i></i>回顾设置</span><small>时间范围和本机线索</small></div>
-              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-recap.png')" role="img" aria-label="TabRecap 近期回顾完整截图"></div></div>
+              <div class="shot-title"><span><i></i>${copy.cards[3][0]}</span><small>${copy.cards[3][1]}</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/${assets.recap}')" role="img" aria-label="${copy.cards[3][0]}"></div></div>
             </article>
             <article class="shot-card" style="--tone:#8b5cf6">
-              <div class="shot-title"><span><i></i>回顾结果</span><small>文字总结、时间线、下一步</small></div>
-              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/readme-recap-result.png')" role="img" aria-label="TabRecap 回顾结果完整截图"></div></div>
+              <div class="shot-title"><span><i></i>${copy.cards[4][0]}</span><small>${copy.cards[4][1]}</small></div>
+              <div class="shot-wrap"><div class="shot" style="--shot:url('${baseUrl}/docs/assets/${assets.recapResult}')" role="img" aria-label="${copy.cards[4][0]}"></div></div>
             </article>
           </section>
 
           <section class="features" aria-label="TabRecap capabilities">
-            <span class="feature" style="--tone:#1f55ff"><i></i>跨窗口整理</span>
-            <span class="feature" style="--tone:#d94a32"><i></i>手动清理</span>
-            <span class="feature" style="--tone:#c9ff4a"><i></i>可回退</span>
-            <span class="feature" style="--tone:#2fa37c"><i></i>页面摘要增强</span>
-            <span class="feature" style="--tone:#8b5cf6"><i></i>本机活动回顾</span>
-            <span class="feature" style="--tone:#f5b73b"><i></i>自定义 AI 网关</span>
+            <span class="feature" style="--tone:#1f55ff"><i></i>${copy.features[0]}</span>
+            <span class="feature" style="--tone:#d94a32"><i></i>${copy.features[1]}</span>
+            <span class="feature" style="--tone:#c9ff4a"><i></i>${copy.features[2]}</span>
+            <span class="feature" style="--tone:#2fa37c"><i></i>${copy.features[3]}</span>
+            <span class="feature" style="--tone:#8b5cf6"><i></i>${copy.features[4]}</span>
+            <span class="feature" style="--tone:#f5b73b"><i></i>${copy.features[5]}</span>
           </section>
         </main>
       </body>
@@ -399,7 +464,7 @@ async function renderScreenshotShowcase() {
     { waitUntil: "load" }
   );
   await page.locator(".showcase").screenshot({
-    path: resolve(assetDir, "readme-hero-zh.png"),
+    path: resolve(assetDir, assets.hero),
     omitBackground: true
   });
   await context.close();

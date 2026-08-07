@@ -22,7 +22,7 @@ TabRecap is a Chrome MV3 side-panel extension. The Organize view groups tabs fro
 Every organization plan is shown before it runs. The extension validates the plan locally; cleanup results remain suggestions until a tab is closed manually.
 
 <p align="center">
-  <img src="docs/assets/store/en/01-groups.png" width="1120" alt="TabRecap grouping plan preview" />
+  <img src="docs/assets/readme-hero-en.png" width="1120" alt="TabRecap English product overview" />
 </p>
 
 ## Usage
