@@ -1,12 +1,14 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { resolve, extname } from "node:path";
 import { chromium } from "@playwright/test";
 
 const rootDir = resolve(".");
 const assetDir = resolve(rootDir, "docs/assets");
+const storeAssetDir = resolve(assetDir, "store");
+const storeOnly = process.argv.includes("--store");
 await mkdir(assetDir, { recursive: true });
+await mkdir(storeAssetDir, { recursive: true });
 
 const server = createServer(async (request, response) => {
   try {
@@ -31,18 +33,22 @@ const baseUrl = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch();
 
 try {
-  await renderPanelShot("readme-panel.png", { preview: false });
-  await renderPanelShot("readme-preview.png", { preview: true });
-  await renderCleanupResultShot("readme-cleanup.png");
-  await renderRecapShot("readme-recap.png");
-  await renderRecapResultShot("readme-recap-result.png");
-  await renderScreenshotShowcase();
+  if (storeOnly) {
+    await renderStoreAssets();
+  } else {
+    await renderPanelShot("readme-panel.png", { preview: false });
+    await renderPanelShot("readme-preview.png", { preview: true });
+    await renderCleanupResultShot("readme-cleanup.png");
+    await renderRecapShot("readme-recap.png");
+    await renderRecapResultShot("readme-recap-result.png");
+    await renderScreenshotShowcase();
+  }
 } finally {
   await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));
 }
 
-console.log(`Generated README assets in ${assetDir}`);
+console.log(`Generated ${storeOnly ? "Chrome Web Store" : "README"} assets in ${storeOnly ? storeAssetDir : assetDir}`);
 
 async function renderPanelShot(filename, { preview }) {
   const context = await browser.newContext({
@@ -399,11 +405,562 @@ async function renderScreenshotShowcase() {
   await context.close();
 }
 
+function storeLocales() {
+  return Object.freeze({
+  "en-US": {
+    directory: "en",
+    brandLine: "AI tab organizer and work recap",
+    scenes: [
+      {
+        key: "01-groups",
+        visual: "groups",
+        eyebrow: "GROUP",
+        title: "Review the grouping plan\nbefore anything moves.",
+        description: "AI combines page meaning, tab order, and local activity clues into a plan you can inspect first.",
+        points: ["See every proposed group", "Undo after organizing"]
+      },
+      {
+        key: "02-cleanup",
+        visual: "cleanup",
+        eyebrow: "CLEAN UP",
+        title: "Let AI surface tabs\nworth reviewing.",
+        description: "See likely duplicates, stale searches, and low-value pages with a clear reason for each suggestion.",
+        points: ["Review higher-confidence candidates first", "Tabs are never closed automatically"]
+      },
+      {
+        key: "03-recap",
+        visual: "recap",
+        eyebrow: "RECAP",
+        title: "Choose a period.\nSee what kept you busy.",
+        description: "Turn local tab activity and available page summaries into a readable account of your recent work and life.",
+        points: ["Uses visits, time spent, and tab history", "Summary, timeline, and next steps"]
+      }
+    ]
+  },
+  "zh-CN": {
+    directory: "zh_CN",
+    brandLine: "AI 标签页整理、清理与工作回顾",
+    scenes: [
+      {
+        key: "01-groups",
+        visual: "groups",
+        eyebrow: "分组",
+        title: "先看分组方案，\n再决定是否整理。",
+        description: "AI 结合页面语义、标签页顺序和本机活动线索生成方案，移动前可以逐组检查。",
+        points: ["完整查看每个建议分组", "整理后仍然可以撤销"]
+      },
+      {
+        key: "02-cleanup",
+        visual: "cleanup",
+        eyebrow: "清理",
+        title: "让 AI 找出值得复查的标签页。",
+        description: "可能重复、长期闲置或价值较低的页面会被集中列出，并附上判断理由。",
+        points: ["优先复查更明确的候选", "绝不会自动关闭标签页"]
+      },
+      {
+        key: "03-recap",
+        visual: "recap",
+        eyebrow: "回顾",
+        title: "选一段时间，\n看清最近在忙什么。",
+        description: "根据本机标签页活动和可用页面摘要，生成一份同时包含工作与生活线索的回顾。",
+        points: ["参考打开次数、停留时长和历史记录", "总结主线、时间线与下一步"]
+      }
+    ]
+  }
+  });
+}
+
+async function renderStoreAssets() {
+  for (const [locale, localeCopy] of Object.entries(storeLocales())) {
+    const localeDirectory = resolve(storeAssetDir, localeCopy.directory);
+    await rm(localeDirectory, { recursive: true, force: true });
+    await mkdir(localeDirectory, { recursive: true });
+    const mockOptions = storeMockOptions(locale);
+    for (const scene of localeCopy.scenes) {
+      const productShot = await captureStorePanel({ locale, visual: scene.visual, mockOptions });
+      await renderStoreScreenshot({
+        locale,
+        copy: { ...scene, brandLine: localeCopy.brandLine },
+        productShot,
+        outputPath: resolve(localeDirectory, `${scene.key}.png`)
+      });
+    }
+  }
+
+  const globalDirectory = resolve(storeAssetDir, "global");
+  await mkdir(globalDirectory, { recursive: true });
+  await renderGlobalPromoAssets(globalDirectory);
+}
+
+async function captureStorePanel({ locale, visual, mockOptions }) {
+  const context = await browser.newContext({
+    viewport: { width: 540, height: 900 },
+    deviceScaleFactor: 2,
+    colorScheme: "light",
+    locale
+  });
+  const page = await context.newPage();
+
+  try {
+    await installChromeMock(page, mockOptions);
+    await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=42`);
+    await page.evaluate(() => document.fonts?.ready);
+    await focusCapturePage(page);
+    await waitForPrimaryActionPaint(page, "#analyzeBtn");
+
+    if (visual === "recap") {
+      await page.locator('[data-panel-mode="recap"]').click();
+      await page.locator("#analyzeBtn").click();
+      await page.locator(".recap-summary-card").waitFor({ state: "visible" });
+      await focusCapturePage(page);
+      await page.waitForTimeout(160);
+      const buffer = await page.screenshot({
+        type: "png",
+        animations: "disabled",
+        clip: { x: 0, y: 0, width: 540, height: 730 }
+      });
+      return `data:image/png;base64,${buffer.toString("base64")}`;
+    }
+
+    await page.locator("#analyzeBtn").click();
+    await page.locator("#previewSection").waitFor({ state: "visible" });
+    await page.locator(".preview-result-tabs").waitFor({ state: "visible" });
+    if (visual === "cleanup") {
+      await page.locator("#preview-result-tab-cleanup").click();
+      await page.locator('#preview-result-panel-cleanup:not([hidden]) .cleanup-preview-row').first().waitFor({ state: "visible" });
+    }
+    await focusCapturePage(page);
+    await page.waitForTimeout(160);
+
+    const bounds = await page.locator("#previewSection").boundingBox();
+    if (!bounds) throw new Error(`Unable to capture ${visual} store screenshot.`);
+    const x = Math.max(0, bounds.x);
+    const buffer = await page.screenshot({
+      type: "png",
+      animations: "disabled",
+      clip: {
+        x,
+        y: Math.max(0, bounds.y),
+        width: Math.min(bounds.width, 540 - x),
+        height: Math.min(730, bounds.height)
+      }
+    });
+    return `data:image/png;base64,${buffer.toString("base64")}`;
+  } finally {
+    await context.close();
+  }
+}
+
+async function renderStoreScreenshot({ locale, copy, productShot, outputPath }) {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 1,
+    colorScheme: "light",
+    locale
+  });
+  const page = await context.newPage();
+  const pointMarkup = copy.points.map((point, index) => `<li><i data-tone="${index}"></i>${escapeHtml(point)}</li>`).join("");
+  await page.setContent(
+    `<!doctype html>
+    <html lang="${locale}">
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          * { box-sizing: border-box; }
+          html, body { width: 1280px; height: 800px; margin: 0; overflow: hidden; }
+          body {
+            color: #211e19;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+            background-color: #f8f3e8;
+            background-image:
+              linear-gradient(rgba(48, 43, 34, 0.045) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(48, 43, 34, 0.045) 1px, transparent 1px);
+            background-size: 52px 52px;
+          }
+          main {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(0, 620px) 516px;
+            gap: 48px;
+            align-items: center;
+            padding: 48px;
+          }
+          .copy { min-width: 0; }
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 72px;
+          }
+          .brand img { width: 58px; height: 58px; display: block; }
+          .brand strong { display: block; font-size: 26px; line-height: 1; font-weight: 900; }
+          .brand small { display: block; margin-top: 7px; color: #746b5c; font-size: 14px; font-weight: 700; }
+          .eyebrow {
+            margin: 0 0 15px;
+            color: #1f55ff;
+            font-size: 18px;
+            line-height: 1.2;
+            font-weight: 850;
+          }
+          h1 {
+            margin: 0;
+            font-size: 46px;
+            line-height: 1.14;
+            font-weight: 920;
+            letter-spacing: 0;
+            white-space: pre-line;
+          }
+          .description {
+            margin: 25px 0 30px;
+            color: #625a4d;
+            font-size: 20px;
+            line-height: 1.5;
+            font-weight: 620;
+          }
+          ul { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+          li { display: flex; align-items: center; gap: 11px; color: #342f28; font-size: 17px; font-weight: 760; }
+          li i { width: 12px; height: 12px; flex: 0 0 auto; border-radius: 3px; background: #1f55ff; }
+          li i[data-tone="1"] { background: #d94a32; }
+          li i[data-tone="2"] { background: #2fa37c; }
+          .product-shot {
+            width: 100%;
+            height: 704px;
+            overflow: hidden;
+            border: 1px solid rgba(45, 40, 32, 0.32);
+            border-radius: 24px;
+            background: #f8f3e8;
+            box-shadow: 0 24px 56px rgba(45, 40, 32, 0.18);
+          }
+          .product-shot img {
+            display: block;
+            width: 100%;
+            height: auto;
+          }
+        </style>
+      </head>
+      <body>
+        <main>
+          <section class="copy">
+            <div class="brand">
+              <img src="${baseUrl}/icons/icon128.png" alt="" />
+              <div><strong>TabRecap</strong><small>${escapeHtml(copy.brandLine)}</small></div>
+            </div>
+            <p class="eyebrow">${escapeHtml(copy.eyebrow)}</p>
+            <h1>${escapeHtml(copy.title)}</h1>
+            <p class="description">${escapeHtml(copy.description)}</p>
+            <ul>${pointMarkup}</ul>
+          </section>
+          <section class="product-shot" aria-label="${escapeHtml(copy.title)}">
+            <img src="${productShot}" alt="" />
+          </section>
+        </main>
+      </body>
+    </html>`,
+    { waitUntil: "load" }
+  );
+  await page.evaluate(() => document.fonts?.ready);
+  await page.screenshot({ path: outputPath, type: "png" });
+  await context.close();
+}
+
+async function renderGlobalPromoAssets(globalDirectory) {
+  await renderPromoCanvas({
+    width: 440,
+    height: 280,
+    outputPath: resolve(globalDirectory, "small-promo-440x280.png"),
+    content: `
+      <div class="small-brand"><img src="${baseUrl}/icons/icon128.png" alt="" /><strong>TabRecap</strong></div>
+      <p>Organize. Review. Recap.</p>
+      <div class="tab-bars"><i></i><i></i><i></i><i></i></div>`
+  });
+  await renderPromoCanvas({
+    width: 1400,
+    height: 560,
+    outputPath: resolve(globalDirectory, "marquee-1400x560.png"),
+    wide: true,
+    content: `
+      <section class="marquee-copy">
+        <div class="wide-brand"><img src="${baseUrl}/icons/icon128.png" alt="" /><strong>TabRecap</strong></div>
+        <h1>Make sense of your tabs.</h1>
+        <p>AI grouping, cleanup review, and work recaps in one side panel.</p>
+      </section>
+      <section class="group-visual" aria-hidden="true">
+        <div class="group-card blue"><strong>AI &amp; Tools</strong><span>12 tabs</span><i></i><i></i><i></i></div>
+        <div class="group-card red"><strong>Design Research</strong><span>8 tabs</span><i></i><i></i></div>
+        <div class="group-card green"><strong>Current Projects</strong><span>16 tabs</span><i></i><i></i><i></i></div>
+      </section>`
+  });
+}
+
+async function renderPromoCanvas({ width, height, outputPath, content, wide = false }) {
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, colorScheme: "light" });
+  const page = await context.newPage();
+  await page.setContent(
+    `<!doctype html><html><head><meta charset="utf-8" /><style>
+      * { box-sizing: border-box; }
+      html, body { width: ${width}px; height: ${height}px; margin: 0; overflow: hidden; }
+      body {
+        position: relative;
+        display: ${wide ? "grid" : "flex"};
+        grid-template-columns: ${wide ? "1fr 560px" : "none"};
+        align-items: center;
+        justify-content: center;
+        gap: ${wide ? "72px" : "0"};
+        padding: ${wide ? "70px 92px" : "34px"};
+        color: #211e19;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+        background-color: #f8f3e8;
+        background-image:
+          linear-gradient(rgba(48,43,34,.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(48,43,34,.045) 1px, transparent 1px);
+        background-size: ${wide ? "56px 56px" : "32px 32px"};
+      }
+      body::before { content: ""; position: absolute; inset: 0; border: 10px solid #1f55ff; pointer-events: none; }
+      body:not(.wide) { flex-direction: column; }
+      .small-brand { display: flex; align-items: center; justify-content: center; gap: 15px; }
+      .small-brand img { width: 72px; height: 72px; }
+      .small-brand strong { font-size: 42px; font-weight: 920; }
+      body:not(.wide) p { margin: 22px 0 17px; text-align: center; color: #625a4d; font-size: 21px; font-weight: 760; }
+      .tab-bars { display: flex; justify-content: center; gap: 10px; }
+      .tab-bars i { width: 54px; height: 13px; border-radius: 4px; background: #1f55ff; }
+      .tab-bars i:nth-child(2) { width: 35px; background: #d94a32; }
+      .tab-bars i:nth-child(3) { width: 44px; background: #2fa37c; }
+      .tab-bars i:nth-child(4) { width: 28px; background: #c9ff4a; border: 1px solid rgba(33,30,25,.25); }
+      .wide-brand { display: flex; align-items: center; gap: 18px; }
+      .wide-brand img { width: 82px; height: 82px; }
+      .wide-brand strong { font-size: 43px; font-weight: 920; }
+      .marquee-copy h1 { max-width: 650px; margin: 40px 0 18px; font-size: 65px; line-height: 1.04; font-weight: 930; letter-spacing: 0; }
+      .marquee-copy p { max-width: 650px; margin: 0; color: #625a4d; font-size: 25px; line-height: 1.45; font-weight: 650; }
+      .group-visual { display: grid; gap: 16px; transform: rotate(-2deg); }
+      .group-card { display: grid; grid-template-columns: 1fr auto; gap: 13px; padding: 20px 22px; border: 2px solid #211e19; border-radius: 18px; background: #fffaf1; box-shadow: 8px 8px 0 rgba(33,30,25,.12); }
+      .group-card strong { font-size: 23px; }
+      .group-card span { align-self: center; color: #625a4d; font-size: 17px; font-weight: 760; }
+      .group-card i { height: 8px; border-radius: 4px; background: #1f55ff; }
+      .group-card i:nth-of-type(2) { width: 78%; }
+      .group-card i:nth-of-type(3) { width: 58%; }
+      .group-card.red i { background: #d94a32; }
+      .group-card.green i { background: #2fa37c; }
+    </style></head><body class="${wide ? "wide" : ""}">${content}</body></html>`,
+    { waitUntil: "load" }
+  );
+  await page.evaluate(() => document.fonts?.ready);
+  await page.screenshot({ path: outputPath, type: "png" });
+  await context.close();
+}
+
+function storeMockOptions(locale) {
+  const english = locale === "en-US";
+  const groups = english
+    ? [
+        { title: "AI Coding & Agents", reason: "Claude, ChatGPT, Codex, and agent tooling research.", tabCount: 12 },
+        { title: "Product Design & Frontend", reason: "UI references, repositories, and implementation notes.", tabCount: 9 },
+        { title: "Current Project Workflow", reason: "Issues, pull requests, documentation, and test pages.", tabCount: 14 },
+        { title: "Research & Reading", reason: "Papers, long-form articles, and saved references.", tabCount: 8 }
+      ]
+    : [
+        { title: "AI 编程与 Agent", reason: "Claude、ChatGPT、Codex 与智能体工具调研。", tabCount: 12 },
+        { title: "产品设计与前端", reason: "界面参考、代码仓库和实现记录。", tabCount: 9 },
+        { title: "当前项目工作流", reason: "Issue、PR、文档和测试页面。", tabCount: 14 },
+        { title: "研究与稍后阅读", reason: "论文、长文和待整理参考资料。", tabCount: 8 }
+      ];
+  const cleanupCandidates = english
+    ? [
+        {
+          tabId: 301,
+          windowId: 42,
+          title: "render bucket - Google Search",
+          hostname: "www.google.com",
+          currentGroupTitle: "Product Design & Frontend",
+          ageMs: 8 * 24 * 60 * 60 * 1000,
+          idleMs: 6 * 24 * 60 * 60 * 1000,
+          activeCount: 0,
+          priority: "high",
+          reason: "A broad search page that has already led to more specific implementation references.",
+          evidence: ["Search results page", "More specific pages are open", "Rarely revisited"]
+        },
+        {
+          tabId: 302,
+          windowId: 42,
+          title: "Duplicate project dashboard",
+          hostname: "app.example.com",
+          currentGroupTitle: "Current Project Workflow",
+          ageMs: 5 * 24 * 60 * 60 * 1000,
+          idleMs: 4 * 24 * 60 * 60 * 1000,
+          activeCount: 1,
+          priority: "medium",
+          reason: "Another open tab points to the same project dashboard and has been used more recently.",
+          evidence: ["Possible duplicate", "Idle for 4 days"]
+        },
+        {
+          tabId: 303,
+          windowId: 42,
+          title: "Weekly AI newsletter",
+          hostname: "substack.com",
+          currentGroupTitle: "Research & Reading",
+          ageMs: 18 * 24 * 60 * 60 * 1000,
+          idleMs: 10 * 24 * 60 * 60 * 1000,
+          activeCount: 0,
+          priority: "low",
+          reason: "An older reading item that is easy to find again if it becomes relevant.",
+          evidence: ["Idle for 10 days", "Easy to find again"]
+        }
+      ]
+    : [
+        {
+          tabId: 301,
+          windowId: 42,
+          title: "render bucket - Google 搜索",
+          hostname: "www.google.com",
+          currentGroupTitle: "产品设计与前端",
+          ageMs: 8 * 24 * 60 * 60 * 1000,
+          idleMs: 6 * 24 * 60 * 60 * 1000,
+          activeCount: 0,
+          priority: "high",
+          reason: "这是一次较泛的搜索结果，后面已经打开了更具体的实现资料。",
+          evidence: ["搜索结果页", "已有更具体页面", "很少回看"]
+        },
+        {
+          tabId: 302,
+          windowId: 42,
+          title: "重复的项目仪表盘",
+          hostname: "app.example.com",
+          currentGroupTitle: "当前项目工作流",
+          ageMs: 5 * 24 * 60 * 60 * 1000,
+          idleMs: 4 * 24 * 60 * 60 * 1000,
+          activeCount: 1,
+          priority: "medium",
+          reason: "另一个标签页指向同一项目仪表盘，而且最近使用得更多。",
+          evidence: ["可能重复", "闲置约 4 天"]
+        },
+        {
+          tabId: 303,
+          windowId: 42,
+          title: "每周 AI Newsletter",
+          hostname: "substack.com",
+          currentGroupTitle: "研究与稍后阅读",
+          ageMs: 18 * 24 * 60 * 60 * 1000,
+          idleMs: 10 * 24 * 60 * 60 * 1000,
+          activeCount: 0,
+          priority: "low",
+          reason: "这是一条较早的稍后阅读内容，需要时也很容易重新找到。",
+          evidence: ["闲置约 10 天", "需要时容易找回"]
+        }
+      ];
+
+  return {
+    locale,
+    settings: {
+      languageMode: locale,
+      privacyDisclosureDismissed: true,
+      customPrompt: english
+        ? "Keep current projects, AI research, and reading references separate."
+        : "当前项目、AI 调研和稍后阅读分开整理。"
+    },
+    preview: {
+      languageMode: locale,
+      groups,
+      totalTabsCount: 55,
+      eligibleTabsCount: 54,
+      groupedTabsCount: 43,
+      reviewTabsCount: 11,
+      reviewGroupWillBeCreated: true,
+      reviewGroupTitle: english ? "Needs Review" : "待分类",
+      reviewGroupReason: english ? "Pages without a clear shared topic stay together for review." : "暂时拿不准共同主题的页面先集中放好。",
+      pageSampling: { requested: 18, ok: 9, permissionRequired: 0, blocked: 9 },
+      cleanup: {
+        summary: english
+          ? "Review likely duplicates, stale searches, and pages that are easy to recover later."
+          : "优先复查可能重复、已经闲置或需要时容易重新找到的页面。",
+        candidateCount: cleanupCandidates.length,
+        candidates: cleanupCandidates
+      }
+    },
+    recapResult: storeRecapResult(locale)
+  };
+}
+
+function storeRecapResult(locale) {
+  const english = locale === "en-US";
+  const now = new Date();
+  return {
+    source: "ai",
+    input: {
+      schema: "tab_recap_time_recap_input_v1",
+      range: {
+        preset: "7d",
+        from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        to: now.toISOString()
+      },
+      coverage: { includedPages: 65, sampledEntries: 18, currentOpenTabs: 42 },
+      pages: [
+        { id: 1, tabId: 31, windowId: 42, title: english ? "Store listing checklist" : "商店发布检查清单", hostname: "github.com", open: true },
+        { id: 2, tabId: 32, windowId: 42, title: english ? "Side panel design review" : "侧边栏设计复查", hostname: "figma.com", open: true },
+        { id: 3, tabId: 33, windowId: 42, title: english ? "Release notes draft" : "版本说明草稿", hostname: "github.com", open: false },
+        { id: 4, tabId: 34, windowId: 42, title: english ? "Hangzhou weekend itinerary" : "杭州周末路线", hostname: "maps.google.com", open: true },
+        { id: 5, tabId: 35, windowId: 42, title: english ? "Hotels near West Lake" : "西湖附近酒店", hostname: "trip.com", open: false },
+        { id: 6, tabId: 36, windowId: 42, title: english ? "Camera rental comparison" : "相机租赁对比", hostname: "example.com", open: true }
+      ]
+    },
+    recap: {
+      schema: "tab_recap_time_recap_v1",
+      language: locale,
+      headline: english
+        ? "This week, you moved a product release forward and planned a weekend trip."
+        : "这周，你一边推进产品发布，一边规划周末出行。",
+      summary: english
+        ? "At work, you repeatedly returned to store assets, interface details, and release checks, suggesting the product is close to shipping. Between those sessions, you compared Hangzhou routes, hotels, and camera rentals, gradually shaping a weekend plan."
+        : "工作上，你反复回到商店素材、界面细节和发布检查，说明产品已经进入收口阶段。空档时，你持续比较杭州路线、酒店和相机租赁，周末计划也在逐渐成形。",
+      themes: english
+        ? [
+            { title: "Product release", description: "Polished store assets, interface details, and the final release checklist.", confidence: "high", pageIds: [1, 2, 3], evidence: ["Store listing", "Release checks"] },
+            { title: "Weekend in Hangzhou", description: "Compared routes, hotels, and camera rentals for a short trip.", confidence: "high", pageIds: [4, 5, 6], evidence: ["Travel route", "Hotels", "Camera rental"] }
+          ]
+        : [
+            { title: "产品发布收口", description: "完善商店素材、界面细节和最终发布检查。", confidence: "high", pageIds: [1, 2, 3], evidence: ["商店资料", "发布检查"] },
+            { title: "杭州周末出行", description: "对比路线、酒店和相机租赁，逐步确定短途计划。", confidence: "high", pageIds: [4, 5, 6], evidence: ["旅行路线", "酒店", "相机租赁"] }
+          ],
+      timeline: english
+        ? [
+            { label: "Today", description: "Focused on store assets, release checks, and side-panel polish.", pageIds: [1, 2, 3] },
+            { label: "Yesterday", description: "Compared Hangzhou routes and shortlisted places to stay.", pageIds: [4, 5] },
+            { label: "Earlier", description: "Checked camera rental options and kept a few trip references open.", pageIds: [4, 6] }
+          ]
+        : [
+            { label: "今天", description: "集中处理商店素材、发布检查和侧边栏体验。", pageIds: [1, 2, 3] },
+            { label: "昨天", description: "比较杭州周末路线，并筛选合适的住宿。", pageIds: [4, 5] },
+            { label: "更早", description: "查看相机租赁方案，并保留了几条出行参考。", pageIds: [4, 6] }
+          ],
+      followUps: english
+        ? [
+            { title: "Finish the store listing", reason: "The product and release checks are ready for the final listing pass.", pageIds: [1, 3] },
+            { title: "Confirm the weekend itinerary", reason: "The route and hotel shortlist are already taking shape.", pageIds: [4, 5, 6] }
+          ]
+        : [
+            { title: "完成商店资料", reason: "产品和发布检查已经进入最后一轮。", pageIds: [1, 3] },
+            { title: "确认周末行程", reason: "路线和住宿备选已经逐渐清晰。", pageIds: [4, 5, 6] }
+          ],
+      coverageNote: english ? "Used local activity plus available page summaries." : "已结合本机活动和可用页面摘要。"
+    }
+  };
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 async function installChromeMock(page, mockOptions = {}) {
   await page.addInitScript((options) => {
-    localStorage.setItem("tabRecap.uiLanguage", "zh-CN");
-    Object.defineProperty(navigator, "language", { get: () => "zh-CN" });
-    Object.defineProperty(navigator, "languages", { get: () => ["zh-CN", "zh"] });
+    const uiLanguage = options.locale === "en-US" ? "en-US" : "zh-CN";
+    const navigatorLanguages = uiLanguage === "en-US" ? ["en-US", "en"] : ["zh-CN", "zh"];
+    localStorage.setItem("tabRecap.uiLanguage", uiLanguage);
+    Object.defineProperty(navigator, "language", { get: () => uiLanguage });
+    Object.defineProperty(navigator, "languages", { get: () => navigatorLanguages });
 
     const settings = {
       organizeMode: "consolidate_one_window",
@@ -423,7 +980,7 @@ async function installChromeMock(page, mockOptions = {}) {
       continuousPageSummaries: false,
       minConfidenceToApply: 0.65,
       maxTabsPerGroup: 40,
-      languageMode: "zh-CN",
+      languageMode: uiLanguage,
       promptPreset: "conservative",
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
@@ -538,7 +1095,7 @@ async function installChromeMock(page, mockOptions = {}) {
       preview
     };
     const now = new Date();
-    const recapResult = {
+    const recapResult = options.recapResult || {
       source: "ai",
       input: {
         schema: "tab_recap_time_recap_input_v1",

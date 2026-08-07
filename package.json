@@ -18,6 +18,7 @@
     "stress:summary": "node scripts/summarize-stress-artifact.mjs",
     "assets:icons": "node scripts/generate-icons.mjs",
     "assets:readme": "node scripts/generate-readme-assets.mjs",
+    "assets:store": "node scripts/generate-readme-assets.mjs --store",
     "clean:dist": "node scripts/clean-dist.mjs",
     "audit:release-artifacts": "node scripts/audit-release-artifacts.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
