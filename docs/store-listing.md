@@ -53,7 +53,7 @@ AI connection
 
 Enter any OpenAI Chat Completions-compatible Base URL and model ID. TabRecap can read the endpoint's model list, but model IDs may also be typed manually. There are no vendor presets.
 
-For a quick trial, use `https://tab-recap-gateway.sylvan-yu.workers.dev/v1`, leave the API key blank, and load the available models. The shared endpoint is limited by IP, payload size, token count, and total quota. It accepts only TabRecap requests and may be unavailable after the shared quota is used. You can switch to your own endpoint at any time.
+For a quick trial, use `https://tab-recap-gateway.sylvanyu.io/v1`, leave the API key blank, and load the available models. The shared endpoint is limited by IP, payload size, token count, and total quota. It accepts only TabRecap requests and may be unavailable after the shared quota is used. You can switch to your own endpoint at any time.
 
 ## Simplified Chinese (`zh_CN`)
 
@@ -99,7 +99,7 @@ AI 接口
 
 填写兼容 OpenAI Chat Completions 的 Base URL 和模型 ID 即可。扩展可以读取接口返回的模型列表，也允许手动输入；界面不提供服务商预设。
 
-快速试用可填写 `https://tab-recap-gateway.sylvan-yu.workers.dev/v1`，API Key 留空，再读取模型。共享接口有 IP、请求大小、token 和总额度限制，只接受 TabRecap 的固定请求。额度耗尽或服务不可用时，可以随时换成自己的接口。
+快速试用可填写 `https://tab-recap-gateway.sylvanyu.io/v1`，API Key 留空，再读取模型。共享接口有 IP、请求大小、token 和总额度限制，只接受 TabRecap 的固定请求。额度耗尽或服务不可用时，可以随时换成自己的接口。
 
 ## Privacy tab
 
@@ -136,7 +136,7 @@ No account or paid subscription is required for the limited shared endpoint.
 
 1. Open several normal `https://` pages in one Chrome window.
 2. Click the TabRecap toolbar icon to open the side panel.
-3. Open advanced settings. Enter `https://tab-recap-gateway.sylvan-yu.workers.dev/v1` as the Base URL and leave API Key blank.
+3. Open advanced settings. Enter `https://tab-recap-gateway.sylvanyu.io/v1` as the Base URL and leave API Key blank.
 4. Click Load models. Use `glm-5.2` as the primary model and `deepseek-v4-flash` as the auxiliary model.
 5. Keep the current-window scope and click Analyze.
 6. Review the proposed groups and cleanup suggestions, then apply the organization.

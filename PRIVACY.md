@@ -27,7 +27,7 @@ Requests go to the endpoint you entered. That endpoint and its infrastructure ma
 
 ### Optional shared endpoint
 
-The README and Chrome Web Store description document `https://tab-recap-gateway.sylvan-yu.workers.dev/v1` as a limited trial endpoint. It is not embedded as a hidden default. If you choose it, the request passes through a TabRecap Cloudflare Worker and then OpenCode Go.
+The README and Chrome Web Store description document `https://tab-recap-gateway.sylvanyu.io/v1` as a limited trial endpoint. It is not embedded as a hidden default. If you choose it, the request passes through a TabRecap Cloudflare Worker and then OpenCode Go.
 
 The Worker:
 
@@ -92,7 +92,7 @@ TabRecap 不包含服务商 API Key，也不会暗中选择 AI 服务。你需�
 
 ### 可选共享接口
 
-README 和 Chrome 应用商店简介提供 `https://tab-recap-gateway.sylvan-yu.workers.dev/v1` 作为限量试用地址。它不是藏在扩展里的默认服务。选择该地址后，请求会先经过 TabRecap 的 Cloudflare Worker，再转发给 OpenCode Go。
+README 和 Chrome 应用商店简介提供 `https://tab-recap-gateway.sylvanyu.io/v1` 作为限量试用地址。它不是藏在扩展里的默认服务。选择该地址后，请求会先经过 TabRecap 的 Cloudflare Worker，再转发给 OpenCode Go。
 
 Worker 会：
 

@@ -2,7 +2,7 @@
 
 This Cloudflare Worker backs the optional trial endpoint documented in the project README. It is deliberately narrower than a general OpenAI proxy.
 
-The extension does not contain this URL as a default and does not contain the upstream provider key. Users who choose the shared endpoint enter `https://tab-recap-gateway.sylvan-yu.workers.dev/v1` themselves.
+The extension does not contain this URL as a default and does not contain the upstream provider key. Users who choose the shared endpoint enter `https://tab-recap-gateway.sylvanyu.io/v1` themselves.
 
 ## What the Worker accepts
 
@@ -108,9 +108,9 @@ The service is deployed as the dedicated `tab-recap-gateway` Worker. It does not
 After deployment:
 
 ```bash
-curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/healthz
-curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/readyz
-curl -fsS https://tab-recap-gateway.sylvan-yu.workers.dev/v1/models
+curl -fsS https://tab-recap-gateway.sylvanyu.io/healthz
+curl -fsS https://tab-recap-gateway.sylvanyu.io/readyz
+curl -fsS https://tab-recap-gateway.sylvanyu.io/v1/models
 ```
 
 Do not send a provider key to the public Worker. The Worker ignores client authorization for upstream authentication and injects its own secret.

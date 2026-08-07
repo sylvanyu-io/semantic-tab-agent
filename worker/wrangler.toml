@@ -1,9 +1,13 @@
-# Dedicated public trial gateway. It intentionally uses a workers.dev hostname
-# instead of sharing the retired cliproxy.sylvanyu.io route.
+# Dedicated public trial gateway on its own Cloudflare Custom Domain.
 name = "tab-recap-gateway"
 main = "src/index.js"
 compatibility_date = "2026-06-24"
-workers_dev = true
+workers_dev = false
+preview_urls = false
+
+routes = [
+  { pattern = "tab-recap-gateway.sylvanyu.io", custom_domain = true }
+]
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"

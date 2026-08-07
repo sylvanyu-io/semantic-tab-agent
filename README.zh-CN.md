@@ -74,7 +74,7 @@ TabRecap 不内置服务商密钥，也不做服务商预设。设置中填写�
 想先试用，可以填写：
 
 ```text
-Base URL: https://tab-recap-gateway.sylvan-yu.workers.dev/v1
+Base URL: https://tab-recap-gateway.sylvanyu.io/v1
 API Key:  留空
 主要模型: glm-5.2
 次要模型: deepseek-v4-flash

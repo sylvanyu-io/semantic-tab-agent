@@ -74,7 +74,7 @@ This works with self-hosted gateways and compatible services from providers such
 For a quick trial, use the public TabRecap gateway:
 
 ```text
-Base URL: https://tab-recap-gateway.sylvan-yu.workers.dev/v1
+Base URL: https://tab-recap-gateway.sylvanyu.io/v1
 API key:  leave blank
 Primary:  glm-5.2
 Auxiliary: deepseek-v4-flash
