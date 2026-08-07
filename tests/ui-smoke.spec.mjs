@@ -42,6 +42,19 @@ test.beforeEach(async ({ page }, testInfo) => {
   }
 });
 
+async function configureMockGateway(page) {
+  const details = page.locator(".advanced-settings");
+  await details.evaluate((element) => {
+    element.open = true;
+  });
+  await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
+  await page.locator("#gatewayCustomModel").fill("test-model");
+  await page.locator("#gatewayApiKey").fill("test-key");
+  await details.evaluate((element) => {
+    element.open = false;
+  });
+}
+
 test("page sampler extracts forum discussion content instead of page chrome", async ({ page }) => {
   await page.setContent(`
     <html lang="zh-CN">
@@ -218,38 +231,31 @@ test("control surface renders settings and mock preview", async ({ page }) => {
 
   await expect(page.getByLabel("页面摘要读取范围")).toHaveValue("ambiguous_with_permission");
   await expect(page.locator("#pageContextMode")).toContainText("尽量读取已授权页面");
-  await expect(page.locator("#gatewayProviderMode")).toHaveValue("builtin");
-  await expect(page.locator("#gatewayModel")).toHaveValue("gpt-5.4");
-  await expect(page.locator("#gatewayAuxiliaryModel")).toHaveValue("gpt-5.3-codex-spark");
-  await expect(page.locator("#gatewayCustomModelField")).toBeHidden();
-  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
-  await expect(page.locator("#gatewayApiKey")).toBeHidden();
-  await expect(page.getByRole("button", { name: "测试连接" })).toBeHidden();
-  await page.locator("#gatewayProviderMode").selectOption("custom");
+  await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
+  await expect(page.locator("#gatewayProviderMode")).toBeHidden();
+  await expect(page.locator("#gatewayModel")).toHaveValue("custom");
   await expect(page.locator("#gatewayModel")).toBeHidden();
+  await expect(page.locator("#gatewayAuxiliaryModel")).toHaveValue("same_as_primary");
   await expect(page.locator("#gatewayAuxiliaryModel")).toBeHidden();
   await expect(page.locator("#gatewayCustomModelField")).toBeVisible();
   await expect(page.locator("#gatewayCustomAuxiliaryModel")).toBeVisible();
-  await expect(page.locator("#gatewayCustomModel")).toHaveAttribute("placeholder", "留空则使用默认模型 gpt-5.4");
-  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toHaveAttribute("placeholder", "留空则跟随主模型");
+  await expect(page.locator("#gatewayCustomModel")).toHaveAttribute("placeholder", "例如：glm-5.2、kimi-k3、qwen-plus");
+  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toHaveAttribute("placeholder", "留空则使用主模型");
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
-  await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("placeholder", "例如：https://api.deepseek.com/v1");
-  await expect(page.locator("#gatewayApiKey")).toHaveAttribute("placeholder", "没有密钥可留空");
-  await page.locator("#gatewayBaseUrl").fill("https://api.deepseek.com/v1");
-  await page.getByRole("button", { name: "测试连接" }).click();
-  await expect(page.locator("#statusText")).toContainText("自定义 API 可用：gpt-5.4");
+  await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("placeholder", "https://example.com/v1");
+  await expect(page.locator("#gatewayApiKey")).toBeVisible();
+  await expect(page.locator("#gatewayApiKey")).toHaveAttribute("placeholder", "公开或本机接口可留空");
+  await expect(page.locator("#gatewayTestHint")).toHaveText("兼容 OpenAI Chat Completions");
+  await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
   await page.locator("#gatewayCustomModel").fill("glm-5.2");
   await expect(page.locator("#gatewayCustomModel")).toHaveValue("glm-5.2");
-  await page.locator("#gatewayCustomAuxiliaryModel").fill("gpt-5.4-mini");
-  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toHaveValue("gpt-5.4-mini");
+  await page.locator("#gatewayCustomAuxiliaryModel").fill("kimi-k3");
+  await page.locator("#gatewayApiKey").fill("test-key");
+  await page.getByRole("button", { name: "读取模型" }).click();
+  await expect(page.locator("#statusText")).toHaveText("已读取 4 个模型");
+  await expect(page.locator("#gatewayModelOptions option")).toHaveCount(4);
   await page.getByRole("button", { name: "测试连接" }).click();
-  await expect(page.locator("#statusText")).toContainText("自定义 API 可用：glm-5.2 / gpt-5.4-mini");
-  await page.locator("#gatewayProviderMode").selectOption("builtin");
-  await expect(page.locator("#gatewayModel")).toBeVisible();
-  await expect(page.locator("#gatewayModel")).toHaveValue("gpt-5.4");
-  await expect(page.locator("#gatewayCustomModelField")).toBeHidden();
-  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toBeHidden();
-  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
+  await expect(page.locator("#statusText")).toContainText("API 可用：glm-5.2 / kimi-k3");
   await expect(page.locator("#gatewayThinkingIntensity")).toHaveValue("high");
   await expect(page.locator("#languageMode")).toHaveValue("auto");
   await expect(page.locator("#languageMode")).toContainText("跟随界面");
@@ -259,7 +265,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator("#reviewGroupMode")).toBeHidden();
   await expect(page.locator("#undoTargetWindowMode")).toBeHidden();
   await expect(page.locator(".settings-transfer-row")).toContainText("设置迁移");
-  await expect(page.locator(".settings-transfer-row")).toContainText("导出偏好和模型配置，不包含自定义密钥");
+  await expect(page.locator(".settings-transfer-row")).toContainText("导出偏好和模型配置，不包含 API Key");
   await expect(page.getByRole("button", { name: "导出" })).toBeVisible();
   await expect(page.getByRole("button", { name: "导入" })).toBeVisible();
   await expect(page.locator(".diagnostics-row")).toContainText("诊断包");
@@ -270,7 +276,7 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".advanced-switch-list")).toContainText("整理后收起分组");
   await expect(page.locator(".advanced-switch-list")).not.toContainText("合并到当前窗口");
   await expect(page.locator(".advanced-switch-list")).not.toContainText("撤销后关闭空窗口");
-  await expect(page.locator(".advanced-select-list .setting-select-row")).toHaveCount(9);
+  await expect(page.locator(".advanced-select-list .setting-select-row")).toHaveCount(6);
   await expect(page.locator("#urlPrivacyMode").locator("xpath=ancestor::*[contains(@class, 'advanced-select-list')]")).toHaveCount(1);
   await expect(page.locator("#dissolveExistingGroupsToggle")).toBeVisible();
   await expect(page.locator("#createReviewGroupToggle")).toBeVisible();
@@ -411,6 +417,11 @@ test("side panel stays within a 320px viewport", async ({ page }) => {
 
   await expectNoHorizontalOverflow();
   await expectPrimaryActionInViewport();
+  await page.getByText("更多选项").click();
+  await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
+  await page.locator("#gatewayCustomModel").fill("test-model");
+  await page.locator("#gatewayApiKey").fill("test-key");
+  await page.getByText("更多选项").click();
   await page.getByRole("button", { name: "生成方案" }).click();
   await expect(page.getByRole("tab", { name: "分组建议 3 组" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toBeVisible();
@@ -526,8 +537,8 @@ test("settings changed back during an in-flight save are persisted", async ({ pa
 test("settings import refreshes custom provider fields without restoring keys", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await page.getByText("更多选项").click();
-  await expect(page.locator("#gatewayProviderMode")).toHaveValue("builtin");
-  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
+  await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
+  await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
 
   const payload = {
     app: "TabRecap",
@@ -557,6 +568,7 @@ test("settings import refreshes custom provider fields without restoring keys", 
       rememberProviderKeys: true,
       gatewayBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
       gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "glm-5.2",
       gatewayCustomAuxiliaryModel: "deepseek-v4",
@@ -572,8 +584,8 @@ test("settings import refreshes custom provider fields without restoring keys", 
     buffer: Buffer.from(JSON.stringify(payload))
   });
 
-  await expect(page.locator("#settingsTransferStatus")).toHaveText("设置已导入。自定义密钥需要重新填写。");
-  await expect(page.locator("#statusText")).toHaveText("设置已导入。自定义密钥需要重新填写。");
+  await expect(page.locator("#settingsTransferStatus")).toHaveText("设置已导入。API Key 需要重新填写。");
+  await expect(page.locator("#statusText")).toHaveText("设置已导入。API Key 需要重新填写。");
   await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
   await expect(page.locator("#gatewayBaseUrl")).toHaveValue("https://open.bigmodel.cn/api/paas/v4");
@@ -615,15 +627,16 @@ test("diagnostics export failure keeps raw details out of visible status", async
       promptPreset: "conservative",
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
-      gatewayProviderMode: "builtin",
+      gatewayProviderMode: "custom",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayCustomAuxiliaryModel: "",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -677,8 +690,8 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await expect(page.getByText("读取少量网页文字，并在本机保存短摘要")).toBeVisible();
   await expect(page.locator(".actions")).toBeVisible();
   await expect(page.locator(".advanced-settings")).toBeVisible();
-  await expect(page.locator("#gatewayModel")).toHaveValue("gpt-5.4");
-  await expect(page.locator("#gatewayAuxiliaryModel")).toHaveValue("gpt-5.3-codex-spark");
+  await expect(page.locator("#gatewayModel")).toHaveValue("custom");
+  await expect(page.locator("#gatewayAuxiliaryModel")).toHaveValue("same_as_primary");
   await expect(page.locator("#gatewayThinkingIntensity")).toHaveValue("high");
   await expect(page.getByRole("button", { name: "生成回顾" })).toBeVisible();
   await expect(page.locator(".actions #progressBar")).toBeHidden();
@@ -691,15 +704,16 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await page.locator(".advanced-settings > summary").click();
   await expect(page.locator("#urlPrivacyMode")).toBeVisible();
   await expect(page.locator("#languageMode")).toBeVisible();
-  await expect(page.locator("#gatewayProviderMode")).toBeVisible();
-  await expect(page.locator("#gatewayModel")).toBeVisible();
-  await expect(page.locator("#gatewayAuxiliaryModel")).toBeVisible();
-  await expect(page.locator("#gatewayThinkingIntensity")).toBeVisible();
-  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
-  await page.locator("#gatewayProviderMode").selectOption("custom");
+  await expect(page.locator("#gatewayProviderMode")).toBeHidden();
   await expect(page.locator("#gatewayModel")).toBeHidden();
+  await expect(page.locator("#gatewayAuxiliaryModel")).toBeHidden();
+  await expect(page.locator("#gatewayThinkingIntensity")).toBeVisible();
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
-  await page.locator("#gatewayProviderMode").selectOption("builtin");
+  await expect(page.locator("#gatewayCustomModel")).toBeVisible();
+  await expect(page.locator("#gatewayCustomAuxiliaryModel")).toBeVisible();
+  await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
+  await page.locator("#gatewayCustomModel").fill("test-model");
+  await page.locator("#gatewayApiKey").fill("test-key");
   await expect(page.locator("#includeIncognitoTabs")).toBeVisible();
   await expect(page.locator("#dissolveExistingGroupsToggle")).toBeHidden();
   await expect(page.locator("#createReviewGroupToggle")).toBeHidden();
@@ -789,12 +803,13 @@ test("time recap display ignores runtime follow-ups because recap is recap-only"
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -926,12 +941,13 @@ test("time recap summary does not invent a continuation row from AI follow-ups",
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -1010,18 +1026,19 @@ test("time recap exposes page summary permission controls and sends enabled summ
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
     window.__savedSettings = [];
     window.__recapMessages = [];
-    window.__grantedPermissions = new Set(["https://cliproxy.sylvanyu.io/*"]);
+    window.__grantedPermissions = new Set(["https://api.example.test/*"]);
     window.chrome = {
       permissions: {
         contains: async (request) => {
@@ -1145,12 +1162,13 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__recapMessages = [];
@@ -1182,8 +1200,7 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
   await page.getByRole("button", { name: "回顾" }).click();
   await page.locator(".advanced-settings > summary").click();
   await page.locator("#languageMode").selectOption("en-US");
-  await page.locator("#gatewayModel").selectOption("claude-sonnet-4-6");
-  await page.locator("#gatewayAuxiliaryModel").selectOption("same_as_primary");
+  await page.locator("#gatewayCustomModel").fill("claude-sonnet-4-6");
   await page.locator("#gatewayThinkingIntensity").selectOption("medium");
   await page.locator(".advanced-settings > summary").click();
   await page.locator("#recapToDate").evaluate((input) => {
@@ -1231,6 +1248,7 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
           windowId: message?.windowId,
           languageMode: message?.languageMode,
           gatewayModel: message?.settings?.gatewayModel,
+          gatewayCustomModel: message?.settings?.gatewayCustomModel,
           gatewayAuxiliaryModel: message?.settings?.gatewayAuxiliaryModel,
           gatewayThinkingIntensity: message?.settings?.gatewayThinkingIntensity,
           rollingRangeRefreshed: Date.parse(message?.range?.to || "") > Date.parse("2025-01-01T00:00:00Z")
@@ -1240,7 +1258,8 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
     .toEqual({
       windowId: 42,
       languageMode: "en-US",
-      gatewayModel: "claude-sonnet-4-6",
+      gatewayModel: "custom",
+      gatewayCustomModel: "claude-sonnet-4-6",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayThinkingIntensity: "medium",
       rollingRangeRefreshed: true
@@ -1273,14 +1292,15 @@ test("time recap generation ignores a stale sourceWindowId", async ({ page }) =>
       promptPreset: "conservative",
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
-      gatewayProviderMode: "builtin",
+      gatewayProviderMode: "custom",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__recapMessages = [];
@@ -1367,12 +1387,13 @@ test("time recap and organize generation can run in parallel", async ({ page }) 
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const runningJob = {
@@ -1519,12 +1540,13 @@ test("time recap error state does not leak into the organize setup surface", asy
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -1583,12 +1605,13 @@ test("stale organize runs do not overwrite a newer preview after cancel and rest
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const completedPlan = {
@@ -1617,7 +1640,7 @@ test("stale organize runs do not overwrite a newer preview after cancel and rest
     window.chrome = {
       permissions: {
         contains: async (request) => {
-          const isPlannerGatewayPermission = (request.origins || []).includes("https://cliproxy.sylvanyu.io/*");
+          const isPlannerGatewayPermission = (request.origins || []).includes("https://api.example.test/*");
           if (isPlannerGatewayPermission) {
             window.__permissionChecks += 1;
           }
@@ -1728,7 +1751,17 @@ test("hydrated organize progress survives a transient runtime message failure", 
       },
       runtime: {
         sendMessage: async (message) => {
-          if (message.type === "settings:get") return { ok: true, result: {} };
+          if (message.type === "settings:get") {
+            return {
+              ok: true,
+              result: {
+                gatewayBaseUrl: "https://api.example.test/v1",
+                gatewayModel: "custom",
+                gatewayCustomModel: "test-model",
+                gatewayApiKey: "test-key"
+              }
+            };
+          }
           if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
           if (message.type === "tabs:getActiveJob") {
             window.__activeJobReads += 1;
@@ -1769,7 +1802,17 @@ test("canceling recap during permission preflight never starts the AI request", 
       runtime: {
         sendMessage: async (message) => {
           window.__messages.push(message);
-          if (message.type === "settings:get") return { ok: true, result: {} };
+          if (message.type === "settings:get") {
+            return {
+              ok: true,
+              result: {
+                gatewayBaseUrl: "https://api.example.test/v1",
+                gatewayModel: "custom",
+                gatewayCustomModel: "test-model",
+                gatewayApiKey: "test-key"
+              }
+            };
+          }
           if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
           if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
           if (message.type === "activity:cancelTimeRecap") return { ok: true, result: { canceled: false } };
@@ -1818,12 +1861,13 @@ test("time recap cancellation restores the shared bottom controls immediately", 
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__recapMessages = [];
@@ -1887,12 +1931,13 @@ test("stale canceled time recap cannot stop a newer recap run", async ({ page })
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const createDeferred = () => {
@@ -1990,12 +2035,13 @@ test("time recap fallback keeps raw AI errors out of the visible product copy", 
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -2071,12 +2117,13 @@ test("time recap fallback does not surface default service outages as recap cont
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -2147,12 +2194,13 @@ test("time recap fallback surfaces custom API timeouts as user-actionable copy",
       rememberProviderKeys: false,
       gatewayProviderMode: "custom",
       gatewayBaseUrl: "https://api.example.test/v1",
-      gatewayModel: "gpt-5.4",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "deepseek-v4",
       gatewayCustomAuxiliaryModel: "",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -2167,7 +2215,7 @@ test("time recap fallback surfaces custom API timeouts as user-actionable copy",
               ok: true,
               result: {
                 source: "local_fallback",
-                error: "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
+                error: "API 连接超时。请检查地址、模型 ID、API Key 或上游服务后重试。",
                 input: { pages: [], coverage: { includedPages: 14, sampledEntries: 3 } },
                 recap: {
                   schema: "tab_recap_time_recap_v1",
@@ -2191,10 +2239,10 @@ test("time recap fallback surfaces custom API timeouts as user-actionable copy",
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
 
-  await expect(page.locator("#statusText")).toHaveText("自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
+  await expect(page.locator("#statusText")).toHaveText("API 连接超时。请检查地址、模型 ID、API Key 或上游服务后重试。");
   await expect(page.locator(".recap-summary-card")).toContainText("已先根据本机线索完成回顾。");
-  await expect(page.locator(".recap-summary-card")).toContainText("自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
-  await expect(page.locator("#recapDetailsText")).toContainText("自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。");
+  await expect(page.locator(".recap-summary-card")).toContainText("API 连接超时。请检查地址、模型 ID、API Key 或上游服务后重试。");
+  await expect(page.locator("#recapDetailsText")).toContainText("API 连接超时。请检查地址、模型 ID、API Key 或上游服务后重试。");
 });
 
 test("time recap fallback hides unknown raw gateway errors even when they mention AI gateway", async ({ page }) => {
@@ -2221,12 +2269,13 @@ test("time recap fallback hides unknown raw gateway errors even when they mentio
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -2296,12 +2345,13 @@ test("time recap fallback surfaces friendly model errors without raw gateway cop
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -2342,10 +2392,10 @@ test("time recap fallback surfaces friendly model errors without raw gateway cop
   await page.getByRole("button", { name: "回顾" }).click();
   await page.getByRole("button", { name: "生成回顾" }).click();
 
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。");
+  await expect(page.locator("#statusText")).toHaveText("API 不支持这个模型。请检查模型 ID，或先点「测试连接」。");
   await expect(page.locator(".recap-summary-card")).toContainText("已先根据本机线索完成回顾。");
-  await expect(page.locator(".recap-summary-card")).toContainText("默认 AI 服务暂时不支持这个模型。");
-  await expect(page.locator("#recapDetailsText")).toContainText("默认 AI 服务暂时不支持这个模型。");
+  await expect(page.locator(".recap-summary-card")).toContainText("API 不支持这个模型。");
+  await expect(page.locator("#recapDetailsText")).toContainText("API 不支持这个模型。");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("free gateway");
   await expect(page.locator("#timeRecapPanel")).not.toContainText("This model is not available");
 });
@@ -2374,12 +2424,13 @@ test("time recap error state does not resurrect the previous recap", async ({ pa
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__failNextRecap = false;
@@ -2446,6 +2497,7 @@ test("time recap error state does not resurrect the previous recap", async ({ pa
 
 test("cleanup candidates are returned with the generated plan and can be closed manually", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await configureMockGateway(page);
 
   await expect(page.locator(".activity-panel")).toHaveCount(0);
   await page.getByRole("button", { name: "生成方案" }).click();
@@ -2527,6 +2579,7 @@ test("cleanup candidates are returned with the generated plan and can be closed 
 
 test("cleanup-only mode renders cleanup copy without fake grouping", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await configureMockGateway(page);
 
   await page.getByText("更多选项").click();
   await page.locator("#analysisModeSelect").selectOption("cleanup");
@@ -2617,10 +2670,11 @@ test("default result language follows the English UI when generating", async ({ 
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -2711,10 +2765,11 @@ test("side panel restores a completed background preview after reopening", async
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const wasCleared = localStorage.getItem("tabRecapClearedPreview") === "1";
@@ -2817,10 +2872,11 @@ test("side panel restores a background planning error after reopening", async ({
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     let activeJob = {
@@ -2829,7 +2885,7 @@ test("side panel restores a background planning error after reopening", async ({
       phase: "error",
       progress: 100,
       // Legacy Worker wording can remain in restored jobs; visible copy should
-      // still use the current default AI service wording.
+      // still use the current custom-endpoint wording.
       message: "This model is not available on the free gateway.",
       error: "This model is not available on the free gateway.",
       createdAt: new Date().toISOString(),
@@ -2863,19 +2919,19 @@ test("side panel restores a background planning error after reopening", async ({
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。");
+  await expect(page.locator("#statusText")).toHaveText("API 不支持这个模型。请检查模型 ID，或先点「测试连接」。");
   await expect(page.locator("#previewSection")).toBeVisible();
   await expect(page.locator(".preview .step-label")).toHaveText("出错");
   await expect(page.locator(".preview .section-heading h2")).toHaveText("生成失败");
-  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不支持这个模型。");
+  await expect(page.locator(".error-panel")).toContainText("API 不支持这个模型。");
   await expect(page.locator(".error-panel")).not.toContainText("free gateway");
   await expect(page.locator("#detailsText")).toContainText("This model is not available on the free gateway.");
   await expect(page.locator(".launch-panel")).toBeHidden();
   await expect(page.getByText("整理预览")).toBeHidden();
   await expect(page.getByRole("button", { name: "生成方案" })).toBeEnabled();
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator("#statusText")).toHaveText("The default AI service does not support this model right now. Try again later, or switch models in More options.");
-  await expect(page.locator(".error-panel")).toContainText("The default AI service does not support this model right now.");
+  await expect(page.locator("#statusText")).toHaveText("The API does not support this model. Check the model ID or run Test connection first.");
+  await expect(page.locator(".error-panel")).toContainText("The API does not support this model.");
   await expect(page.locator(".error-panel")).not.toContainText("free gateway");
   await page.getByRole("button", { name: "Generate plan" }).click();
   await expect.poll(() => page.evaluate(() => window.__retryStarted)).toBe(true);
@@ -2908,11 +2964,12 @@ test("side panel translates stored core model errors", async ({ page }) => {
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -2920,8 +2977,8 @@ test("side panel translates stored core model errors", async ({ page }) => {
       status: "error",
       phase: "error",
       progress: 100,
-      message: "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
-      error: "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
+      message: "API 不支持这个模型。请检查模型 ID，或先点「测试连接」。",
+      error: "API 不支持这个模型。请检查模型 ID，或先点「测试连接」。",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString()
@@ -2939,11 +2996,11 @@ test("side panel translates stored core model errors", async ({ page }) => {
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。");
-  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不支持这个模型。");
+  await expect(page.locator("#statusText")).toHaveText("API 不支持这个模型。请检查模型 ID，或先点「测试连接」。");
+  await expect(page.locator(".error-panel")).toContainText("API 不支持这个模型。");
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator("#statusText")).toHaveText("The default AI service does not support this model right now. Try again later, or switch models in More options.");
-  await expect(page.locator(".error-panel")).toContainText("The default AI service does not support this model right now.");
+  await expect(page.locator("#statusText")).toHaveText("The API does not support this model. Check the model ID or run Test connection first.");
+  await expect(page.locator(".error-panel")).toContainText("The API does not support this model.");
 });
 
 test("side panel translates stored gateway infrastructure errors", async ({ page }) => {
@@ -2970,11 +3027,12 @@ test("side panel translates stored gateway infrastructure errors", async ({ page
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -2982,8 +3040,8 @@ test("side panel translates stored gateway infrastructure errors", async ({ page
       status: "error",
       phase: "error",
       progress: 100,
-      message: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 ui_gateway_123）",
-      error: "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 ui_gateway_123）",
+      message: "AI 网关暂时连不上。请检查地址、隧道或上游服务是否在线。（请求号 ui_gateway_123）",
+      error: "AI 网关暂时连不上。请检查地址、隧道或上游服务是否在线。（请求号 ui_gateway_123）",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString()
@@ -3001,14 +3059,14 @@ test("side panel translates stored gateway infrastructure errors", async ({ page
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。（请求号 ui_gateway_123）");
-  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不可用。");
+  await expect(page.locator("#statusText")).toHaveText("API 暂时连不上。请检查地址、模型 ID、API Key 或上游服务后重试。（请求号 ui_gateway_123）");
+  await expect(page.locator(".error-panel")).toContainText("API 暂时连不上。");
   await expect(page.locator(".error-panel")).toContainText("请求号 ui_gateway_123");
   await page.locator("#uiLanguageToggle").click();
   await expect(page.locator("#statusText")).toHaveText(
-    "The default AI service is temporarily unavailable. Try again later, or switch to a custom AI gateway in More options. (request id ui_gateway_123)"
+    "The API is not reachable right now. Check the URL, model ID, API key, or upstream service and try again. (request id ui_gateway_123)"
   );
-  await expect(page.locator(".error-panel")).toContainText("The default AI service is temporarily unavailable.");
+  await expect(page.locator(".error-panel")).toContainText("The API is not reachable right now.");
   await expect(page.locator(".error-panel")).toContainText("request id ui_gateway_123");
 });
 
@@ -3036,11 +3094,12 @@ test("side panel translates stored English gateway infrastructure errors", async
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -3048,8 +3107,8 @@ test("side panel translates stored English gateway infrastructure errors", async
       status: "error",
       phase: "error",
       progress: 100,
-      message: "The default AI service is temporarily unavailable. Try again later.",
-      error: "The default AI service is temporarily unavailable. Try again later.",
+      message: "The AI gateway is not reachable right now. Check the URL or upstream service.",
+      error: "The AI gateway is not reachable right now. Check the URL or upstream service.",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString()
@@ -3067,8 +3126,8 @@ test("side panel translates stored English gateway infrastructure errors", async
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。");
-  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务暂时不可用。");
+  await expect(page.locator("#statusText")).toHaveText("API 暂时连不上。请检查地址、模型 ID、API Key 或上游服务后重试。");
+  await expect(page.locator(".error-panel")).toContainText("API 暂时连不上。");
 });
 
 test("side panel localizes raw worker gateway origin errors", async ({ page }) => {
@@ -3095,11 +3154,12 @@ test("side panel localizes raw worker gateway origin errors", async ({ page }) =
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -3126,8 +3186,8 @@ test("side panel localizes raw worker gateway origin errors", async ({ page }) =
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。");
-  await expect(page.locator(".error-panel")).toContainText("默认 AI 服务的本地源站暂时离线。");
+  await expect(page.locator("#statusText")).toHaveText("API 的上游服务暂时离线。请稍后重试。");
+  await expect(page.locator(".error-panel")).toContainText("API 的上游服务暂时离线。");
 });
 
 test("custom provider model errors use custom API copy", async ({ page }) => {
@@ -3157,6 +3217,7 @@ test("custom provider model errors use custom API copy", async ({ page }) => {
       rememberProviderKeys: false,
       gatewayBaseUrl: "https://api.example.test/v1",
       gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "unknown-model",
       gatewayThinkingIntensity: "high",
@@ -3187,11 +3248,11 @@ test("custom provider model errors use custom API copy", async ({ page }) => {
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await expect(page.locator("#statusText")).toHaveText("自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。");
-  await expect(page.locator(".error-panel")).toContainText("自定义 API 不支持这个模型。");
+  await expect(page.locator("#statusText")).toHaveText("API 不支持这个模型。请检查模型 ID，或先点「测试连接」。");
+  await expect(page.locator(".error-panel")).toContainText("API 不支持这个模型。");
   await expect(page.locator(".error-panel")).not.toContainText("默认 AI 服务");
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator("#statusText")).toHaveText("The custom API does not support this model. Check the model name or run Test connection first.");
+  await expect(page.locator("#statusText")).toHaveText("The API does not support this model. Check the model ID or run Test connection first.");
 });
 
 test("custom provider ping errors stay product-safe in the side panel", async ({ page }) => {
@@ -3223,6 +3284,7 @@ test("custom provider ping errors stay product-safe in the side panel", async ({
       rememberProviderKeys: false,
       gatewayBaseUrl: "https://private-gateway.example.test/v1",
       gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "glm-5.2",
       gatewayCustomAuxiliaryModel: "",
@@ -3238,7 +3300,7 @@ test("custom provider ping errors stay product-safe in the side panel", async ({
           if (message.type === "gateway:testConnection") {
             return {
               ok: false,
-              error: `自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。 fetch failed for ${privateUrl} with Bearer ${privateKey}`
+              error: `API 暂时连不上。请检查地址、模型 ID、API Key 或上游服务后重试。 fetch failed for ${privateUrl} with Bearer ${privateKey}`
             };
           }
           return { ok: true, result: null };
@@ -3250,7 +3312,7 @@ test("custom provider ping errors stay product-safe in the side panel", async ({
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await page.getByText("更多选项").click();
   await page.getByRole("button", { name: "测试连接" }).click();
-  await expect(page.locator("#statusText")).toHaveText("自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。");
+  await expect(page.locator("#statusText")).toHaveText("API 暂时连不上。请检查地址、模型 ID、API Key 或上游服务后重试。");
   await expect(page.locator("#statusText")).not.toContainText("Bearer");
   await expect(page.locator("#statusText")).not.toContainText("private-gateway.example.test");
   await expect(page.locator("#statusText")).not.toContainText(privateKey);
@@ -3285,6 +3347,7 @@ test("custom provider connection test requests the custom origin before pinging"
       rememberProviderKeys: false,
       gatewayBaseUrl: "https://api.example.test/v1",
       gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "glm-5.2",
       gatewayCustomAuxiliaryModel: "",
@@ -3353,6 +3416,7 @@ test("error diagnostic details redact secrets and tokenized urls", async ({ page
       rememberProviderKeys: true,
       gatewayBaseUrl: "https://api.example.test/v1",
       gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "deepseek-v4",
       gatewayThinkingIntensity: "high",
@@ -3418,10 +3482,11 @@ test("preview keeps review-like groups at the bottom", async ({ page }) => {
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -3496,10 +3561,11 @@ test("side panel shows optimistic progress while waiting for AI", async ({ page 
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -3585,10 +3651,11 @@ test("English UI localizes known background progress messages", async ({ page })
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -3624,7 +3691,7 @@ test("English UI localizes known background progress messages", async ({ page })
   await expect(page.locator("#progressLabel")).not.toContainText("candidate");
 });
 
-test("default gateway permission request is narrow and compact", async ({ page }) => {
+test("custom endpoint permission request is narrow and compact", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
       organizeMode: "current_window",
@@ -3644,10 +3711,11 @@ test("default gateway permission request is narrow and compact", async ({ page }
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
@@ -3704,7 +3772,7 @@ test("default gateway permission request is narrow and compact", async ({ page }
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=77`);
   await page.getByRole("button", { name: "生成方案" }).click();
   await expect(page.locator(".preview").getByText("资料整理", { exact: true })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([{ origins: ["https://cliproxy.sylvanyu.io/*"] }]);
+  await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([{ origins: ["https://api.example.test/*"] }]);
   await expect.poll(() => page.evaluate(() => window.__analyzeWindowId)).toBe(77);
 });
 
@@ -3770,7 +3838,7 @@ test("custom provider can use a manual model name", async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomAuxiliaryModel)).toBe("gpt-5.4-mini");
 });
 
-test("custom provider can use the default model when the model field is blank", async ({ page }) => {
+test("custom provider requires a primary model ID", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
       organizeMode: "current_window",
@@ -3795,12 +3863,12 @@ test("custom provider can use the default model when the model field is blank", 
       rememberProviderKeys: false,
       gatewayProviderMode: "custom",
       gatewayBaseUrl: "https://proxy.example.test/v1",
-      gatewayModel: "gpt-5.4",
+      gatewayModel: "custom",
       gatewayCustomModel: "",
       gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomAuxiliaryModel: "glm-5.2",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
@@ -3835,11 +3903,9 @@ test("custom provider can use the default model when the model field is blank", 
   await expect(page.locator("#gatewayBaseUrl")).toHaveValue("https://proxy.example.test/v1");
   await expect(page.locator("#gatewayCustomModel")).toHaveValue("");
   await page.getByRole("button", { name: "生成方案" }).click();
-  await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([{ origins: ["https://proxy.example.test/*"] }]);
-  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayModel)).toBe("gpt-5.4");
-  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomModel)).toBe("");
-  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayAuxiliaryModel)).toBe("same_as_primary");
-  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings?.gatewayCustomAuxiliaryModel)).toBe("glm-5.2");
+  await expect(page.locator("#statusText")).toHaveText("请填写主模型 ID。");
+  await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([]);
+  await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings)).toBe(null);
 });
 
 test("custom provider endpoint fields persist while typing", async ({ page }) => {
@@ -3865,11 +3931,12 @@ test("custom provider endpoint fields persist while typing", async ({ page }) =>
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayProviderMode: "builtin",
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
-      gatewayCustomModel: "",
+      gatewayProviderMode: "custom",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayAuxiliaryModel: "same_as_primary",
+      gatewayCustomModel: "test-model",
       gatewayCustomAuxiliaryModel: "",
       gatewayThinkingIntensity: "high",
       gatewayApiKey: "",
@@ -3899,7 +3966,6 @@ test("custom provider endpoint fields persist while typing", async ({ page }) =>
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await page.getByText("更多选项").click();
-  await page.locator("#gatewayProviderMode").selectOption("custom");
   await page.locator("#gatewayBaseUrl").fill("https://api.deepseek.com/v1");
   await expect
     .poll(() =>
@@ -3935,9 +4001,6 @@ test("custom provider endpoint fields persist while typing", async ({ page }) =>
     )
     .toBe(true);
 
-  await page.locator("#gatewayProviderMode").selectOption("builtin");
-  await expect(page.locator("#gatewayBaseUrl")).toBeHidden();
-  await expect(page.locator("#gatewayApiKey")).toBeHidden();
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -3953,12 +4016,12 @@ test("custom provider endpoint fields persist while typing", async ({ page }) =>
       })
     )
     .toEqual({
-      providerMode: "builtin",
-      baseUrl: "",
-      customModel: "",
+      providerMode: "custom",
+      baseUrl: "https://api.deepseek.com/v1",
+      customModel: "test-model",
       customAuxiliaryModel: "",
-      apiKey: "",
-      rememberProviderKeys: false
+      apiKey: "sk-test-final",
+      rememberProviderKeys: true
     });
 });
 
@@ -3982,10 +4045,11 @@ test("current-window generation without sourceWindowId uses the focused normal w
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -4058,10 +4122,11 @@ test("current-window generation ignores a stale sourceWindowId", async ({ page }
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -4138,10 +4203,11 @@ test("review-only previews are shown as a pending classification group", async (
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -4213,10 +4279,11 @@ test("apply confirms changed tabs before adding them to review", async ({ page }
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -4340,10 +4407,11 @@ test("page summary main toggle requests persistent summary access", async ({ pag
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const activeJob = {
@@ -4367,7 +4435,7 @@ test("page summary main toggle requests persistent summary access", async ({ pag
       }
     };
     const grantedPermissions = new Set();
-    const grantedOrigins = new Set(["https://cliproxy.sylvanyu.io/*"]);
+    const grantedOrigins = new Set(["https://api.example.test/*"]);
     window.__permissionRequests = [];
     window.__savedSettings = [];
     window.__started = false;
@@ -4461,10 +4529,11 @@ test("page summary range can be changed while the main toggle is off", async ({ 
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__savedSettings = [];
@@ -4524,10 +4593,11 @@ test("continuous summaries request broad optional access once", async ({ page })
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
@@ -4616,10 +4686,11 @@ test("store manifest hides content-reading controls", async ({ page }) => {
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.chrome = {
@@ -4641,7 +4712,6 @@ test("store manifest hides content-reading controls", async ({ page }) => {
   await page.getByText("更多选项").click();
   await expect(page.locator("#pageContextMode")).toBeHidden();
   await expect(page.locator("#pageSummaryMemoryMode")).toHaveCount(0);
-  await page.locator("#gatewayProviderMode").selectOption("custom");
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
   await expect(page.getByRole("button", { name: "测试连接" })).toBeVisible();
 });
@@ -4666,17 +4736,18 @@ test("page summary permission denial rolls back the toggle before generation", a
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
     window.__startAnalyzeCalled = false;
     window.chrome = {
       permissions: {
-        contains: async (request) => Boolean(request.origins?.includes("https://cliproxy.sylvanyu.io/*")),
+        contains: async (request) => Boolean(request.origins?.includes("https://api.example.test/*")),
         request: async (request) => {
           window.__permissionRequests.push(request);
           return false;
@@ -4735,10 +4806,11 @@ test("generation progress follows the background job after start", async ({ page
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const runningJob = {
@@ -4821,10 +4893,11 @@ test("canceling generation returns to setup without error preview", async ({ pag
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const runningJob = {
@@ -4897,10 +4970,11 @@ test("canceling generation stays canceled when the background job is already gon
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     const runningJob = {
@@ -4968,10 +5042,11 @@ test("generation does not request page sampling permissions from a stale enabled
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
@@ -4999,7 +5074,7 @@ test("generation does not request page sampling permissions from a stale enabled
     window.chrome = {
       permissions: {
         contains: async (request) =>
-          (request.permissions || []).length === 0 && Boolean(request.origins?.includes("https://cliproxy.sylvanyu.io/*")),
+          (request.permissions || []).length === 0 && Boolean(request.origins?.includes("https://api.example.test/*")),
         request: async (request) => {
           window.__permissionRequests.push(request);
           return true;
@@ -5047,10 +5122,11 @@ test("time recap does not request page sampling permissions from a stale enabled
       promptPreset: "conservative",
       plannerProvider: "gateway",
       rememberProviderKeys: false,
-      gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
       gatewayThinkingIntensity: "high",
-      gatewayApiKey: "",
+      gatewayApiKey: "test-key",
       customPrompt: ""
     };
     window.__permissionRequests = [];
@@ -5058,7 +5134,7 @@ test("time recap does not request page sampling permissions from a stale enabled
     window.chrome = {
       permissions: {
         contains: async (request) =>
-          (request.permissions || []).length === 0 && Boolean(request.origins?.includes("https://cliproxy.sylvanyu.io/*")),
+          (request.permissions || []).length === 0 && Boolean(request.origins?.includes("https://api.example.test/*")),
         request: async (request) => {
           window.__permissionRequests.push(request);
           return true;

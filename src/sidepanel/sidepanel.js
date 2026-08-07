@@ -1,5 +1,4 @@
 import {
-  BUILTIN_GATEWAY_BASE_URL,
   createSettingsExport,
   DEFAULT_SETTINGS,
   GATEWAY_CUSTOM_MODEL_VALUE,
@@ -51,24 +50,26 @@ const UI_COPY = Object.freeze({
     "status.permissionFirstEnablePageSummary": "需要先打开「页面摘要增强」并完成授权，才能读取页面摘要。",
     "status.unsupportedContinuousSummary": "当前安装包没有开启长期页面摘要。",
     "status.unsupportedPageSummary": "当前安装包没有开启页面摘要。",
-    "status.customModelMissing": "请填写自定义模型名。",
-    "status.gatewayTestUrlMissing": "请先填写自定义 API 地址。",
-    "status.gatewayTesting": "正在测试自定义 API",
-    "status.gatewayTestOk": "自定义 API 可用：{model}",
-    "status.customGatewayUnreachable": "自定义 API 暂时连不上。请检查地址、模型名、密钥或上游服务后重试。",
-    "status.customGatewayConnectionTimeout": "自定义 API 连接超时。请检查地址、模型名、密钥或上游服务后重试。",
+    "status.customModelMissing": "请填写主模型 ID。",
+    "status.gatewayTestUrlMissing": "请先填写 API 地址。",
+    "status.gatewayModelsLoading": "正在读取模型列表",
+    "status.gatewayModelsLoaded": "已读取 {count} 个模型",
+    "status.gatewayTesting": "正在测试 API",
+    "status.gatewayTestOk": "API 可用：{model}",
+    "status.customGatewayUnreachable": "API 暂时连不上。请检查地址、模型 ID、API Key 或上游服务后重试。",
+    "status.customGatewayConnectionTimeout": "API 连接超时。请检查地址、模型 ID、API Key 或上游服务后重试。",
     "status.localMemoryCleared": "本机记录已清空",
     "status.localMemoryBusy": "正在生成中，先停止后再清空本机记录。",
-    "status.settingsExported": "设置已导出，不包含自定义密钥。",
-    "status.settingsImported": "设置已导入。自定义密钥需要重新填写。",
+    "status.settingsExported": "设置已导出，不包含 API Key。",
+    "status.settingsImported": "设置已导入。API Key 需要重新填写。",
     "status.settingsImportInvalid": "设置文件不可用，请选择 TabRecap 导出的 JSON。",
     "status.diagnosticsExported": "诊断包已导出，不包含密钥、页面网址或页面正文。",
-    "status.gatewayTimeout": "AI 服务响应超时。请稍后重试；如果使用自定义 API，请先点「测试连接」。",
-    "status.gatewayAuthDenied": "默认 AI 服务拒绝访问。请稍后重试，或在更多选项里切换自定义网关。",
-    "status.gatewayUnavailable": "默认 AI 服务暂时不可用。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
-    "status.gatewayLocalOriginOffline": "默认 AI 服务的本地源站暂时离线。请稍后再试；如果一直失败，说明本机网关或 Cloudflare Tunnel 需要恢复。",
-    "status.gatewayFailed": "默认 AI 服务这次没有成功响应。请稍后再试，或在更多选项里临时切换自定义 AI 网关。",
-    "status.customGatewayAuthDenied": "AI 服务拒绝访问。请检查自定义网关地址和密钥。",
+    "status.gatewayTimeout": "API 响应超时。请检查连接，或先点「测试连接」。",
+    "status.gatewayAuthDenied": "API 拒绝访问。请检查地址和 API Key。",
+    "status.gatewayUnavailable": "API 暂时不可用。请检查上游服务后重试。",
+    "status.gatewayLocalOriginOffline": "API 的上游服务暂时离线。请稍后重试。",
+    "status.gatewayFailed": "API 没有完成请求。请检查连接后重试。",
+    "status.customGatewayAuthDenied": "API 拒绝访问。请检查地址和 API Key。",
     "status.applyChanged": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页",
     "status.applyChangedWithReview": "已创建 {groupCount} 个分组；已处理 {changedTabs} 个变化标签页，{reviewCount} 个放进「{reviewTitle}」",
     "status.applyDone": "已创建 {groupCount} 个分组",
@@ -77,21 +78,22 @@ const UI_COPY = Object.freeze({
     "status.noRollback": "还没有可回退的记录。",
     "status.invalidPlan": "当前方案不可用，请重新生成。",
     "status.progressCopyFailed": "提示文案生成失败，请稍后重试。",
-    "status.gatewayUnsupportedModel": "默认 AI 服务暂时不支持这个模型。请稍后再试，或在更多选项里切换模型。",
-    "status.customGatewayUnsupportedModel": "自定义 API 不支持这个模型。请检查模型名，或先点「测试连接」。",
-    "status.customGatewayFailed": "自定义 AI 网关这次没有完成请求。请检查网关服务后重试。",
-    "status.gatewayInvalidOutput": "AI 服务这次返回格式异常。请重新生成，或在更多选项里切换模型。",
+    "status.gatewayUnsupportedModel": "API 不支持这个模型。请检查模型 ID，或先点「测试连接」。",
+    "status.customGatewayUnsupportedModel": "API 不支持这个模型。请检查模型 ID，或先点「测试连接」。",
+    "status.customGatewayFailed": "API 没有完成请求。请检查上游服务后重试。",
+    "status.gatewayInvalidOutput": "API 返回的内容格式不对。请重试或换一个兼容模型。",
     "button.generate": "生成方案",
     "button.regenerate": "返回上级",
     "button.cancel": "停止生成",
     "button.apply": "开始整理",
     "button.undo": "撤销",
     "button.gatewayTest": "测试连接",
+    "button.gatewayModels": "读取模型",
     "button.clearLocalMemory": "清空",
     "button.settingsExport": "导出",
     "button.settingsImport": "导入",
     "button.diagnosticsExport": "下载诊断包",
-    "gateway.testHint": "仅检测自定义 API",
+    "gateway.testHint": "兼容 OpenAI Chat Completions",
     "button.language": "EN",
     "button.languageAria": "切换界面为英文",
     "mode.organize": "整理",
@@ -213,28 +215,25 @@ const UI_COPY = Object.freeze({
     "field.resultLanguage": "结果语言",
     "field.promptPreset": "整理方式",
     "field.groupingGranularity": "分组数量",
-    "field.gatewayProvider": "AI 服务",
-    "field.gatewayModel": "AI 模型",
-    "field.gatewayAuxiliaryModel": "辅助模型",
     "field.thinking": "思考强度",
-    "field.customModel": "自定义模型名（可选）",
-    "field.customAuxiliaryModel": "自定义辅助模型（可选）",
-    "field.gatewayUrl": "自定义 API 地址",
-    "field.gatewayKey": "API Key（可选）",
-    "field.rememberKey": "记住自定义密钥",
+    "field.customModel": "主模型 ID",
+    "field.customAuxiliaryModel": "辅助模型 ID（可选）",
+    "field.gatewayUrl": "API 地址",
+    "field.gatewayKey": "API Key（如需要）",
+    "field.rememberKey": "记住 API Key",
     "field.rememberKeyHint": "只保存在这台电脑",
     "field.localMemory": "本机记录",
     "field.localMemoryHint": "清空活动记录、页面摘要和时间线记录，不会关闭标签页",
     "field.settingsTransfer": "设置迁移",
-    "field.settingsTransferHint": "导出偏好和模型配置，不包含自定义密钥",
+    "field.settingsTransferHint": "导出偏好和模型配置，不包含 API Key",
     "field.diagnostics": "诊断包",
     "field.diagnosticsHint": "导出本机状态摘要，不包含密钥、页面网址或页面正文",
     "field.minConfidence": "最低置信度",
     "field.maxTabs": "单组最大数量",
-    "placeholder.customModel": "留空则使用默认模型 gpt-5.4",
-    "placeholder.customAuxiliaryModel": "留空则跟随主模型",
-    "placeholder.gatewayUrl": "例如：https://api.deepseek.com/v1",
-    "placeholder.gatewayKey": "没有密钥可留空",
+    "placeholder.customModel": "例如：glm-5.2、kimi-k3、qwen-plus",
+    "placeholder.customAuxiliaryModel": "留空则使用主模型",
+    "placeholder.gatewayUrl": "https://example.com/v1",
+    "placeholder.gatewayKey": "公开或本机接口可留空",
     "option.newWindow": "新窗口",
     "option.currentWindow": "当前窗口",
     "option.preserveGroups": "保留",
@@ -262,12 +261,6 @@ const UI_COPY = Object.freeze({
     "option.granularityCompact": "更少分组",
     "option.granularityBalanced": "平衡",
     "option.granularityDetailed": "更多分组",
-    "option.gatewayBuiltin": "默认服务",
-    "option.gatewayCustom": "自定义 API",
-    "option.auxSpark": "gpt-5.3-codex-spark",
-    "option.auxMini": "gpt-5.4-mini",
-    "option.auxPrimary": "跟随主模型",
-    "option.customModel": "自定义模型名",
     "option.thinkingLow": "低",
     "option.thinkingMedium": "中",
     "option.thinkingHigh": "高",
@@ -339,24 +332,26 @@ const UI_COPY = Object.freeze({
     "status.permissionFirstEnablePageSummary": "Turn on page summaries and grant access before reading page summaries.",
     "status.unsupportedContinuousSummary": "This installation does not include page memory.",
     "status.unsupportedPageSummary": "This installation does not include page summaries.",
-    "status.customModelMissing": "Enter a custom model name.",
-    "status.gatewayTestUrlMissing": "Enter a custom API URL first.",
-    "status.gatewayTesting": "Testing custom API",
-    "status.gatewayTestOk": "Custom API connected: {model}",
-    "status.customGatewayUnreachable": "The custom API is not reachable right now. Check the URL, model name, key, or upstream service and try again.",
-    "status.customGatewayConnectionTimeout": "The custom API connection timed out. Check the URL, model name, key, or upstream service and try again.",
+    "status.customModelMissing": "Enter a primary model ID.",
+    "status.gatewayTestUrlMissing": "Enter an API URL first.",
+    "status.gatewayModelsLoading": "Loading models",
+    "status.gatewayModelsLoaded": "Loaded {count} models",
+    "status.gatewayTesting": "Testing API",
+    "status.gatewayTestOk": "API connected: {model}",
+    "status.customGatewayUnreachable": "The API is not reachable right now. Check the URL, model ID, API key, or upstream service and try again.",
+    "status.customGatewayConnectionTimeout": "The API connection timed out. Check the URL, model ID, API key, or upstream service and try again.",
     "status.localMemoryCleared": "Local records cleared",
     "status.localMemoryBusy": "A generation is running. Stop it before clearing local records.",
-    "status.settingsExported": "Settings exported without custom keys.",
-    "status.settingsImported": "Settings imported. Re-enter any custom API key.",
+    "status.settingsExported": "Settings exported without the API key.",
+    "status.settingsImported": "Settings imported. Re-enter the API key.",
     "status.settingsImportInvalid": "This settings file is not usable. Choose a JSON exported by TabRecap.",
     "status.diagnosticsExported": "Diagnostics exported without keys, page URLs, or page text.",
-    "status.gatewayTimeout": "The AI service timed out. Try again later; if you use a custom API, run Test connection first.",
-    "status.gatewayAuthDenied": "The default AI service denied access. Try again later, or switch to a custom gateway in More options.",
-    "status.gatewayUnavailable": "The default AI service is temporarily unavailable. Try again later, or switch to a custom AI gateway in More options.",
-    "status.gatewayLocalOriginOffline": "The default AI service origin is temporarily offline. Try again later; if it keeps failing, the local gateway or Cloudflare Tunnel needs attention.",
-    "status.gatewayFailed": "The default AI service did not respond successfully. Try again later, or switch to a custom AI gateway in More options.",
-    "status.customGatewayAuthDenied": "The AI service denied access. Check the custom gateway URL and key.",
+    "status.gatewayTimeout": "The API timed out. Check the connection or run Test connection first.",
+    "status.gatewayAuthDenied": "The API denied access. Check the URL and API key.",
+    "status.gatewayUnavailable": "The API is temporarily unavailable. Check the upstream service and try again.",
+    "status.gatewayLocalOriginOffline": "The API upstream is temporarily offline. Try again later.",
+    "status.gatewayFailed": "The API did not complete the request. Check the connection and try again.",
+    "status.customGatewayAuthDenied": "The API denied access. Check the URL and API key.",
     "status.applyChanged": "Created {groupCount} groups; handled {changedTabs} changed tabs",
     "status.applyChangedWithReview": "Created {groupCount} groups; handled {changedTabs} changed tabs, with {reviewCount} added to \"{reviewTitle}\"",
     "status.applyDone": "Created {groupCount} groups",
@@ -365,21 +360,22 @@ const UI_COPY = Object.freeze({
     "status.noRollback": "No rollback snapshot is available yet.",
     "status.invalidPlan": "This plan is not ready to apply. Generate a new one.",
     "status.progressCopyFailed": "Progress captions could not be generated. Try again later.",
-    "status.gatewayUnsupportedModel": "The default AI service does not support this model right now. Try again later, or switch models in More options.",
-    "status.customGatewayUnsupportedModel": "The custom API does not support this model. Check the model name or run Test connection first.",
-    "status.customGatewayFailed": "The custom AI gateway did not complete the request. Check the gateway service and try again.",
-    "status.gatewayInvalidOutput": "The AI service returned an unexpected format. Regenerate, or switch models in More options.",
+    "status.gatewayUnsupportedModel": "The API does not support this model. Check the model ID or run Test connection first.",
+    "status.customGatewayUnsupportedModel": "The API does not support this model. Check the model ID or run Test connection first.",
+    "status.customGatewayFailed": "The API did not complete the request. Check the upstream service and try again.",
+    "status.gatewayInvalidOutput": "The API returned an unexpected format. Try again or use a compatible model.",
     "button.generate": "Generate plan",
     "button.regenerate": "Back",
     "button.cancel": "Stop generating",
     "button.apply": "Organize",
     "button.undo": "Undo",
     "button.gatewayTest": "Test connection",
+    "button.gatewayModels": "Load models",
     "button.clearLocalMemory": "Clear",
     "button.settingsExport": "Export",
     "button.settingsImport": "Import",
     "button.diagnosticsExport": "Download diagnostics",
-    "gateway.testHint": "Only checks the custom API",
+    "gateway.testHint": "OpenAI Chat Completions compatible",
     "button.language": "中",
     "button.languageAria": "Switch UI to Chinese",
     "mode.organize": "Organize",
@@ -501,28 +497,25 @@ const UI_COPY = Object.freeze({
     "field.resultLanguage": "Result language",
     "field.promptPreset": "Organization mode",
     "field.groupingGranularity": "Number of groups",
-    "field.gatewayProvider": "AI service",
-    "field.gatewayModel": "AI model",
-    "field.gatewayAuxiliaryModel": "Auxiliary model",
     "field.thinking": "Reasoning effort",
-    "field.customModel": "Custom model name (optional)",
-    "field.customAuxiliaryModel": "Custom auxiliary model (optional)",
-    "field.gatewayUrl": "Custom API URL",
-    "field.gatewayKey": "API key (optional)",
-    "field.rememberKey": "Remember custom key",
+    "field.customModel": "Primary model ID",
+    "field.customAuxiliaryModel": "Auxiliary model ID (optional)",
+    "field.gatewayUrl": "API URL",
+    "field.gatewayKey": "API key (if required)",
+    "field.rememberKey": "Remember API key",
     "field.rememberKeyHint": "Stored only on this computer",
     "field.localMemory": "Local records",
     "field.localMemoryHint": "Clears activity records, page summaries, and timeline logs without closing tabs",
     "field.settingsTransfer": "Settings transfer",
-    "field.settingsTransferHint": "Exports preferences and model settings without custom keys",
+    "field.settingsTransferHint": "Exports preferences and model settings without the API key",
     "field.diagnostics": "Diagnostics",
     "field.diagnosticsHint": "Exports a local status summary without keys, page URLs, or page text",
     "field.minConfidence": "Minimum confidence",
     "field.maxTabs": "Max tabs per group",
-    "placeholder.customModel": "Leave blank to use the default model gpt-5.4",
+    "placeholder.customModel": "For example: glm-5.2, kimi-k3, qwen-plus",
     "placeholder.customAuxiliaryModel": "Leave blank to use the primary model",
-    "placeholder.gatewayUrl": "Example: https://api.deepseek.com/v1",
-    "placeholder.gatewayKey": "Leave blank if your API does not need a key",
+    "placeholder.gatewayUrl": "https://example.com/v1",
+    "placeholder.gatewayKey": "Leave blank for public or local APIs",
     "option.newWindow": "New window",
     "option.currentWindow": "Current window",
     "option.preserveGroups": "Preserve",
@@ -550,12 +543,6 @@ const UI_COPY = Object.freeze({
     "option.granularityCompact": "Fewer groups",
     "option.granularityBalanced": "Balanced",
     "option.granularityDetailed": "More groups",
-    "option.gatewayBuiltin": "Default service",
-    "option.gatewayCustom": "Custom API",
-    "option.auxSpark": "gpt-5.3-codex-spark",
-    "option.auxMini": "gpt-5.4-mini",
-    "option.auxPrimary": "Use primary model",
-    "option.customModel": "Custom model name",
     "option.thinkingLow": "Low",
     "option.thinkingMedium": "Medium",
     "option.thinkingHigh": "High",
@@ -686,8 +673,9 @@ const nodes = {
   previewRoot: document.querySelector("#previewRoot"),
   detailsRoot: document.querySelector("#detailsRoot"),
   detailsText: document.querySelector("#detailsText"),
-  gatewayCustomModelField: document.querySelector("#gatewayCustomModelField"),
   gatewayTestBtn: document.querySelector("#gatewayTestBtn"),
+  gatewayModelsBtn: document.querySelector("#gatewayModelsBtn"),
+  gatewayModelOptions: document.querySelector("#gatewayModelOptions"),
   gatewayTestHint: document.querySelector("#gatewayTestHint"),
   clearLocalMemoryBtn: document.querySelector("#clearLocalMemoryBtn"),
   settingsExportBtn: document.querySelector("#settingsExportBtn"),
@@ -765,7 +753,6 @@ const persistGatewayEndpointSettings = debounce(async () => {
 }, 500);
 
 function shouldPersistGatewayEndpointSettings() {
-  if (fields.gatewayProviderMode.value !== GATEWAY_PROVIDER_MODES.CUSTOM) return false;
   const baseUrl = fields.gatewayBaseUrl.value.trim();
   const apiKey = fields.gatewayApiKey.value.trim();
   if (baseUrl && !isCompleteHttpUrl(baseUrl)) return false;
@@ -837,8 +824,6 @@ function bindEvents() {
   fields.pageContextMode.addEventListener("change", updateConditionalUi);
   fields.organizeMode.addEventListener("change", updateConditionalUi);
   fields.plannerProvider.addEventListener("change", updateConditionalUi);
-  fields.gatewayProviderMode.addEventListener("change", updateConditionalUi);
-  fields.gatewayModel.addEventListener("change", updateConditionalUi);
   nodes.analysisModeSelect?.addEventListener("change", () => {
     setAnalysisMode(nodes.analysisModeSelect.value || "both", { persist: true });
   });
@@ -848,6 +833,7 @@ function bindEvents() {
   nodes.applyBtn.addEventListener("click", applyLastPlan);
   nodes.undoBtn.addEventListener("click", undoLastApply);
   nodes.gatewayTestBtn?.addEventListener("click", handleGatewayTestClick);
+  nodes.gatewayModelsBtn?.addEventListener("click", handleGatewayModelsClick);
   nodes.clearLocalMemoryBtn?.addEventListener("click", handleClearLocalMemoryClick);
   nodes.settingsExportBtn?.addEventListener("click", handleSettingsExportClick);
   nodes.settingsImportBtn?.addEventListener("click", () => nodes.settingsImportFile?.click());
@@ -942,15 +928,13 @@ function applyUiLanguage() {
   setText('label[for="languageMode"]', t("field.resultLanguage"));
   setText('label[for="promptPreset"]', t("field.promptPreset"));
   setText('label[for="groupingGranularity"]', t("field.groupingGranularity"));
-  setText('label[for="gatewayProviderMode"]', t("field.gatewayProvider"));
-  setText('label[for="gatewayModel"]', t("field.gatewayModel"));
-  setText('label[for="gatewayAuxiliaryModel"]', t("field.gatewayAuxiliaryModel"));
   setText('label[for="gatewayThinkingIntensity"]', t("field.thinking"));
   setText('label[for="gatewayCustomModel"]', t("field.customModel"));
   setText('label[for="gatewayCustomAuxiliaryModel"]', t("field.customAuxiliaryModel"));
   setText('label[for="gatewayBaseUrl"]', t("field.gatewayUrl"));
   setText('label[for="gatewayApiKey"]', t("field.gatewayKey"));
   setButtonLabel(nodes.gatewayTestBtn, t("button.gatewayTest"));
+  setButtonLabel(nodes.gatewayModelsBtn, t("button.gatewayModels"));
   setText("#gatewayTestHint", t("gateway.testHint"));
   setText(".secret-remember-row strong", t("field.rememberKey"));
   setText(".secret-remember-row small", t("field.rememberKeyHint"));
@@ -1010,11 +994,6 @@ function applyUiLanguage() {
   setOptionText("#groupingGranularity", "compact", t("option.granularityCompact"));
   setOptionText("#groupingGranularity", "balanced", t("option.granularityBalanced"));
   setOptionText("#groupingGranularity", "detailed", t("option.granularityDetailed"));
-  setOptionText("#gatewayProviderMode", "builtin", t("option.gatewayBuiltin"));
-  setOptionText("#gatewayProviderMode", "custom", t("option.gatewayCustom"));
-  setOptionText("#gatewayAuxiliaryModel", "gpt-5.3-codex-spark", t("option.auxSpark"));
-  setOptionText("#gatewayAuxiliaryModel", "gpt-5.4-mini", t("option.auxMini"));
-  setOptionText("#gatewayAuxiliaryModel", "same_as_primary", t("option.auxPrimary"));
   setOptionText("#gatewayThinkingIntensity", "low", t("option.thinkingLow"));
   setOptionText("#gatewayThinkingIntensity", "medium", t("option.thinkingMedium"));
   setOptionText("#gatewayThinkingIntensity", "high", t("option.thinkingHigh"));
@@ -1235,24 +1214,9 @@ function readSettings(options = {}) {
   const contentAccessAvailable = hasContentAccessFeature();
   const selectedPageContextMode = normalizePanelPageContextMode(fields.pageContextMode.value);
   const pageSummaryEnabled = contentAccessAvailable && fields.ackSampling.checked;
-  const gatewayProviderMode = fields.gatewayProviderMode.value === GATEWAY_PROVIDER_MODES.CUSTOM
-    ? GATEWAY_PROVIDER_MODES.CUSTOM
-    : GATEWAY_PROVIDER_MODES.BUILTIN;
-  const usesCustomGateway = gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM;
-  const gatewayBaseUrl = usesCustomGateway ? fields.gatewayBaseUrl.value : "";
-  const gatewayCustomModel = usesCustomGateway ? fields.gatewayCustomModel.value : "";
-  const usesCustomGatewayModel = usesCustomGateway && Boolean(gatewayCustomModel.trim());
-  const gatewayCustomAuxiliaryModel = usesCustomGateway ? fields.gatewayCustomAuxiliaryModel.value : "";
-  const gatewayModel =
-    usesCustomGateway
-      ? usesCustomGatewayModel
-        ? GATEWAY_CUSTOM_MODEL_VALUE
-        : fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE
-        ? DEFAULT_SETTINGS.gatewayModel
-        : fields.gatewayModel.value
-      : fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE
-      ? DEFAULT_SETTINGS.gatewayModel
-      : fields.gatewayModel.value;
+  const gatewayBaseUrl = fields.gatewayBaseUrl.value;
+  const gatewayCustomModel = fields.gatewayCustomModel.value;
+  const gatewayCustomAuxiliaryModel = fields.gatewayCustomAuxiliaryModel.value;
   const effectivePageContextMode = effectiveForAnalysis
     ? effectivePageContextModeForRun(selectedPageContextMode, pageSummaryEnabled)
     : selectedPageContextMode;
@@ -1277,15 +1241,15 @@ function readSettings(options = {}) {
     promptPreset: fields.promptPreset.value,
     groupingGranularity: fields.groupingGranularity.value,
     plannerProvider: fields.plannerProvider.value || "gateway",
-    gatewayProviderMode,
-    rememberProviderKeys: Boolean(usesCustomGateway && fields.rememberProviderKeys.checked && gatewayBaseUrl.trim() && fields.gatewayApiKey.value.trim()),
+    gatewayProviderMode: GATEWAY_PROVIDER_MODES.CUSTOM,
+    rememberProviderKeys: Boolean(fields.rememberProviderKeys.checked && gatewayBaseUrl.trim() && fields.gatewayApiKey.value.trim()),
     gatewayBaseUrl,
-    gatewayModel,
-    gatewayAuxiliaryModel: usesCustomGateway ? "same_as_primary" : fields.gatewayAuxiliaryModel.value,
+    gatewayModel: GATEWAY_CUSTOM_MODEL_VALUE,
+    gatewayAuxiliaryModel: "same_as_primary",
     gatewayCustomModel,
     gatewayCustomAuxiliaryModel,
     gatewayThinkingIntensity: fields.gatewayThinkingIntensity.value,
-    gatewayApiKey: usesCustomGateway ? fields.gatewayApiKey.value : "",
+    gatewayApiKey: fields.gatewayApiKey.value,
     customPrompt: fields.customPrompt.value,
     includePinnedTabs: fields.includePinnedTabs.checked,
     includeIncognitoTabs: fields.includeIncognitoTabs.checked,
@@ -1463,18 +1427,7 @@ function updateConditionalUi() {
   nodes.appShell.dataset.contentAccess = contentAccessAvailable ? "on" : "off";
   nodes.samplingRisk.hidden = !contentAccessAvailable;
   nodes.hostPermissionField.hidden = true;
-  const usesCustomGateway = fields.gatewayProviderMode.value === GATEWAY_PROVIDER_MODES.CUSTOM;
-  if (!usesCustomGateway && fields.gatewayModel.value === GATEWAY_CUSTOM_MODEL_VALUE) {
-    fields.gatewayModel.value = DEFAULT_SETTINGS.gatewayModel;
-  }
-  document.querySelectorAll(".builtin-provider-setting").forEach((element) => {
-    element.hidden = usesCustomGateway;
-  });
-  document.querySelectorAll(".custom-provider-setting").forEach((element) => {
-    element.hidden = !usesCustomGateway;
-  });
-  nodes.gatewayCustomModelField.hidden = !usesCustomGateway;
-  const canRememberCustomKey = Boolean(usesCustomGateway && fields.gatewayBaseUrl.value.trim() && fields.gatewayApiKey.value.trim());
+  const canRememberCustomKey = Boolean(fields.gatewayBaseUrl.value.trim() && fields.gatewayApiKey.value.trim());
   fields.rememberProviderKeys.disabled = !canRememberCustomKey;
   if (!canRememberCustomKey) fields.rememberProviderKeys.checked = false;
   syncChoiceGroups();
@@ -1702,6 +1655,39 @@ async function ensurePageSummaryPermissionsForRun(settings, progress, mode = cur
   updateLocalProgress(t("status.checkingPageSummaryPermissions"), progress, mode);
   await ensurePageSamplingPermissions(settings, { requestMissing: false });
   settings.hostPermissionRequestMode = "never";
+}
+
+async function handleGatewayModelsClick() {
+  const settings = readSettings();
+  settings.languageMode = effectiveResultLanguageMode(settings.languageMode);
+  try {
+    if (!settings.gatewayBaseUrl.trim()) throw new Error(t("status.gatewayTestUrlMissing"));
+    nodes.gatewayModelsBtn.disabled = true;
+    setStatusKey("status.gatewayModelsLoading");
+    await ensurePlannerHostPermission(settings);
+    const result = await sendMessage({
+      type: "gateway:listModels",
+      settings,
+      timeoutMs: 15_000
+    });
+    renderGatewayModelOptions(result?.models || []);
+    setStatusKey("status.gatewayModelsLoaded", { count: result?.models?.length || 0 });
+  } catch (error) {
+    setErrorStatus(error, friendlyErrorMessage(error));
+  } finally {
+    nodes.gatewayModelsBtn.disabled = false;
+  }
+}
+
+function renderGatewayModelOptions(models = []) {
+  if (!nodes.gatewayModelOptions) return;
+  nodes.gatewayModelOptions.replaceChildren(
+    ...models.map((model) => {
+      const option = document.createElement("option");
+      option.value = String(model);
+      return option;
+    })
+  );
 }
 
 async function handleGatewayTestClick() {
@@ -2175,10 +2161,9 @@ function formatRecapDateTime(value) {
 
 function validateGatewaySettingsForAnalyze(settings) {
   if (settings.plannerProvider !== "gateway") return;
-  if (settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM && !settings.gatewayBaseUrl.trim()) {
+  if (!settings.gatewayBaseUrl.trim()) {
     throw new Error(t("status.gatewayTestUrlMissing"));
   }
-  if (settings.gatewayModel !== GATEWAY_CUSTOM_MODEL_VALUE) return;
   if (!settings.gatewayCustomModel.trim()) {
     throw new Error(t("status.customModelMissing"));
   }
@@ -2198,43 +2183,27 @@ function friendlyErrorMessage(error) {
   if (/Progress copy generation returned invalid JSON/i.test(message)) return t("status.progressCopyFailed");
   if (/AI 增强未完成|AI enhancement did not finish/i.test(message)) return t("status.recapAiUnavailable");
   if (/AI gateway time recap timed out/i.test(message)) return t("status.recapFailed");
-  if (/AI gateway .* timed out/i.test(message)) return gatewayStatus("status.gatewayTimeout");
+  if (/AI gateway .* timed out|API 连接超时|API connection timed out/i.test(message)) {
+    return gatewayStatus("status.customGatewayConnectionTimeout");
+  }
   if (
-    /(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API).*?(?:不支持.*模型|model.*(?:not available|unsupported)|model_not_allowed)|(?:model_not_allowed|planner_model_not_allowed|recap_model_not_allowed).*?(?:自定义 AI 网关|自定义 API|custom AI gateway|custom API)/i.test(
+    /不支持(?:当前|这个)模型|model.*not available|not available.*model|unsupported.*model|model.*unsupported|model_not_allowed|planner_model_not_allowed|recap_model_not_allowed/i.test(
       message
     )
   ) {
     return gatewayStatus("status.customGatewayUnsupportedModel");
   }
-  if (
-    /默认 AI 服务.*不支持.*模型|model.*not available|not available.*model|unsupported.*model|model.*unsupported|model_not_allowed|planner_model_not_allowed|recap_model_not_allowed/i.test(
-      message
-    )
-  ) {
-    return gatewayStatus("status.gatewayUnsupportedModel");
+  if (/AI 服务拒绝访问|AI service denied access/i.test(message)) {
+    return gatewayStatus("status.customGatewayAuthDenied");
   }
-  if (/默认 AI 服务拒绝访问|default AI service denied access/i.test(message)) return gatewayStatus("status.gatewayAuthDenied");
-  if (
-    /默认 AI 服务的本地源站暂时离线|default AI service origin is temporarily offline|local TabRecap AI origin is offline|Cloudflare could not reach the local TabRecap AI origin|Worker could not connect to the local TabRecap AI origin/i.test(
-      message
-    )
-  ) {
+  if (/AI 网关的源站暂时离线|AI gateway origin is offline|Cloudflare could not reach the local TabRecap AI origin|API upstream is temporarily offline/i.test(message)) {
     return gatewayStatus("status.gatewayLocalOriginOffline");
   }
-  if (/默认 AI 服务暂时不可用|default AI service is temporarily unavailable|TabRecap AI origin is temporarily unavailable/i.test(message)) {
-    return gatewayStatus("status.gatewayUnavailable");
-  }
-  if (/默认 AI 服务这次没有成功|default AI service did not respond successfully/i.test(message)) return gatewayStatus("status.gatewayFailed");
-  if (/AI 服务拒绝访问|AI service denied access/i.test(message)) return gatewayStatus("status.customGatewayAuthDenied");
-  if (/自定义 AI 网关的本地源站暂时离线|自定义 AI 网关暂时连不上|custom AI gateway.*(?:offline|not reachable)/i.test(message)) {
+  if (/AI 网关暂时连不上|API 暂时连不上|AI gateway.*(?:not reachable|temporarily unavailable)|API is not reachable/i.test(message)) {
     return gatewayStatus("status.customGatewayUnreachable");
   }
-  if (/自定义 AI 网关这次没有完成请求|custom AI gateway did not complete/i.test(message)) return gatewayStatus("status.customGatewayFailed");
-  if (/自定义 API 连接超时|The custom API connection timed out/i.test(message)) {
-    return gatewayStatus("status.customGatewayConnectionTimeout");
-  }
-  if (/自定义 API 暂时连不上|The custom API is not reachable/i.test(message)) {
-    return gatewayStatus("status.customGatewayUnreachable");
+  if (/AI 服务没有完成请求|AI service did not complete/i.test(message)) {
+    return gatewayStatus("status.customGatewayFailed");
   }
   if (/AI gateway planner returned invalid JSON|Unexpected token|is not valid JSON|invalid JSON/i.test(message)) {
     return gatewayStatus("status.gatewayInvalidOutput");
@@ -2274,20 +2243,12 @@ function timeRecapFallbackReasonText(result = {}) {
   const rawMessage = String(result.error?.message || result.error || "").trim();
   const message = friendlyErrorMessage(result.error);
   if (!message || message === t("status.default") || message === t("status.recapAiUnavailable") || message === t("status.recapFailed")) return "";
-  if (isGenericDefaultGatewayFallbackMessage(message)) return "";
   if (message === rawMessage && !isProductSafeGatewayMessage(message)) return "";
   return message;
 }
 
-function isGenericDefaultGatewayFallbackMessage(message = "") {
-  return (
-    /^(?:默认 AI 服务|The default AI service)/i.test(message) &&
-    !/不支持.*模型|does not support this model/i.test(message)
-  );
-}
-
 function isProductSafeGatewayMessage(message = "") {
-  return /^(?:默认 AI 服务|自定义 AI 网关|自定义 API|AI 服务拒绝访问|The default AI service|The custom API|The AI service)/i.test(
+  return /^(?:API|AI 服务|AI 网关|这个 API|The API|The AI service|The AI gateway|This API)/i.test(
     message
   );
 }
@@ -3675,11 +3636,7 @@ async function ensurePlannerHostPermission(settings) {
   if (settings.plannerProvider !== "gateway") return;
   if (!globalThis.chrome?.permissions?.contains || !globalThis.chrome?.permissions?.request) return;
 
-  const gatewayBaseUrl =
-    settings.gatewayProviderMode === GATEWAY_PROVIDER_MODES.CUSTOM
-      ? settings.gatewayBaseUrl
-      : BUILTIN_GATEWAY_BASE_URL;
-  const pattern = providerPermissionPattern(gatewayBaseUrl);
+  const pattern = providerPermissionPattern(settings.gatewayBaseUrl);
   if (!pattern) return;
 
   const hasPermission = await chrome.permissions.contains({ origins: [pattern] });
@@ -3978,11 +3935,11 @@ async function mockMessage(message) {
       promptPreset: "conservative",
       groupingGranularity: "balanced",
       plannerProvider: "gateway",
-      gatewayProviderMode: "builtin",
+      gatewayProviderMode: "custom",
       rememberProviderKeys: false,
       gatewayBaseUrl: "",
-      gatewayModel: "gpt-5.4",
-      gatewayAuxiliaryModel: "gpt-5.3-codex-spark",
+      gatewayModel: "custom",
+      gatewayAuxiliaryModel: "same_as_primary",
       gatewayCustomModel: "",
       gatewayCustomAuxiliaryModel: "",
       gatewayThinkingIntensity: "high",
@@ -4038,6 +3995,12 @@ async function mockMessage(message) {
       status: 200,
       model: primaryModel,
       auxiliaryModel,
+      baseUrl: message.settings?.gatewayBaseUrl || ""
+    };
+  }
+  if (message.type === "gateway:listModels") {
+    return {
+      models: ["glm-5.2", "kimi-k3", "deepseek-v4-pro", "deepseek-v4-flash"],
       baseUrl: message.settings?.gatewayBaseUrl || ""
     };
   }

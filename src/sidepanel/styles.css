@@ -1317,6 +1317,7 @@ button:focus-visible {
 
 .gateway-test-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   min-height: 42px;
@@ -1324,6 +1325,10 @@ button:focus-visible {
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
+}
+
+.gateway-test-row span {
+  flex-basis: 100%;
 }
 
 .gateway-test-button {
