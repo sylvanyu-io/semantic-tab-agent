@@ -30,6 +30,9 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.full_gate/);
   assert.match(workflow, /run: npm run assets:icons && npm run build:extension/);
   assert.match(workflow, /STRESS_GATEWAY: \$\{\{ startsWith\(github\.ref, 'refs\/tags\/v'\) && '1' \|\| '0' \}\}/);
+  assert.match(workflow, /STRESS_GATEWAY_TABS: 60/);
+  assert.match(workflow, /GATEWAY_BASE_URL: https:\/\/tab-recap-gateway\.sylvanyu\.io\/v1/);
+  assert.match(workflow, /GATEWAY_MODEL: glm-5\.2/);
   assert.match(workflow, /run: xvfb-run --auto-servernum npm run stress:extension/);
   assert.match(workflow, /Publish stress summary to job summary/);
   assert.match(workflow, /dist\/stress\/\*\.md/);
@@ -38,5 +41,7 @@ test("GitHub Actions CI runs release gates and exposes manual stress coverage", 
   assert.match(workflow, /path: dist\/stress\/\*/);
   assert.match(workflow, /release-live-gateway:/);
   assert.match(workflow, /MONITOR_TOKEN: \$\{\{ secrets\.MONITOR_TOKEN \}\}/);
+  assert.equal(workflow.match(/GATEWAY_BASE_URL: https:\/\/tab-recap-gateway\.sylvanyu\.io\/v1/g)?.length, 2);
+  assert.equal(workflow.match(/GATEWAY_MODEL: glm-5\.2/g)?.length, 2);
   assert.match(workflow, /GATEWAY_REQUIRE_MONITOR=1 npm run smoke:gateway/);
 });
