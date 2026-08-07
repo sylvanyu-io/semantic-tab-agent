@@ -1,4 +1,4 @@
-const PROGRESS_COPY_MODEL = "gpt-5.3-codex-spark";
+const PROGRESS_COPY_MODEL = "deepseek-v4-flash";
 const PLANNER_INPUT_SCHEMAS = new Set(["tab_recap_compact_v1", "tab_recap_coarse_v1", "tab_recap_cleanup_ranking_v1"]);
 const TIME_RECAP_INPUT_SCHEMAS = new Set(["tab_recap_time_recap_input_v1", "tab_tidy_time_recap_input_v1"]);
 const RATE_LIMIT_OBJECT_NAME = "tab-recap-global-rate-limits-v1";
@@ -33,23 +33,9 @@ const TIME_RECAP_ROOT_FIELDS = new Set(["schema", "languageMode", "range", "cove
 const PROGRESS_COPY_FIELDS = new Set(["schema", "languageMode", "phase", "tabCount", "windowCount", "style"]);
 const LEGACY_PROGRESS_COPY_FIELDS = new Set(["languageMode", "phase", "tabCount", "windowCount", "style"]);
 const DEFAULT_ALLOWED_MODELS = [
-  "gpt-5.5",
-  "gpt-5.4",
-  "gpt-5.4-mini",
-  "codex-auto-review",
-  "claude-fable-5",
-  "claude-opus-4-8",
-  "claude-opus-4-7",
-  "claude-opus-4-6",
-  "claude-opus-4-5-20251101",
-  "claude-opus-4-1-20250805",
-  "claude-opus-4-20250514",
-  "claude-sonnet-4-6",
-  "claude-sonnet-4-5-20250929",
-  "claude-sonnet-4-20250514",
-  "claude-haiku-4-5-20251001",
-  "claude-3-7-sonnet-20250219",
-  "claude-3-5-haiku-20241022",
+  "glm-5.2",
+  "kimi-k3",
+  "deepseek-v4-pro",
   PROGRESS_COPY_MODEL
 ];
 const FORWARDED_CHAT_FIELDS = Object.freeze(["model", "messages", "response_format", "max_tokens", "reasoning_effort", "thinking"]);
@@ -57,9 +43,9 @@ const DEFAULT_LIMITS = Object.freeze({
   bodyBytes: 1_000_000,
   upstreamResponseBytes: 1_000_000,
   maxTokens: 8192,
-  ipHourlyRequests: 60,
-  installDailyRequests: 100,
-  installDailyPageSummaryRequests: 20,
+  ipHourlyRequests: 20,
+  ipDailyRequests: 100,
+  ipDailyPageSummaryRequests: 20,
   globalDailyRequests: 3000,
   upstreamRetryAttempts: 2,
   upstreamRetryDelayMs: 1200,
@@ -68,8 +54,7 @@ const DEFAULT_LIMITS = Object.freeze({
   llmReadyTimeoutMs: 45000,
   llmReadyMaxTokens: 2
 });
-const DEFAULT_LLM_READY_MODEL = "gpt-5.4-mini";
-const DEFAULT_LLM_READY_REASONING_EFFORT = "low";
+const DEFAULT_LLM_READY_MODEL = "deepseek-v4-flash";
 const DEFAULT_MONITOR_REMINDER_HOURS = 6;
 const MONITOR_STATE_KEY = "monitor:ai-gateway:v1";
 const RESEND_EMAIL_API_URL = "https://api.resend.com/emails";
@@ -225,6 +210,18 @@ export async function handleRequest(request, env = {}, ctx = {}, options = {}) {
   if (url.pathname === "/monitor/status" && request.method === "GET") {
     return monitorStatus(request, env, requestId);
   }
+  if (url.pathname === "/v1/models" && request.method === "GET") {
+    return jsonResponse(
+      {
+        object: "list",
+        data: allowedModels(env).map((id) => ({ id, object: "model", owned_by: "opencode-go" }))
+      },
+      200,
+      {},
+      request,
+      requestId
+    );
+  }
   if (url.pathname !== "/v1/chat/completions") {
     return jsonError("Not found.", 404, "not_found", {}, request, requestId);
   }
@@ -291,10 +288,10 @@ function readLimits(env) {
     upstreamResponseBytes: positiveInteger(env.MAX_UPSTREAM_RESPONSE_BYTES, DEFAULT_LIMITS.upstreamResponseBytes),
     maxTokens: positiveInteger(env.MAX_TOKENS, DEFAULT_LIMITS.maxTokens),
     ipHourlyRequests: positiveInteger(env.IP_HOURLY_REQUESTS, DEFAULT_LIMITS.ipHourlyRequests),
-    installDailyRequests: positiveInteger(env.INSTALL_DAILY_REQUESTS, DEFAULT_LIMITS.installDailyRequests),
-    installDailyPageSummaryRequests: positiveInteger(
-      env.INSTALL_DAILY_PAGE_SUMMARY_REQUESTS,
-      DEFAULT_LIMITS.installDailyPageSummaryRequests
+    ipDailyRequests: positiveInteger(env.IP_DAILY_REQUESTS, DEFAULT_LIMITS.ipDailyRequests),
+    ipDailyPageSummaryRequests: positiveInteger(
+      env.IP_DAILY_PAGE_SUMMARY_REQUESTS,
+      DEFAULT_LIMITS.ipDailyPageSummaryRequests
     ),
     globalDailyRequests: positiveInteger(env.GLOBAL_DAILY_REQUESTS, DEFAULT_LIMITS.globalDailyRequests),
     upstreamRetryAttempts: clampInteger(
@@ -356,7 +353,7 @@ async function readBodyText(request, byteLimit) {
 function validateChatRequest(body, env, limits) {
   const modelAllowlist = allowedModels(env);
   if (!modelAllowlist.includes(body?.model)) {
-    return { ok: false, code: "model_not_allowed", message: "This model is not available on the default AI service." };
+    return { ok: false, code: "model_not_allowed", message: "This model is not available on the shared gateway." };
   }
   const fieldValidation = validateTopLevelFields(body);
   if (!fieldValidation.ok) return fieldValidation;
@@ -365,7 +362,10 @@ function validateChatRequest(body, env, limits) {
   }
   const messageValidation = validateMessages(body.messages);
   if (!messageValidation.ok) return messageValidation;
-  if (!hasOnlyKeys(body.response_format, new Set(["type"])) || body.response_format.type !== "json_object") {
+  if (
+    body.response_format !== undefined &&
+    (!hasOnlyKeys(body.response_format, new Set(["type"])) || body.response_format.type !== "json_object")
+  ) {
     return { ok: false, code: "json_required", message: "TabRecap gateway requests must use JSON object output." };
   }
   if (!Number.isInteger(body.max_tokens) || body.max_tokens <= 0) {
@@ -375,10 +375,13 @@ function validateChatRequest(body, env, limits) {
     return { ok: false, code: "max_tokens_exceeded", message: `max_tokens must be <= ${limits.maxTokens}.` };
   }
   const requestKind = detectRequestKind(body);
-  if (body.model === PROGRESS_COPY_MODEL) {
+  if (requestKind.kind === "probe") {
+    const probeValidation = validateConnectionProbe(body);
+    if (!probeValidation.ok) return probeValidation;
+  } else if (body.model === PROGRESS_COPY_MODEL) {
     if (requestKind.kind === "progress") {
-      const sparkValidation = validateProgressCopyRequest(body);
-      if (!sparkValidation.ok) return sparkValidation;
+      const progressValidation = validateProgressCopyRequest(body);
+      if (!progressValidation.ok) return progressValidation;
     } else if (requestKind.kind === "recap") {
       const recapValidation = validateTimeRecapRequest(body, modelAllowlist, { includeProgressModel: true });
       if (!recapValidation.ok) return recapValidation;
@@ -434,6 +437,21 @@ function validateForwardedOptions(body) {
   return { ok: true };
 }
 
+function validateConnectionProbe(body) {
+  if (
+    body.messages.length !== 1 ||
+    body.messages[0]?.role !== "user" ||
+    body.messages[0]?.content !== "Reply with ok." ||
+    body.max_tokens > 8 ||
+    body.response_format !== undefined ||
+    body.reasoning_effort !== undefined ||
+    body.thinking !== undefined
+  ) {
+    return { ok: false, code: "probe_shape_required", message: "Connection probes must use the TabRecap test shape." };
+  }
+  return { ok: true };
+}
+
 function validateTopLevelFields(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { ok: false, code: "invalid_request", message: "Request body must be an object." };
@@ -478,6 +496,13 @@ function validatePlannerRequest(body, modelAllowlist, options = {}) {
 }
 
 function detectRequestKind(body) {
+  if (
+    body?.messages?.length === 1 &&
+    body.messages[0]?.role === "user" &&
+    body.messages[0]?.content === "Reply with ok."
+  ) {
+    return { kind: "probe", payload: null };
+  }
   const systemText = messageText(body?.messages?.[0]);
   const userText = messageText(body?.messages?.[1]);
   const payload = extractJsonPayload(messageText(body?.messages?.[1]));
@@ -539,29 +564,29 @@ function validateTimeRecapRequest(body, modelAllowlist, options = {}) {
 
 function validateProgressCopyRequest(body) {
   if (Number(body.max_tokens || 0) > 1200) {
-    return { ok: false, code: "spark_token_cap_exceeded", message: "Progress copy max_tokens must be <= 1200." };
+    return { ok: false, code: "progress_token_cap_exceeded", message: "Progress copy max_tokens must be <= 1200." };
   }
   if (body.messages.length !== 2) {
-    return { ok: false, code: "spark_shape_required", message: "Progress copy requests must use the TabRecap two-message shape." };
+    return { ok: false, code: "progress_shape_required", message: "Progress copy requests must use the TabRecap two-message shape." };
   }
   const [system, user] = body.messages;
   const systemText = messageText(system);
   const userText = messageText(user);
   if (system?.role !== "system" || user?.role !== "user") {
-    return { ok: false, code: "spark_shape_required", message: "Progress copy requests must include one system message and one user message." };
+    return { ok: false, code: "progress_shape_required", message: "Progress copy requests must include one system message and one user message." };
   }
   if (!includesEvery(systemText, [
     "Return strict JSON only: {\"messages\":[\"...\"]}.",
     "Write short loading captions for an AI browser-tab organization extension.",
     "Do not claim real internal thoughts, exact work already completed, or user-private content."
   ])) {
-    return { ok: false, code: "spark_shape_required", message: "Progress copy request does not match the TabRecap contract." };
+    return { ok: false, code: "progress_shape_required", message: "Progress copy request does not match the TabRecap contract." };
   }
   let payload;
   try {
     payload = JSON.parse(userText);
   } catch {
-    return { ok: false, code: "spark_payload_required", message: "Progress copy user payload must be JSON." };
+    return { ok: false, code: "progress_payload_required", message: "Progress copy user payload must be JSON." };
   }
   const isLegacyPayload = payload?.schema === undefined;
   const allowedFields = isLegacyPayload ? LEGACY_PROGRESS_COPY_FIELDS : PROGRESS_COPY_FIELDS;
@@ -576,10 +601,10 @@ function validateProgressCopyRequest(body) {
     !("languageMode" in payload) ||
     !("phase" in payload)
   ) {
-    return { ok: false, code: "spark_payload_required", message: "Progress copy payload must include TabRecap progress fields." };
+    return { ok: false, code: "progress_payload_required", message: "Progress copy payload must include TabRecap progress fields." };
   }
   const bounds = validatePayloadBounds(payload);
-  if (!bounds.ok) return { ok: false, code: "spark_payload_required", message: bounds.message };
+  if (!bounds.ok) return { ok: false, code: "progress_payload_required", message: bounds.message };
   return { ok: true };
 }
 
@@ -788,9 +813,9 @@ function forwardedChatBody(body) {
   const forwarded = {
     model: body.model,
     messages: body.messages.map((message) => ({ role: message.role, content: message.content })),
-    response_format: { type: "json_object" },
     max_tokens: body.max_tokens
   };
+  if (body.response_format !== undefined) forwarded.response_format = { type: "json_object" };
   if (body.reasoning_effort !== undefined) forwarded.reasoning_effort = body.reasoning_effort;
   if (body.thinking !== undefined) forwarded.thinking = { type: body.thinking.type };
   return forwarded;
@@ -799,31 +824,24 @@ function forwardedChatBody(body) {
 async function checkRateLimits(request, env, limits, validation = {}) {
   if (!env.RATE_LIMIT_DO) {
     if (String(env.ALLOW_UNMETERED || "").toLowerCase() === "true") return { ok: true };
-    return { ok: false, status: 503, code: "rate_limit_store_missing", message: "Free gateway rate limit store is not configured." };
+    return { ok: false, status: 503, code: "rate_limit_store_missing", message: "Shared gateway rate limit storage is not configured." };
   }
 
   const now = new Date();
   const day = now.toISOString().slice(0, 10);
   const hour = now.toISOString().slice(0, 13);
-  const installId = normalizeInstallId(
-    request.headers.get("x-tab-recap-install-id") ||
-      request.headers.get("x-tab-tidy-install-id")
-  );
-  const ipKey = normalizeIp(clientIp(request));
-  const pageSummary =
-    request.headers.get("x-tab-recap-page-summary") === "1" ||
-    request.headers.get("x-tab-tidy-page-summary") === "1" ||
-    payloadContainsPageSummaries(validation.payload);
+  const ipKey = await ipRateLimitKey(clientIp(request), env);
+  const pageSummary = payloadContainsPageSummaries(validation.payload);
   const checks = [
     rateLimitCheck("global", `global:${day}`, limits.globalDailyRequests, secondsUntilNextUtcDay(now), 3600, now),
-    rateLimitCheck("install", `install:${installId}:${day}`, limits.installDailyRequests, secondsUntilNextUtcDay(now), 3600, now),
-    rateLimitCheck("ip", `ip:${ipKey}:${hour}`, limits.ipHourlyRequests, secondsUntilNextUtcHour(now), 600, now)
+    rateLimitCheck("ip", `ip:${ipKey}:${hour}`, limits.ipHourlyRequests, secondsUntilNextUtcHour(now), 600, now),
+    rateLimitCheck("ip_daily", `ip-daily:${ipKey}:${day}`, limits.ipDailyRequests, secondsUntilNextUtcDay(now), 3600, now)
   ];
   if (pageSummary) {
     checks.push(rateLimitCheck(
       "page_summary",
-      `page-summary:${installId}:${day}`,
-      limits.installDailyPageSummaryRequests,
+      `page-summary:${ipKey}:${day}`,
+      limits.ipDailyPageSummaryRequests,
       secondsUntilNextUtcDay(now),
       3600,
       now
@@ -843,7 +861,7 @@ async function checkRateLimits(request, env, limits, validation = {}) {
     return {
       ok: false,
       code: `${result.kind || "gateway"}_rate_limited`,
-      message: "The default AI service is temporarily rate limited. Please try later or use a custom AI gateway.",
+      message: "The shared gateway has reached its current request limit.",
       headers: { "retry-after": String(positiveInteger(result.retryAfter, 3600)) }
     };
   } catch {
@@ -851,7 +869,7 @@ async function checkRateLimits(request, env, limits, validation = {}) {
       ok: false,
       status: 503,
       code: "rate_limit_store_unavailable",
-      message: "The default AI service is temporarily unavailable. Please try later or use a custom AI gateway."
+      message: "The shared gateway is temporarily unavailable."
     };
   }
 }
@@ -864,7 +882,7 @@ function rateLimitStoreReadiness(env) {
   return {
     ok: false,
     code: "rate_limit_store_missing",
-    message: "Free gateway rate limit storage is not configured."
+    message: "Shared gateway rate limit storage is not configured."
   };
 }
 
@@ -881,7 +899,7 @@ async function checkRateLimitStoreReadiness(env) {
     return {
       ok: false,
       code: "rate_limit_store_unavailable",
-      message: "Free gateway rate limit storage is unavailable."
+      message: "Shared gateway rate limit storage is unavailable."
     };
   }
 }
@@ -1230,12 +1248,8 @@ async function checkLlmReadiness(env, options = {}) {
   const limits = readLimits(env);
   const bodyText = JSON.stringify({
     model,
-    messages: [
-      { role: "system", content: "You are a health check endpoint. Reply with OK only." },
-      { role: "user", content: "Return OK." }
-    ],
-    max_tokens: limits.llmReadyMaxTokens,
-    reasoning_effort: String(env.LLM_READY_REASONING_EFFORT || DEFAULT_LLM_READY_REASONING_EFFORT).trim() || DEFAULT_LLM_READY_REASONING_EFFORT
+    messages: [{ role: "user", content: "Reply with OK." }],
+    max_tokens: limits.llmReadyMaxTokens
   });
   const fetchImpl = options.fetchImpl || fetch;
   const startedAt = Date.now();
@@ -1493,8 +1507,6 @@ function monitorStatusConfig(env, hasStateStore) {
     email: email.ok ? "configured" : email.code || "missing",
     upstream: upstream.ok ? "configured" : "missing",
     llmReadyModel: String(env.LLM_READY_MODEL || DEFAULT_LLM_READY_MODEL).trim() || DEFAULT_LLM_READY_MODEL,
-    llmReadyReasoningEffort:
-      String(env.LLM_READY_REASONING_EFFORT || DEFAULT_LLM_READY_REASONING_EFFORT).trim() || DEFAULT_LLM_READY_REASONING_EFFORT,
     upstreamChatTimeoutMs: readLimits(env).upstreamChatTimeoutMs,
     llmReadyMaxTokens: readLimits(env).llmReadyMaxTokens,
     monitorReminderHours: positiveInteger(env.MONITOR_REMINDER_HOURS, DEFAULT_MONITOR_REMINDER_HOURS),
@@ -1687,7 +1699,7 @@ function validateLlmReadyResponse(text) {
 function upstreamHealthUrl(env, upstream, publicRequestUrl = "") {
   const raw = env.UPSTREAM_HEALTH_URL
     ? String(env.UPSTREAM_HEALTH_URL)
-    : new URL(String(env.UPSTREAM_HEALTH_PATH || "/healthz"), upstream.baseUrl).toString();
+    : `${upstream.baseUrl}/${String(env.UPSTREAM_HEALTH_PATH || "models").replace(/^\/+/, "")}`;
   const url = new URL(raw);
   if (url.protocol !== "https:" || url.username || url.password || url.hash) {
     throw new Error("The upstream health endpoint must be a credential-free HTTPS URL.");
@@ -1699,7 +1711,7 @@ function upstreamHealthUrl(env, upstream, publicRequestUrl = "") {
 }
 
 function upstreamHealthHeaders(upstream) {
-  const headers = {};
+  const headers = { authorization: `Bearer ${upstream.apiKey}` };
   if (upstream.accessClientId && upstream.accessClientSecret) {
     headers["cf-access-client-id"] = upstream.accessClientId;
     headers["cf-access-client-secret"] = upstream.accessClientSecret;
@@ -1888,11 +1900,18 @@ function normalizeIp(value) {
     .slice(0, 80) || "unknown";
 }
 
-function normalizeInstallId(value) {
-  return String(value || "missing")
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "_")
-    .slice(0, 80) || "missing";
+async function ipRateLimitKey(value, env) {
+  const ip = normalizeIp(value);
+  const secret = String(env.RATE_LIMIT_HASH_KEY || env.UPSTREAM_API_KEY || "tab-recap-rate-limit");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(signature).slice(0, 16), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function secondsUntilNextUtcDay(now) {
@@ -1958,7 +1977,7 @@ function corsHeaders(request) {
   return {
     ...(allowedOrigin ? { "access-control-allow-origin": allowedOrigin } : {}),
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type,authorization,x-monitor-token,x-tab-recap-install-id,x-tab-recap-page-summary,x-tab-recap-request-id,x-request-id,x-tab-tidy-install-id,x-tab-tidy-page-summary",
+    "access-control-allow-headers": "content-type,authorization,x-monitor-token,x-tab-recap-request-id,x-request-id",
     "access-control-expose-headers": "x-tab-recap-request-id,x-tab-recap-upstream-attempts",
     vary: "Origin"
   };

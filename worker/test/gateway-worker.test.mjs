@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_SETTINGS, GATEWAY_MODELS } from "../../src/shared/settings.js";
 import { createWorkerHandler, RateLimitCounter, runScheduledMonitor } from "../src/index.js";
 
 const handle = createWorkerHandler({
@@ -15,6 +14,20 @@ test("worker health check returns ok without upstream secrets", async () => {
   const response = await handle(new Request("https://cliproxy.example/healthz"));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true });
+});
+
+test("worker exposes only the configured shared models without upstream secrets", async () => {
+  const response = await handle(
+    new Request("https://cliproxy.example/v1/models", {
+      headers: { origin: "chrome-extension://abcdefghijklmnop" }
+    }),
+    { ALLOWED_MODELS: "glm-5.2,kimi-k3,glm-5.2" }
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("access-control-allow-origin"), "chrome-extension://abcdefghijklmnop");
+  assert.deepEqual(body.data.map((model) => model.id), ["glm-5.2", "kimi-k3"]);
 });
 
 test("worker readiness check reaches the configured local origin health endpoint", async () => {
@@ -33,7 +46,8 @@ test("worker readiness check reaches the configured local origin health endpoint
   assert.equal(body.ok, true);
   assert.equal(body.upstream.ok, true);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, "https://raw-llm.example/healthz");
+  assert.equal(calls[0].url, "https://raw-llm.example/v1/models");
+  assert.equal(calls[0].options.headers.authorization, "Bearer upstream-secret");
   assert.equal(calls[0].options.redirect, "error");
   assert.equal(body.rateLimit.ok, true);
 });
@@ -79,7 +93,7 @@ test("worker protects the real LLM readiness check with a monitor token", async 
   assert.equal((await unauthorized.json()).error.code, "monitor_token_required");
 });
 
-test("worker LLM readiness check uses the tiny mini-model probe", async () => {
+test("worker LLM readiness check uses the tiny shared-model probe", async () => {
   const calls = [];
   const localHandle = createWorkerHandler({
     fetchImpl: async (url, options) => {
@@ -105,13 +119,14 @@ test("worker LLM readiness check uses the tiny mini-model probe", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
-  assert.equal(body.llm.model, "gpt-5.4-mini");
+  assert.equal(body.llm.model, "deepseek-v4-flash");
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "https://raw-llm.example/v1/chat/completions");
   assert.equal(calls[0].options.headers.authorization, "Bearer upstream-secret");
   assert.equal(calls[0].options.headers["x-tab-recap-request-id"], "monitor_ping");
-  assert.equal(upstreamBody.model, "gpt-5.4-mini");
-  assert.equal(upstreamBody.reasoning_effort, "low");
+  assert.equal(upstreamBody.model, "deepseek-v4-flash");
+  assert.deepEqual(upstreamBody.messages, [{ role: "user", content: "Reply with OK." }]);
+  assert.equal(upstreamBody.reasoning_effort, undefined);
   assert.equal(upstreamBody.max_tokens, 2);
 });
 
@@ -244,7 +259,7 @@ test("worker monitor status reads the last scheduled result without live upstrea
   assert.equal(body.config.stateStore, "configured");
   assert.equal(body.config.email, "configured");
   assert.equal(body.config.upstream, "configured");
-  assert.equal(body.config.llmReadyModel, "gpt-5.4-mini");
+  assert.equal(body.config.llmReadyModel, "deepseek-v4-flash");
   assert.equal(serialized.includes("upstream-secret"), false);
   assert.equal(serialized.includes("resend-secret"), false);
   assert.equal(serialized.includes("me@sylvanyu.io"), false);
@@ -349,7 +364,7 @@ test("scheduled monitor alerts when public request metering is unavailable", asy
   assert.deepEqual(result.summary.failed, ["rate-limit"]);
   assert.equal(result.checks.readyz.skipped, true);
   assert.equal(result.checks.llm.skipped, true);
-  assert.equal(calls.calls.some((call) => String(call.url).endsWith("/healthz")), false);
+  assert.equal(calls.calls.some((call) => String(call.url).endsWith("/models")), false);
   assert.equal(calls.calls.some((call) => String(call.url).endsWith("/chat/completions")), false);
   assert.equal(calls.emails.length, 1);
   assert.match(calls.emails[0].text, /rate-limit: failed/);
@@ -461,7 +476,7 @@ test("scheduled monitor emails redact thrown readiness details", async () => {
       emails.push(JSON.parse(options.body));
       return new Response(JSON.stringify({ id: "email_123" }), { status: 200 });
     }
-    if (textUrl.endsWith("/healthz")) return new Response("ok", { status: 200 });
+    if (textUrl.endsWith("/models")) return new Response("ok", { status: 200 });
     if (textUrl.endsWith("/chat/completions")) {
       throw new Error(
         `failed ${tokenizedUrl} with Bearer ${bearer}, ${providerKey}, private_key=${privateKey}, session_key=${sessionKey}, ${pemBegin}\n${pemBody}\n${pemEnd}`
@@ -531,7 +546,7 @@ test("worker validates models and token caps before forwarding", async () => {
   const badModelError = (await badModel.json()).error;
   assert.equal(badModelError.code, "model_not_allowed");
   assert.equal(badModelError.message.includes("free gateway"), false);
-  assert.match(badModelError.message, /default AI service/);
+  assert.match(badModelError.message, /shared gateway/);
 
   const progressCopyModel = await handle(chatRequest(validProgressCopyBody()), env);
   assert.equal(progressCopyModel.status, 200);
@@ -545,19 +560,19 @@ test("worker validates models and token caps before forwarding", async () => {
   legacyProgressWithUnsupportedField.messages[1].content = JSON.stringify(legacyProgressPayload);
   const rejectedLegacyProgress = await handle(chatRequest(legacyProgressWithUnsupportedField), env);
   assert.equal(rejectedLegacyProgress.status, 400);
-  assert.equal((await rejectedLegacyProgress.json()).error.code, "spark_payload_required");
+  assert.equal((await rejectedLegacyProgress.json()).error.code, "progress_payload_required");
 
-  const miniPlannerModel = await handle(chatRequest({ model: "gpt-5.4-mini" }), env);
+  const miniPlannerModel = await handle(chatRequest({ model: "kimi-k3" }), env);
   assert.equal(miniPlannerModel.status, 200);
 
-  const timeRecapModel = await handle(chatRequest(validTimeRecapBody({ model: "gpt-5.4" })), env);
+  const timeRecapModel = await handle(chatRequest(validTimeRecapBody({ model: "glm-5.2" })), env);
   assert.equal(timeRecapModel.status, 200);
 
   const legacyTimeRecapModel = await handle(chatRequest(legacyTimeRecapBody()), env);
   assert.equal(legacyTimeRecapModel.status, 200);
 
-  const olderClaudePlannerModel = await handle(chatRequest({ model: "claude-opus-4-7" }), env);
-  assert.equal(olderClaudePlannerModel.status, 200);
+  const unavailablePlannerModel = await handle(chatRequest({ model: "claude-opus-4-7" }), env);
+  assert.equal(unavailablePlannerModel.status, 400);
 
   const imageModel = await handle(chatRequest({ model: "gpt-image-2" }), env);
   assert.equal(imageModel.status, 400);
@@ -578,45 +593,36 @@ test("worker validates models and token caps before forwarding", async () => {
   assert.equal((await stringTokens.json()).error.code, "max_tokens_required");
 });
 
-test("worker default allowlist accepts every built-in extension model preset", async () => {
-  assert.equal(GATEWAY_MODELS.includes(DEFAULT_SETTINGS.gatewayModel), true);
-
-  for (const model of GATEWAY_MODELS) {
-    const response = await handle(chatRequest({ model }), envWithKv());
-    assert.equal(response.status, 200, `${model} should be accepted by the built-in gateway Worker defaults`);
-  }
-});
-
 test("worker derives planner models from the configured allowlist", async () => {
-  const env = envWithKv({ ALLOWED_MODELS: "gpt-5.4-mini,gpt-5.3-codex-spark" });
-  const planner = await handle(chatRequest({ model: "gpt-5.4-mini" }), env);
+  const env = envWithKv({ ALLOWED_MODELS: "glm-5.2,deepseek-v4-flash" });
+  const planner = await handle(chatRequest({ model: "glm-5.2" }), env);
   assert.equal(planner.status, 200);
 
-  const sparkPlanner = await handle(
+  const fastPlanner = await handle(
     chatRequest({
-      model: "gpt-5.3-codex-spark",
+      model: "deepseek-v4-flash",
       messages: validBody().messages
     }),
     env
   );
-  assert.equal(sparkPlanner.status, 200);
+  assert.equal(fastPlanner.status, 200);
 });
 
-test("worker keeps the spark progress-copy cap while allowing spark planner shapes", async () => {
+test("worker keeps the progress-copy cap while allowing the fast model for planner shapes", async () => {
   const env = envWithKv();
 
   const oversizedProgressCopy = await handle(chatRequest(validProgressCopyBody({ max_tokens: 1500 })), env);
   assert.equal(oversizedProgressCopy.status, 400);
-  assert.equal((await oversizedProgressCopy.json()).error.code, "spark_token_cap_exceeded");
+  assert.equal((await oversizedProgressCopy.json()).error.code, "progress_token_cap_exceeded");
 
-  const sparkPlanner = await handle(
+  const fastPlanner = await handle(
     chatRequest({
-      ...validBody({ model: "gpt-5.3-codex-spark" }),
+      ...validBody({ model: "deepseek-v4-flash" }),
       max_tokens: 4096
     }),
     env
   );
-  assert.equal(sparkPlanner.status, 200);
+  assert.equal(fastPlanner.status, 200);
 });
 
 test("worker only accepts TabRecap request shapes", async () => {
@@ -798,14 +804,48 @@ test("worker only accepts TabRecap request shapes", async () => {
   assert.equal(markerResponse.status, 200);
 });
 
+test("worker accepts only the exact low-cost connection probe", async () => {
+  const calls = [];
+  const localHandle = createWorkerHandler({
+    fetchImpl: async (url, options) => {
+      calls.push({ url, body: JSON.parse(options.body) });
+      return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+  });
+  const probe = {
+    model: "glm-5.2",
+    messages: [{ role: "user", content: "Reply with ok." }],
+    max_tokens: 8,
+    response_format: undefined,
+    reasoning_effort: undefined
+  };
+
+  const accepted = await localHandle(chatRequest(probe), envWithKv());
+  assert.equal(accepted.status, 200);
+  assert.deepEqual(calls[0].body, {
+    model: "glm-5.2",
+    messages: [{ role: "user", content: "Reply with ok." }],
+    max_tokens: 8
+  });
+
+  const rejected = await localHandle(
+    chatRequest({ ...probe, messages: [{ role: "user", content: "Tell me a joke." }] }),
+    envWithKv()
+  );
+  assert.equal(rejected.status, 400);
+  assert.equal((await rejected.json()).error.code, "planner_shape_required");
+});
+
 test("worker rejects oversized bodies using content length", async () => {
   const body = JSON.stringify(validBody());
   const request = new Request("https://cliproxy.example/v1/chat/completions", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "content-length": String(body.length),
-      "x-tab-recap-install-id": "install-a"
+      "content-length": String(body.length)
     },
     body
   });
@@ -865,6 +905,23 @@ test("worker forwards with upstream secret and strips client authorization", asy
     "reasoning_effort",
     "response_format"
   ]);
+});
+
+test("worker accepts provider-compatible TabRecap requests without response_format", async () => {
+  const calls = [];
+  const localHandle = createWorkerHandler({
+    fetchImpl: async (_url, options) => {
+      calls.push(JSON.parse(options.body));
+      return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }
+  });
+
+  const response = await localHandle(chatRequest({ response_format: undefined }), envWithKv());
+  assert.equal(response.status, 200);
+  assert.equal("response_format" in calls[0], false);
 });
 
 test("worker rejects insecure and recursive upstream configuration", async () => {
@@ -1021,31 +1078,21 @@ test("worker converts non-json upstream bad requests into product JSON errors", 
   assert.equal(serialized.includes("prompt details should not leak"), false);
 });
 
-test("worker applies install id, ip, global, and page-summary quotas", async () => {
-  const installLimited = envWithKv({ INSTALL_DAILY_REQUESTS: "1" });
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), installLimited)).status, 200);
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), installLimited)).status, 429);
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-b" }), installLimited)).status, 200);
-
+test("worker applies hourly IP, daily IP, global, and page-summary quotas", async () => {
   const ipLimited = envWithKv({ IP_HOURLY_REQUESTS: "1" });
   assert.equal((await handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.9" }), ipLimited)).status, 200);
   assert.equal((await handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.9" }), ipLimited)).status, 429);
 
-  const globalLimited = envWithKv({ GLOBAL_DAILY_REQUESTS: "1" });
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), globalLimited)).status, 200);
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-b" }), globalLimited)).status, 429);
+  const ipDailyLimited = envWithKv({ IP_HOURLY_REQUESTS: "10", IP_DAILY_REQUESTS: "1" });
+  assert.equal((await handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.10" }), ipDailyLimited)).status, 200);
+  const dailyResponse = await handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.10" }), ipDailyLimited);
+  assert.equal(dailyResponse.status, 429);
+  assert.equal((await dailyResponse.json()).error.code, "ip_daily_rate_limited");
+  assert.equal([...ipDailyLimited.RATE_LIMIT_DO.storage.values.keys()].some((key) => key.includes("203.0.113.10")), false);
 
-  const pageSummaryLimited = envWithKv({ INSTALL_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
-  assert.equal(
-    (await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), pageSummaryLimited))
-      .status,
-    200
-  );
-  assert.equal(
-    (await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), pageSummaryLimited))
-      .status,
-    429
-  );
+  const globalLimited = envWithKv({ GLOBAL_DAILY_REQUESTS: "1" });
+  assert.equal((await handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.11" }), globalLimited)).status, 200);
+  assert.equal((await handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.12" }), globalLimited)).status, 429);
 });
 
 test("worker infers page-summary quota use from validated payload evidence", async () => {
@@ -1054,7 +1101,7 @@ test("worker infers page-summary quota use from validated payload evidence", asy
     '"tabFields"',
     '"pageSampleSignalFields":["tabId","summary"],"pageSampleSignals":[[10,"visible page summary"]],"tabFields"'
   );
-  const env = envWithKv({ INSTALL_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
+  const env = envWithKv({ IP_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
 
   assert.equal((await handle(chatRequest(withSamples), env)).status, 200);
   const limited = await handle(chatRequest(withSamples), env);
@@ -1082,7 +1129,7 @@ test("worker preserves the actual daily retry window", async () => {
       return "limited";
     },
     get() {
-      return { fetch: async () => Response.json({ ok: false, kind: "install", retryAfter: 7200 }) };
+      return { fetch: async () => Response.json({ ok: false, kind: "ip_daily", retryAfter: 7200 }) };
     }
   };
   const response = await handle(chatRequest(), envWithKv({ RATE_LIMIT_DO: limitedStore }));
@@ -1093,40 +1140,27 @@ test("worker preserves the actual daily retry window", async () => {
 test("worker applies quotas atomically across simultaneous requests", async () => {
   const env = envWithKv({ GLOBAL_DAILY_REQUESTS: "1" });
   const results = await Promise.all([
-    handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), env),
-    handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-b" }), env)
+    handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.20" }), env),
+    handle(chatRequest(undefined, { "cf-connecting-ip": "203.0.113.21" }), env)
   ]);
 
   assert.deepEqual(results.map((response) => response.status).sort(), [200, 429]);
 });
 
-test("worker accepts legacy Tab Tidy gateway quota headers", async () => {
-  const installLimited = envWithKv({ INSTALL_DAILY_REQUESTS: "1" });
-  assert.equal((await handle(legacyHeaderRequest({ "x-tab-tidy-install-id": "install-legacy" }), installLimited)).status, 200);
-  assert.equal((await handle(legacyHeaderRequest({ "x-tab-tidy-install-id": "install-legacy" }), installLimited)).status, 429);
-
-  const pageSummaryLimited = envWithKv({ INSTALL_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
-  assert.equal(
-    (await handle(legacyHeaderRequest({ "x-tab-tidy-install-id": "install-legacy", "x-tab-tidy-page-summary": "1" }), pageSummaryLimited))
-      .status,
-    200
+test("page-summary quota failures do not consume the general daily IP quota", async () => {
+  const withSamples = validBody();
+  withSamples.messages[1].content = withSamples.messages[1].content.replace(
+    '"tabFields"',
+    '"pageSampleSignalFields":["tabId","summary"],"pageSampleSignals":[[10,"visible page summary"]],"tabFields"'
   );
-  assert.equal(
-    (await handle(legacyHeaderRequest({ "x-tab-tidy-install-id": "install-legacy", "x-tab-tidy-page-summary": "1" }), pageSummaryLimited))
-      .status,
-    429
-  );
-});
-
-test("page-summary quota failures do not consume the general install quota", async () => {
-  const env = envWithKv({ INSTALL_DAILY_REQUESTS: "2", INSTALL_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), env)).status, 200);
-  const limited = await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a", "x-tab-recap-page-summary": "1" }), env);
+  const env = envWithKv({ IP_DAILY_REQUESTS: "2", IP_DAILY_PAGE_SUMMARY_REQUESTS: "1" });
+  assert.equal((await handle(chatRequest(withSamples), env)).status, 200);
+  const limited = await handle(chatRequest(withSamples), env);
   assert.equal(limited.status, 429);
   const limitedError = (await limited.json()).error;
   assert.equal(limitedError.message.includes("free gateway"), false);
-  assert.match(limitedError.message, /default AI service/);
-  assert.equal((await handle(chatRequest(undefined, { "x-tab-recap-install-id": "install-a" }), env)).status, 200);
+  assert.match(limitedError.message, /shared gateway/);
+  assert.equal((await handle(chatRequest(), env)).status, 200);
 });
 
 test("worker CORS is limited to extension and local debug origins", async () => {
@@ -1143,19 +1177,6 @@ function chatRequest(overrides = {}, headers = {}) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-tab-recap-install-id": "install-a",
-      "cf-connecting-ip": "203.0.113.1",
-      ...headers
-    },
-    body: JSON.stringify(validBody(overrides))
-  });
-}
-
-function legacyHeaderRequest(headers = {}, overrides = {}) {
-  return new Request("https://cliproxy.example/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
       "cf-connecting-ip": "203.0.113.1",
       ...headers
     },
@@ -1165,7 +1186,7 @@ function legacyHeaderRequest(headers = {}, overrides = {}) {
 
 function validBody(overrides = {}) {
   return {
-    model: DEFAULT_SETTINGS.gatewayModel,
+    model: "glm-5.2",
     messages: [
       {
         role: "system",
@@ -1197,7 +1218,7 @@ function validBody(overrides = {}) {
 
 function validProgressCopyBody(overrides = {}) {
   return {
-    model: "gpt-5.3-codex-spark",
+    model: "deepseek-v4-flash",
     messages: [
       {
         role: "system",
@@ -1235,7 +1256,7 @@ function legacyProgressCopyBody(overrides = {}) {
 
 function validCoarseBody(overrides = {}) {
   return {
-    model: "gpt-5.4-mini",
+    model: "kimi-k3",
     messages: [
       {
         role: "system",
@@ -1277,7 +1298,7 @@ function legacyCoarseBody(overrides = {}) {
 
 function validCleanupRankingBody(overrides = {}) {
   return {
-    model: "gpt-5.4",
+    model: "glm-5.2",
     messages: [
       {
         role: "system",
@@ -1309,7 +1330,7 @@ function validCleanupRankingBody(overrides = {}) {
 
 function validTimeRecapBody(overrides = {}) {
   return {
-    model: "gpt-5.4",
+    model: "glm-5.2",
     messages: [
       {
         role: "system",
@@ -1382,7 +1403,7 @@ function monitorFetch(options = {}) {
         headers: { "content-type": "application/json" }
       });
     }
-    if (String(url).endsWith("/healthz")) {
+    if (String(url).endsWith("/models")) {
       return new Response(options.readyzBody || "ok", { status: options.readyzStatus || 200 });
     }
     if (String(url).endsWith("/chat/completions")) {
