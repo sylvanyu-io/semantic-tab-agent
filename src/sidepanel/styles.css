@@ -975,6 +975,23 @@ h2 {
   padding: 0 2px 4px;
 }
 
+.gateway-setup-hint {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line));
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.4;
+}
+
+.setting-input-row input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--danger) 62%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral-soft) 74%, transparent);
+}
+
 .cleanup-candidate-meta {
   display: flex;
   flex-wrap: wrap;

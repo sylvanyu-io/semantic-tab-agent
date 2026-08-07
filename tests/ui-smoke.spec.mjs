@@ -42,17 +42,19 @@ test.beforeEach(async ({ page }, testInfo) => {
   }
 });
 
-async function configureMockGateway(page) {
+async function setAdvancedSettingsOpen(page, open) {
   const details = page.locator(".advanced-settings");
-  await details.evaluate((element) => {
-    element.open = true;
-  });
+  await details.evaluate((element, nextOpen) => {
+    element.open = nextOpen;
+  }, open);
+}
+
+async function configureMockGateway(page) {
+  await setAdvancedSettingsOpen(page, true);
   await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
   await page.locator("#gatewayCustomModel").fill("test-model");
   await page.locator("#gatewayApiKey").fill("test-key");
-  await details.evaluate((element) => {
-    element.open = false;
-  });
+  await setAdvancedSettingsOpen(page, false);
 }
 
 test("page sampler extracts forum discussion content instead of page chrome", async ({ page }) => {
@@ -183,9 +185,8 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.getByRole("button", { name: "整理 + 清理" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "只整理" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "只清理" })).toHaveCount(0);
-  await expect(page.locator("#analysisModeSelect")).not.toBeVisible();
-  await page.getByText("更多选项").click();
   await expect(page.locator("#analysisModeSelect")).toBeVisible();
+  await expect(page.locator("#gatewaySetupHint")).toBeVisible();
   await expect(page.locator("#analysisModeSelect")).toHaveValue("both");
   await expect(page.locator("#analysisModeHint")).toContainText("一次分析，同时给出分组方案和建议先检查的标签页");
   await expect(page.getByText("会读取页面文字摘要")).toHaveCount(0);
@@ -417,11 +418,11 @@ test("side panel stays within a 320px viewport", async ({ page }) => {
 
   await expectNoHorizontalOverflow();
   await expectPrimaryActionInViewport();
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
   await page.locator("#gatewayCustomModel").fill("test-model");
   await page.locator("#gatewayApiKey").fill("test-key");
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, false);
   await page.getByRole("button", { name: "生成方案" }).click();
   await expect(page.getByRole("tab", { name: "分组建议 3 组" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "清理建议 2 项" })).toBeVisible();
@@ -433,7 +434,7 @@ test("side panel stays within a 320px viewport", async ({ page }) => {
   await expectNoHorizontalOverflow();
   await page.locator("#uiLanguageToggle").click();
   await page.getByRole("button", { name: "返回上级" }).click();
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await expectNoHorizontalOverflow();
   await expectPrimaryActionInViewport();
 
@@ -515,7 +516,7 @@ test("settings changed back during an in-flight save are persisted", async ({ pa
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=7`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.locator("#promptPreset").selectOption("media_type");
   await expect.poll(() => page.evaluate(() => window.__settingsSaves.length)).toBe(1);
 
@@ -536,7 +537,7 @@ test("settings changed back during an in-flight save are persisted", async ({ pa
 
 test("settings import refreshes custom provider fields without restoring keys", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
 
@@ -657,7 +658,7 @@ test("diagnostics export failure keeps raw details out of visible status", async
   }, { privateKey, privateUrl });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.getByRole("button", { name: "下载诊断包" }).click();
   await expect(page.locator("#settingsTransferStatus")).toHaveText("上次生成失败，请重新生成");
   await expect(page.locator("#statusText")).toHaveText("上次生成失败，请重新生成");
@@ -701,7 +702,7 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await expect(page.locator("#recapFromDate")).toBeVisible();
   await expect(page.locator("#recapToDate")).toBeVisible();
 
-  await page.locator(".advanced-settings > summary").click();
+  await setAdvancedSettingsOpen(page, true);
   await expect(page.locator("#urlPrivacyMode")).toBeVisible();
   await expect(page.locator("#languageMode")).toBeVisible();
   await expect(page.locator("#gatewayProviderMode")).toBeHidden();
@@ -721,7 +722,7 @@ test("time recap mode renders a first-class recap surface", async ({ page }) => 
   await expect(page.locator("#collapseGroupsAfterApply")).toBeHidden();
   await expect(page.locator("#pageContextMode")).toBeVisible();
   await expect(page.locator("#minConfidenceToApply")).toBeHidden();
-  await page.locator(".advanced-settings > summary").click();
+  await setAdvancedSettingsOpen(page, false);
 
   await page.getByRole("button", { name: "过去 24 小时" }).click();
   await expect(page.locator("#recapRangePreset")).toHaveValue("1d");
@@ -1198,11 +1199,11 @@ test("time recap generation uses the shared bottom progress controls", async ({ 
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html?sourceWindowId=42`);
   await page.getByRole("button", { name: "回顾" }).click();
-  await page.locator(".advanced-settings > summary").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.locator("#languageMode").selectOption("en-US");
   await page.locator("#gatewayCustomModel").fill("claude-sonnet-4-6");
   await page.locator("#gatewayThinkingIntensity").selectOption("medium");
-  await page.locator(".advanced-settings > summary").click();
+  await setAdvancedSettingsOpen(page, false);
   await page.locator("#recapToDate").evaluate((input) => {
     input.value = "2000-01-01T00:00";
   });
@@ -2581,7 +2582,7 @@ test("cleanup-only mode renders cleanup copy without fake grouping", async ({ pa
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await configureMockGateway(page);
 
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.locator("#analysisModeSelect").selectOption("cleanup");
   await expect(page.locator("#analyzeGrouping")).not.toBeChecked();
   await expect(page.locator("#analyzeCleanup")).toBeChecked();
@@ -2609,7 +2610,8 @@ test("auto-selects English UI and can manually switch back", async ({ page }) =>
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
 
-  await expect(page.locator("#statusText")).toHaveText("AI tab organizer & recap");
+  await expect(page.locator("#statusText")).toHaveText("Enter an API URL first.");
+  await expect(page.locator("#gatewaySetupHint")).toContainText("Enter an API URL and primary model ID");
   await expect(page.getByText("Scope", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate plan" })).toBeVisible();
   await expect(page.locator("#customPrompt")).toHaveAttribute(
@@ -2640,7 +2642,7 @@ test("auto-selects English UI and can manually switch back", async ({ page }) =>
   await expect(page.locator("#closeWindowBtn")).toHaveCount(0);
 
   await page.locator("#uiLanguageToggle").click();
-  await expect(page.locator("#statusText")).toHaveText("AI 标签页整理与回顾");
+  await expect(page.locator("#statusText")).toHaveText("请先填写 API 地址。");
   await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
   await expect(page.locator("#uiLanguageToggle")).toHaveText("");
 });
@@ -2851,6 +2853,61 @@ test("side panel restores a completed background preview after reopening", async
   await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
 });
 
+test("side panel guides missing API setup before generation", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      organizeMode: "current_window",
+      targetWindowMode: "current_window",
+      existingGroupMode: "preserve_existing_groups",
+      reviewGroupMode: "create_review_group",
+      undoTargetWindowMode: "leave_empty_target_window",
+      pageContextMode: "off",
+      hostPermissionRequestMode: "never",
+      pageSamplingConsentMode: "not_acknowledged",
+      urlPrivacyMode: "sanitized_url",
+      languageMode: "auto",
+      includePinnedTabs: false,
+      includeIncognitoTabs: false,
+      collapseGroupsAfterApply: true,
+      minConfidenceToApply: 0.65,
+      maxTabsPerGroup: 40,
+      promptPreset: "conservative",
+      plannerProvider: "gateway",
+      rememberProviderKeys: false,
+      gatewayBaseUrl: "",
+      gatewayModel: "custom",
+      gatewayCustomModel: "glm-5.2",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      customPrompt: ""
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await expect(page.locator(".advanced-settings")).toHaveJSProperty("open", true);
+  await expect(page.locator("#gatewaySetupHint")).toContainText("先填写 API 地址和主模型 ID");
+  await expect(page.locator("#gatewayBaseUrl")).toBeFocused();
+  await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#statusText")).toHaveText("请先填写 API 地址。");
+  await expect(page.getByRole("button", { name: "生成方案" })).toBeDisabled();
+
+  await page.locator("#gatewayBaseUrl").fill("https://api.example.test/v1");
+  await expect(page.locator("#gatewaySetupHint")).toBeHidden();
+  await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("aria-invalid", "false");
+  await expect(page.getByRole("button", { name: "生成方案" })).toBeEnabled();
+});
+
 test("side panel restores a background planning error after reopening", async ({ page }) => {
   await page.addInitScript(() => {
     const settings = {
@@ -2879,7 +2936,7 @@ test("side panel restores a background planning error after reopening", async ({
       gatewayApiKey: "test-key",
       customPrompt: ""
     };
-    let activeJob = {
+    let activeJob = localStorage.getItem("tabRecapAnalysisCleared") === "1" ? null : {
       operationId: "job_gateway_model_error",
       status: "error",
       phase: "error",
@@ -2893,6 +2950,7 @@ test("side panel restores a background planning error after reopening", async ({
       finishedAt: new Date().toISOString()
     };
     window.__retryStarted = false;
+    window.__analysisCleared = false;
     window.chrome = {
       runtime: {
         sendMessage: async (message) => {
@@ -2912,6 +2970,12 @@ test("side panel restores a background planning error after reopening", async ({
             };
             return { ok: true, result: { operationId: activeJob.operationId } };
           }
+          if (message.type === "tabs:clearAnalysisState") {
+            window.__analysisCleared = true;
+            localStorage.setItem("tabRecapAnalysisCleared", "1");
+            activeJob = null;
+            return { ok: true, result: { cleared: true } };
+          }
           return { ok: true, result: null };
         }
       }
@@ -2928,16 +2992,20 @@ test("side panel restores a background planning error after reopening", async ({
   await expect(page.locator("#detailsText")).toContainText("This model is not available on the free gateway.");
   await expect(page.locator(".launch-panel")).toBeHidden();
   await expect(page.getByText("整理预览")).toBeHidden();
-  await expect(page.getByRole("button", { name: "生成方案" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "返回设置" })).toBeEnabled();
   await page.locator("#uiLanguageToggle").click();
   await expect(page.locator("#statusText")).toHaveText("The API does not support this model. Check the model ID or run Test connection first.");
   await expect(page.locator(".error-panel")).toContainText("The API does not support this model.");
   await expect(page.locator(".error-panel")).not.toContainText("free gateway");
-  await page.getByRole("button", { name: "Generate plan" }).click();
-  await expect.poll(() => page.evaluate(() => window.__retryStarted)).toBe(true);
+  await page.getByRole("button", { name: "Back to settings" }).click();
+  await expect.poll(() => page.evaluate(() => window.__analysisCleared)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__retryStarted)).toBe(false);
   await expect(page.locator("#previewSection")).toBeHidden();
   await expect(page.locator(".launch-panel")).toBeVisible();
   await expect(page.locator(".error-panel")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("#previewSection")).toBeHidden();
+  await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
 });
 
 test("side panel translates stored core model errors", async ({ page }) => {
@@ -3310,7 +3378,7 @@ test("custom provider ping errors stay product-safe in the side panel", async ({
   }, { privateKey, privateUrl });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.getByRole("button", { name: "测试连接" }).click();
   await expect(page.locator("#statusText")).toHaveText("API 暂时连不上。请检查地址、模型 ID、API Key 或上游服务后重试。");
   await expect(page.locator("#statusText")).not.toContainText("Bearer");
@@ -3378,7 +3446,7 @@ test("custom provider connection test requests the custom origin before pinging"
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.getByRole("button", { name: "测试连接" }).click();
   await expect(page.locator("#statusText")).toHaveText("需要先授权这个 AI 服务地址，才能发送 AI 请求。");
   await expect.poll(() => page.evaluate(() => window.__gatewayPings)).toBe(0);
@@ -3897,12 +3965,13 @@ test("custom provider requires a primary model ID", async ({ page }) => {
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await expect(page.locator("#gatewayProviderMode")).toHaveValue("custom");
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();
   await expect(page.locator("#gatewayBaseUrl")).toHaveValue("https://proxy.example.test/v1");
   await expect(page.locator("#gatewayCustomModel")).toHaveValue("");
-  await page.getByRole("button", { name: "生成方案" }).click();
+  await expect(page.locator("#gatewayCustomModel")).toBeFocused();
+  await expect(page.getByRole("button", { name: "生成方案" })).toBeDisabled();
   await expect(page.locator("#statusText")).toHaveText("请填写主模型 ID。");
   await expect.poll(() => page.evaluate(() => window.__permissionRequests)).toEqual([]);
   await expect.poll(() => page.evaluate(() => window.__startAnalyzeSettings)).toBe(null);
@@ -3965,7 +4034,7 @@ test("custom provider endpoint fields persist while typing", async ({ page }) =>
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await page.locator("#gatewayBaseUrl").fill("https://api.deepseek.com/v1");
   await expect
     .poll(() =>
@@ -4558,7 +4627,7 @@ test("page summary range can be changed while the main toggle is off", async ({ 
   });
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await expect(page.locator("#ackSampling")).not.toBeChecked();
   await expect(page.getByLabel("页面摘要读取范围")).toHaveValue("ambiguous_with_permission");
 
@@ -4709,7 +4778,7 @@ test("store manifest hides content-reading controls", async ({ page }) => {
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await expect(page.locator("#ackSampling")).toBeHidden();
   await expect(page.locator("#continuousPageSummaries")).toBeHidden();
-  await page.getByText("更多选项").click();
+  await setAdvancedSettingsOpen(page, true);
   await expect(page.locator("#pageContextMode")).toBeHidden();
   await expect(page.locator("#pageSummaryMemoryMode")).toHaveCount(0);
   await expect(page.locator("#gatewayBaseUrl")).toBeVisible();

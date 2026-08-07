@@ -84,6 +84,7 @@ const UI_COPY = Object.freeze({
     "status.gatewayInvalidOutput": "API 返回的内容格式不对。请重试或换一个兼容模型。",
     "button.generate": "生成方案",
     "button.regenerate": "返回上级",
+    "button.backToSettings": "返回设置",
     "button.cancel": "停止生成",
     "button.apply": "开始整理",
     "button.undo": "撤销",
@@ -94,6 +95,7 @@ const UI_COPY = Object.freeze({
     "button.settingsImport": "导入",
     "button.diagnosticsExport": "下载诊断包",
     "gateway.testHint": "兼容 OpenAI Chat Completions",
+    "gateway.setupHint": "先填写 API 地址和主模型 ID，再生成方案。",
     "button.language": "EN",
     "button.languageAria": "切换界面为英文",
     "mode.organize": "整理",
@@ -366,6 +368,7 @@ const UI_COPY = Object.freeze({
     "status.gatewayInvalidOutput": "The API returned an unexpected format. Try again or use a compatible model.",
     "button.generate": "Generate plan",
     "button.regenerate": "Back",
+    "button.backToSettings": "Back to settings",
     "button.cancel": "Stop generating",
     "button.apply": "Organize",
     "button.undo": "Undo",
@@ -376,6 +379,7 @@ const UI_COPY = Object.freeze({
     "button.settingsImport": "Import",
     "button.diagnosticsExport": "Download diagnostics",
     "gateway.testHint": "OpenAI Chat Completions compatible",
+    "gateway.setupHint": "Enter an API URL and primary model ID before generating a plan.",
     "button.language": "中",
     "button.languageAria": "Switch UI to Chinese",
     "mode.organize": "Organize",
@@ -677,6 +681,8 @@ const nodes = {
   gatewayModelsBtn: document.querySelector("#gatewayModelsBtn"),
   gatewayModelOptions: document.querySelector("#gatewayModelOptions"),
   gatewayTestHint: document.querySelector("#gatewayTestHint"),
+  gatewaySetupHint: document.querySelector("#gatewaySetupHint"),
+  advancedSettings: document.querySelector(".advanced-settings"),
   clearLocalMemoryBtn: document.querySelector("#clearLocalMemoryBtn"),
   settingsExportBtn: document.querySelector("#settingsExportBtn"),
   settingsImportBtn: document.querySelector("#settingsImportBtn"),
@@ -788,6 +794,7 @@ async function init() {
   schedulePageSamplingOriginRefresh();
   await hydrateActiveJob();
   await hydrateUndoState();
+  guideMissingGatewaySetup({ focus: true });
   syncActionState();
 }
 
@@ -815,6 +822,7 @@ function bindEvents() {
     await persistSettings();
   });
   fields.customPrompt.addEventListener("input", debounce(persistSettings, 250));
+  fields.gatewayCustomModel.addEventListener("input", updateConditionalUi);
   fields.gatewayCustomModel.addEventListener("input", debounce(persistSettings, 250));
   fields.gatewayCustomAuxiliaryModel.addEventListener("input", debounce(persistSettings, 250));
   fields.gatewayBaseUrl.addEventListener("input", updateConditionalUi);
@@ -935,6 +943,7 @@ function applyUiLanguage() {
   setText('label[for="gatewayApiKey"]', t("field.gatewayKey"));
   setButtonLabel(nodes.gatewayTestBtn, t("button.gatewayTest"));
   setButtonLabel(nodes.gatewayModelsBtn, t("button.gatewayModels"));
+  setText("#gatewaySetupHint", t("gateway.setupHint"));
   setText("#gatewayTestHint", t("gateway.testHint"));
   setText(".secret-remember-row strong", t("field.rememberKey"));
   setText(".secret-remember-row small", t("field.rememberKeyHint"));
@@ -1430,8 +1439,40 @@ function updateConditionalUi() {
   const canRememberCustomKey = Boolean(fields.gatewayBaseUrl.value.trim() && fields.gatewayApiKey.value.trim());
   fields.rememberProviderKeys.disabled = !canRememberCustomKey;
   if (!canRememberCustomKey) fields.rememberProviderKeys.checked = false;
+  updateGatewaySetupGuidance();
   syncChoiceGroups();
   schedulePageSamplingOriginRefresh();
+  syncActionState();
+}
+
+function missingGatewaySetupField() {
+  if (fields.plannerProvider.value !== "gateway") return null;
+  if (!fields.gatewayBaseUrl.value.trim()) return fields.gatewayBaseUrl;
+  if (!fields.gatewayCustomModel.value.trim()) return fields.gatewayCustomModel;
+  return null;
+}
+
+function updateGatewaySetupGuidance() {
+  const missingField = missingGatewaySetupField();
+  if (nodes.gatewaySetupHint) nodes.gatewaySetupHint.hidden = !missingField;
+  fields.gatewayBaseUrl.setAttribute("aria-invalid", missingField === fields.gatewayBaseUrl ? "true" : "false");
+  fields.gatewayCustomModel.setAttribute("aria-invalid", missingField === fields.gatewayCustomModel ? "true" : "false");
+  return missingField;
+}
+
+function guideMissingGatewaySetup(options = {}) {
+  if (lastPreview || lastError || lastTimeRecap || lastTimeRecapError) return false;
+  const missingField = updateGatewaySetupGuidance();
+  if (!missingField) return false;
+  if (nodes.advancedSettings) nodes.advancedSettings.open = true;
+  setStatusKey(missingField === fields.gatewayBaseUrl ? "status.gatewayTestUrlMissing" : "status.customModelMissing", {}, true);
+  if (options.focus) {
+    requestAnimationFrame(() => {
+      missingField.focus({ preventScroll: true });
+      missingField.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+  return true;
 }
 
 function updatePrivacyDisclosure() {
@@ -1473,10 +1514,10 @@ async function handleCancelAction() {
 }
 
 async function handleAnalyzeClick() {
-  if (lastPreview) {
+  if (lastPreview || lastError) {
     await clearAnalysisState();
     resetToSetup();
-    setStatusKey("status.default");
+    if (!guideMissingGatewaySetup({ focus: true })) setStatusKey("status.default");
     return;
   }
   analyze();
@@ -3124,7 +3165,7 @@ function setCancelDisabled(mode, disabled) {
 function renderCurrentActionBusyState() {
   const state = actionStateByMode[currentPanelMode] || createIdleActionState();
   const isBusy = Boolean(state.busy);
-  nodes.analyzeBtn.disabled = isBusy;
+  nodes.analyzeBtn.disabled = isBusy || currentPrimaryActionNeedsGatewaySetup();
   nodes.undoBtn.disabled = isBusy;
   nodes.applyBtn.disabled = isBusy || !canApplyCurrentPreview();
   nodes.cancelBtn.hidden = !(isBusy && state.cancelable);
@@ -3139,6 +3180,15 @@ function renderCurrentActionBusyState() {
     setProgressLabel(state.label);
     renderStatus();
   }
+}
+
+function currentPrimaryActionNeedsGatewaySetup() {
+  if (currentPanelMode === PANEL_MODE_RECAP) {
+    if (lastTimeRecap || lastTimeRecapError) return false;
+  } else if (lastPreview || lastError) {
+    return false;
+  }
+  return Boolean(missingGatewaySetupField());
 }
 
 async function hydrateActiveJob() {
@@ -3614,7 +3664,7 @@ function configureOrganizeActions() {
   nodes.applyBtn.hidden = !lastPreview || lastPreview.analysisFeatures?.grouping === false;
   nodes.undoBtn.hidden = !canUndo;
   nodes.analyzeBtn.dataset.role = "";
-  setButtonLabel(nodes.analyzeBtn, t(lastPreview ? "button.regenerate" : "button.generate"));
+  setButtonLabel(nodes.analyzeBtn, t(lastPreview ? "button.regenerate" : lastError ? "button.backToSettings" : "button.generate"));
   setButtonLabel(nodes.cancelBtn, t("button.cancel"));
   nodes.applyBtn.dataset.role = canApplyCurrentPreview() ? "primary" : "";
 }
