@@ -2896,6 +2896,7 @@ test("side panel guides missing API setup before generation", async ({ page }) =
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await expect(page.locator(".advanced-settings")).toHaveJSProperty("open", true);
+  await expect(page.locator("#gatewaySetupHintTitle")).toHaveText("完成 AI 接入设置");
   await expect(page.locator("#gatewaySetupHint")).toContainText("先填写 API 地址和主模型 ID");
   await expect(page.locator("#gatewayBaseUrl")).toBeFocused();
   await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("aria-invalid", "true");
@@ -2992,17 +2993,23 @@ test("side panel restores a background planning error after reopening", async ({
   await expect(page.locator("#detailsText")).toContainText("This model is not available on the free gateway.");
   await expect(page.locator(".launch-panel")).toBeHidden();
   await expect(page.getByText("整理预览")).toBeHidden();
-  await expect(page.getByRole("button", { name: "返回设置" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "检查设置" })).toBeEnabled();
   await page.locator("#uiLanguageToggle").click();
   await expect(page.locator("#statusText")).toHaveText("The API does not support this model. Check the model ID or run Test connection first.");
   await expect(page.locator(".error-panel")).toContainText("The API does not support this model.");
   await expect(page.locator(".error-panel")).not.toContainText("free gateway");
-  await page.getByRole("button", { name: "Back to settings" }).click();
+  await page.getByRole("button", { name: "Check settings" }).click();
   await expect.poll(() => page.evaluate(() => window.__analysisCleared)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__retryStarted)).toBe(false);
   await expect(page.locator("#previewSection")).toBeHidden();
   await expect(page.locator(".launch-panel")).toBeVisible();
   await expect(page.locator(".error-panel")).toHaveCount(0);
+  await expect(page.locator(".advanced-settings")).toHaveJSProperty("open", true);
+  await expect(page.locator("#gatewaySetupHintTitle")).toHaveText("Check AI connection settings");
+  await expect(page.locator("#gatewaySetupHint")).toContainText("Path: AI connection · Primary model ID");
+  await expect(page.locator("#gatewayCustomModel")).toBeFocused();
+  await expect(page.locator("#gatewayCustomModel")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#statusText")).toContainText("Primary model ID");
   await page.reload();
   await expect(page.locator("#previewSection")).toBeHidden();
   await expect(page.getByRole("button", { name: "生成方案" })).toBeVisible();
