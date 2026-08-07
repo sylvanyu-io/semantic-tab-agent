@@ -85,6 +85,7 @@ const UI_COPY = Object.freeze({
     "button.generate": "生成方案",
     "button.regenerate": "返回上级",
     "button.backToSettings": "返回设置",
+    "button.checkSettings": "检查设置",
     "button.cancel": "停止生成",
     "button.apply": "开始整理",
     "button.undo": "撤销",
@@ -95,7 +96,12 @@ const UI_COPY = Object.freeze({
     "button.settingsImport": "导入",
     "button.diagnosticsExport": "下载诊断包",
     "gateway.testHint": "兼容 OpenAI Chat Completions",
+    "gateway.setupTitle": "完成 AI 接入设置",
     "gateway.setupHint": "先填写 API 地址和主模型 ID，再生成方案。",
+    "gateway.recoveryTitle": "检查 AI 接入设置",
+    "gateway.recoveryModel": "路径：AI 接入 · 主模型 ID。修改后先测试连接。",
+    "gateway.recoveryUrl": "路径：AI 接入 · API 地址。修改后先测试连接。",
+    "gateway.recoveryKey": "路径：AI 接入 · API Key。修改后先测试连接。",
     "button.language": "EN",
     "button.languageAria": "切换界面为英文",
     "mode.organize": "整理",
@@ -201,6 +207,8 @@ const UI_COPY = Object.freeze({
     "customPrompt.label": "自定义要求",
     "customPrompt.placeholder": "例如：找工作、AI 论文、当前项目分开；拿不准的先放到待分类。",
     "advanced.summary": "更多选项",
+    "advanced.gatewayTitle": "AI 接入",
+    "advanced.gatewaySubtitle": "API 与模型",
     "switch.dissolve.title": "重新整理已有分组",
     "switch.dissolve.subtitle": "已有分组也会纳入这次整理",
     "switch.review.title": "使用待分类分组",
@@ -283,7 +291,7 @@ const UI_COPY = Object.freeze({
     "preview.empty": "还没有方案。",
     "preview.error": "出错",
     "error.heading": "生成失败",
-    "error.retryHint": "检查提示后可以重新生成。",
+    "error.retryHint": "检查对应设置后可以重新生成。",
     "preview.emptyCount": "空",
     "details.summary": "诊断信息",
     "confirm.applyMultiWindow": "这会移动多个窗口里的标签页，并创建浏览器分组。确认开始整理吗？",
@@ -369,6 +377,7 @@ const UI_COPY = Object.freeze({
     "button.generate": "Generate plan",
     "button.regenerate": "Back",
     "button.backToSettings": "Back to settings",
+    "button.checkSettings": "Check settings",
     "button.cancel": "Stop generating",
     "button.apply": "Organize",
     "button.undo": "Undo",
@@ -379,7 +388,12 @@ const UI_COPY = Object.freeze({
     "button.settingsImport": "Import",
     "button.diagnosticsExport": "Download diagnostics",
     "gateway.testHint": "OpenAI Chat Completions compatible",
+    "gateway.setupTitle": "Finish AI connection setup",
     "gateway.setupHint": "Enter an API URL and primary model ID before generating a plan.",
+    "gateway.recoveryTitle": "Check AI connection settings",
+    "gateway.recoveryModel": "Path: AI connection · Primary model ID. Test the connection after editing.",
+    "gateway.recoveryUrl": "Path: AI connection · API URL. Test the connection after editing.",
+    "gateway.recoveryKey": "Path: AI connection · API key. Test the connection after editing.",
     "button.language": "中",
     "button.languageAria": "Switch UI to Chinese",
     "mode.organize": "Organize",
@@ -485,6 +499,8 @@ const UI_COPY = Object.freeze({
     "customPrompt.label": "Custom instructions",
     "customPrompt.placeholder": "Example: keep job search, AI papers, and current projects separate; put uncertain pages in review.",
     "advanced.summary": "More options",
+    "advanced.gatewayTitle": "AI connection",
+    "advanced.gatewaySubtitle": "API and models",
     "switch.dissolve.title": "Regroup existing groups",
     "switch.dissolve.subtitle": "Existing groups are included in this run",
     "switch.review.title": "Use Needs Review group",
@@ -567,7 +583,7 @@ const UI_COPY = Object.freeze({
     "preview.empty": "No plan yet.",
     "preview.error": "Error",
     "error.heading": "Generation failed",
-    "error.retryHint": "Review the message, then generate again.",
+    "error.retryHint": "Check the highlighted setting, then generate again.",
     "preview.emptyCount": "Empty",
     "details.summary": "Diagnostics",
     "confirm.applyMultiWindow": "This will move tabs across windows and create browser tab groups. Continue?",
@@ -682,6 +698,8 @@ const nodes = {
   gatewayModelOptions: document.querySelector("#gatewayModelOptions"),
   gatewayTestHint: document.querySelector("#gatewayTestHint"),
   gatewaySetupHint: document.querySelector("#gatewaySetupHint"),
+  gatewaySetupHintTitle: document.querySelector("#gatewaySetupHintTitle"),
+  gatewaySetupHintText: document.querySelector("#gatewaySetupHintText"),
   advancedSettings: document.querySelector(".advanced-settings"),
   clearLocalMemoryBtn: document.querySelector("#clearLocalMemoryBtn"),
   settingsExportBtn: document.querySelector("#settingsExportBtn"),
@@ -716,6 +734,7 @@ let actionStateByMode = {
 };
 let lastPreview = null;
 let lastError = null;
+let gatewayRecoveryTarget = "";
 let previewResultView = "grouping";
 let lastTimeRecap = null;
 let lastTimeRecapError = null;
@@ -822,11 +841,11 @@ function bindEvents() {
     await persistSettings();
   });
   fields.customPrompt.addEventListener("input", debounce(persistSettings, 250));
-  fields.gatewayCustomModel.addEventListener("input", updateConditionalUi);
+  fields.gatewayCustomModel.addEventListener("input", handleGatewaySettingInput);
   fields.gatewayCustomModel.addEventListener("input", debounce(persistSettings, 250));
   fields.gatewayCustomAuxiliaryModel.addEventListener("input", debounce(persistSettings, 250));
-  fields.gatewayBaseUrl.addEventListener("input", updateConditionalUi);
-  fields.gatewayApiKey.addEventListener("input", updateConditionalUi);
+  fields.gatewayBaseUrl.addEventListener("input", handleGatewaySettingInput);
+  fields.gatewayApiKey.addEventListener("input", handleGatewaySettingInput);
   fields.gatewayBaseUrl.addEventListener("input", persistGatewayEndpointSettings);
   fields.gatewayApiKey.addEventListener("input", persistGatewayEndpointSettings);
   fields.pageContextMode.addEventListener("change", updateConditionalUi);
@@ -923,6 +942,8 @@ function applyUiLanguage() {
   setText('label[for="customPrompt"]', t("customPrompt.label"));
   setAttribute("#customPrompt", "placeholder", t("customPrompt.placeholder"));
   setText(".advanced-settings > summary", t("advanced.summary"));
+  setText("#gatewaySectionLabel strong", t("advanced.gatewayTitle"));
+  setText("#gatewaySectionLabel span", t("advanced.gatewaySubtitle"));
 
   setSwitchText("#dissolveExistingGroupsToggle", "switch.dissolve.title", "switch.dissolve.subtitle");
   setSwitchText("#createReviewGroupToggle", "switch.review.title", "switch.review.subtitle");
@@ -943,7 +964,6 @@ function applyUiLanguage() {
   setText('label[for="gatewayApiKey"]', t("field.gatewayKey"));
   setButtonLabel(nodes.gatewayTestBtn, t("button.gatewayTest"));
   setButtonLabel(nodes.gatewayModelsBtn, t("button.gatewayModels"));
-  setText("#gatewaySetupHint", t("gateway.setupHint"));
   setText("#gatewayTestHint", t("gateway.testHint"));
   setText(".secret-remember-row strong", t("field.rememberKey"));
   setText(".secret-remember-row small", t("field.rememberKeyHint"));
@@ -1029,6 +1049,7 @@ function applyUiLanguage() {
   if (lastTimeRecap) renderTimeRecap(lastTimeRecap);
   else if (lastTimeRecapError) renderTimeRecapError(lastTimeRecapError);
   else if (nodes.recapResult) nodes.recapResult.textContent = t("recap.empty");
+  updateGatewaySetupGuidance();
   syncActionState();
   applyPanelMode();
   renderStatus();
@@ -1445,6 +1466,14 @@ function updateConditionalUi() {
   syncActionState();
 }
 
+function handleGatewaySettingInput(event) {
+  const recoveryField = gatewayRecoveryField();
+  if (recoveryField && event.currentTarget === recoveryField) {
+    gatewayRecoveryTarget = "";
+  }
+  updateConditionalUi();
+}
+
 function missingGatewaySetupField() {
   if (fields.plannerProvider.value !== "gateway") return null;
   if (!fields.gatewayBaseUrl.value.trim()) return fields.gatewayBaseUrl;
@@ -1454,10 +1483,68 @@ function missingGatewaySetupField() {
 
 function updateGatewaySetupGuidance() {
   const missingField = missingGatewaySetupField();
-  if (nodes.gatewaySetupHint) nodes.gatewaySetupHint.hidden = !missingField;
-  fields.gatewayBaseUrl.setAttribute("aria-invalid", missingField === fields.gatewayBaseUrl ? "true" : "false");
-  fields.gatewayCustomModel.setAttribute("aria-invalid", missingField === fields.gatewayCustomModel ? "true" : "false");
+  const recoveryField = missingField ? null : gatewayRecoveryField();
+  const targetField = missingField || recoveryField;
+  if (nodes.gatewaySetupHint) {
+    nodes.gatewaySetupHint.hidden = !targetField;
+    nodes.gatewaySetupHint.dataset.mode = missingField ? "setup" : recoveryField ? "recovery" : "";
+  }
+  if (nodes.gatewaySetupHintTitle) {
+    nodes.gatewaySetupHintTitle.textContent = t(missingField ? "gateway.setupTitle" : "gateway.recoveryTitle");
+  }
+  if (nodes.gatewaySetupHintText) {
+    nodes.gatewaySetupHintText.textContent = t(missingField ? "gateway.setupHint" : gatewayRecoveryCopyKey());
+  }
+  for (const field of [fields.gatewayBaseUrl, fields.gatewayCustomModel, fields.gatewayApiKey]) {
+    field.setAttribute("aria-invalid", targetField === field ? "true" : "false");
+  }
   return missingField;
+}
+
+function gatewayRecoveryField(target = gatewayRecoveryTarget) {
+  if (target === "url") return fields.gatewayBaseUrl;
+  if (target === "key") return fields.gatewayApiKey;
+  if (target === "model") return fields.gatewayCustomModel;
+  return null;
+}
+
+function gatewayRecoveryCopyKey(target = gatewayRecoveryTarget) {
+  if (target === "url") return "gateway.recoveryUrl";
+  if (target === "key") return "gateway.recoveryKey";
+  if (target === "model") return "gateway.recoveryModel";
+  return "gateway.setupHint";
+}
+
+function gatewayRecoveryTargetForError(error) {
+  const message = String(error?.message || error || "").trim();
+  if (!message) return "";
+  if (/API key|api[_ -]?key|unauthori[sz]ed|forbidden|authentication|\b401\b|\b403\b|拒绝访问|密钥/i.test(message)) {
+    return "key";
+  }
+  if (/model|模型|invalid JSON|not valid JSON|unexpected format|内容格式/i.test(message)) {
+    return "model";
+  }
+  if (/URL|地址|endpoint|not reachable|connection|timed out|timeout|offline|upstream|连不上|连接超时|源站/i.test(message)) {
+    return "url";
+  }
+  return "";
+}
+
+function guideGatewayRecovery(error, options = {}) {
+  const target = gatewayRecoveryTargetForError(error);
+  if (!target) return false;
+  gatewayRecoveryTarget = target;
+  if (nodes.advancedSettings) nodes.advancedSettings.open = true;
+  updateGatewaySetupGuidance();
+  setStatus(t(gatewayRecoveryCopyKey()), true);
+  const field = gatewayRecoveryField();
+  if (field && options.focus) {
+    requestAnimationFrame(() => {
+      field.focus({ preventScroll: true });
+      field.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+  return true;
 }
 
 function guideMissingGatewaySetup(options = {}) {
@@ -1515,9 +1602,12 @@ async function handleCancelAction() {
 
 async function handleAnalyzeClick() {
   if (lastPreview || lastError) {
+    const previousError = lastError;
     await clearAnalysisState();
     resetToSetup();
-    if (!guideMissingGatewaySetup({ focus: true })) setStatusKey("status.default");
+    if (guideMissingGatewaySetup({ focus: true })) return;
+    if (guideGatewayRecovery(previousError, { focus: true })) return;
+    setStatusKey("status.default");
     return;
   }
   analyze();
@@ -1712,8 +1802,11 @@ async function handleGatewayModelsClick() {
       timeoutMs: 15_000
     });
     renderGatewayModelOptions(result?.models || []);
+    gatewayRecoveryTarget = "";
+    updateGatewaySetupGuidance();
     setStatusKey("status.gatewayModelsLoaded", { count: result?.models?.length || 0 });
   } catch (error) {
+    guideGatewayRecovery(error);
     setErrorStatus(error, friendlyErrorMessage(error));
   } finally {
     nodes.gatewayModelsBtn.disabled = false;
@@ -1751,8 +1844,11 @@ async function handleGatewayTestClick() {
     const auxiliaryModel = result?.auxiliaryModel && result.auxiliaryModel !== primaryModel
       ? ` / ${result.auxiliaryModel}`
       : "";
+    gatewayRecoveryTarget = "";
+    updateGatewaySetupGuidance();
     setStatusKey("status.gatewayTestOk", { model: `${primaryModel}${auxiliaryModel}` });
   } catch (error) {
+    guideGatewayRecovery(error);
     setErrorStatus(error, friendlyErrorMessage(error));
   } finally {
     nodes.gatewayTestBtn.disabled = false;
@@ -3071,6 +3167,7 @@ async function focusActivityTab(tab) {
 function resetToSetup() {
   lastPreview = null;
   lastError = null;
+  gatewayRecoveryTarget = "";
   previewResultView = "grouping";
   lastCanApply = false;
   nodes.previewSection.hidden = true;
@@ -3664,7 +3761,8 @@ function configureOrganizeActions() {
   nodes.applyBtn.hidden = !lastPreview || lastPreview.analysisFeatures?.grouping === false;
   nodes.undoBtn.hidden = !canUndo;
   nodes.analyzeBtn.dataset.role = "";
-  setButtonLabel(nodes.analyzeBtn, t(lastPreview ? "button.regenerate" : lastError ? "button.backToSettings" : "button.generate"));
+  const errorActionKey = gatewayRecoveryTargetForError(lastError) ? "button.checkSettings" : "button.backToSettings";
+  setButtonLabel(nodes.analyzeBtn, t(lastPreview ? "button.regenerate" : lastError ? errorActionKey : "button.generate"));
   setButtonLabel(nodes.cancelBtn, t("button.cancel"));
   nodes.applyBtn.dataset.role = canApplyCurrentPreview() ? "primary" : "";
 }

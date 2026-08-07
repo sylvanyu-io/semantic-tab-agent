@@ -322,10 +322,16 @@
             </div>
           </div>
 
-          <div class="advanced-list advanced-input-list">
-            <p id="gatewaySetupHint" class="gateway-setup-hint" role="status" hidden>
-              先填写 API 地址和主模型 ID，再生成方案。
-            </p>
+          <div id="gatewaySectionLabel" class="advanced-section-label">
+            <strong>AI 接入</strong>
+            <span>API 与模型</span>
+          </div>
+
+          <div class="advanced-list advanced-input-list" aria-labelledby="gatewaySectionLabel">
+            <div id="gatewaySetupHint" class="gateway-setup-hint" role="status" hidden>
+              <strong id="gatewaySetupHintTitle">完成 AI 接入设置</strong>
+              <span id="gatewaySetupHintText">先填写 API 地址和主模型 ID，再生成方案。</span>
+            </div>
             <div id="gatewayCustomModelField" class="field setting-input-row">
               <label for="gatewayCustomModel">主模型 ID</label>
               <input
