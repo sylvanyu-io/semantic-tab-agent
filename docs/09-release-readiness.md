@@ -74,7 +74,9 @@ Implemented:
 
 Not production-complete yet:
 
-- No Chrome Web Store assets or listing text.
+- Chrome Web Store listing assets, localized copy, privacy disclosures, and a
+  public privacy policy are prepared in the repository; developer-dashboard
+  submission and review are still pending.
 - No hosted account system.
 - No provider-specific adaptive scheduler beyond the AI gateway coarse/refine
   path.

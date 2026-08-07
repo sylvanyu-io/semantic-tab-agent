@@ -15,6 +15,8 @@
 
 TabRecap 是一个 AI 原生的 Chrome MV3 标签页整理与工作回顾扩展。它把打开的标签页交给 LLM 按语义整理，而不是只按域名、标题关键词或手写规则分组。
 
+[隐私政策 / Privacy Policy](PRIVACY.md)
+
 打开侧边栏后，可以在 **整理** 和 **回顾** 两个页面之间切换。整理会先生成可检查的方案；回顾会先选择时间范围，生成后进入结果页，底部按钮变成“返回上级”。整理和回顾有独立进度，可以并行进行。
 
 English: TabRecap is an AI tab organizer and private work recap extension for Chrome. It groups messy tabs by task, topic, or project, then helps summarize what you worked on from local tab activity and optional page summaries.

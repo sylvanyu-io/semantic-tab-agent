@@ -1,5 +1,7 @@
 # Chrome Web Store assets
 
+The dashboard copy, privacy answers, URLs, and reviewer instructions are maintained in [`docs/store-listing.md`](../../store-listing.md). The public privacy policy is [`PRIVACY.md`](../../../PRIVACY.md).
+
 Generate the complete set with:
 
 ```bash
