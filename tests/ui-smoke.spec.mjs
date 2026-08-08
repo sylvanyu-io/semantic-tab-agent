@@ -46,6 +46,9 @@ async function setAdvancedSettingsOpen(page, open) {
   const details = page.locator(".advanced-settings");
   await details.evaluate((element, nextOpen) => {
     element.open = nextOpen;
+    element.querySelectorAll(".advanced-group").forEach((group) => {
+      group.open = nextOpen;
+    });
   }, open);
 }
 
@@ -182,6 +185,12 @@ test("control surface renders settings and mock preview", async ({ page }) => {
     .toBe(true);
   await expect(page.locator("#analyzeGrouping")).toBeChecked();
   await expect(page.locator("#analyzeCleanup")).toBeChecked();
+  await expect(page.locator(".advanced-group")).toHaveCount(4);
+  await expect(page.locator("#organizeBehaviorGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#analysisOutputGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#gatewaySettingsGroup")).toHaveJSProperty("open", true);
+  await expect(page.locator("#localDataGroup")).toHaveJSProperty("open", false);
+  await setAdvancedSettingsOpen(page, true);
   await expect(page.getByRole("button", { name: "整理 + 清理" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "只整理" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "只清理" })).toHaveCount(0);
@@ -272,13 +281,15 @@ test("control surface renders settings and mock preview", async ({ page }) => {
   await expect(page.locator(".diagnostics-row")).toContainText("诊断包");
   await expect(page.locator(".diagnostics-row")).toContainText("不包含密钥、页面网址或页面正文");
   await expect(page.getByRole("button", { name: "下载诊断包" })).toBeVisible();
-  await expect(page.locator(".advanced-switch-list .compact-switch")).toHaveCount(5);
+  await expect(page.locator(".advanced-switch-list .compact-switch")).toHaveCount(4);
+  await expect(page.locator("#analysisOutputGroup #includeIncognitoTabs")).toHaveCount(1);
   await expect(page.locator(".advanced-switch-list")).toContainText("包含固定标签页");
   await expect(page.locator(".advanced-switch-list")).toContainText("整理后收起分组");
   await expect(page.locator(".advanced-switch-list")).not.toContainText("合并到当前窗口");
   await expect(page.locator(".advanced-switch-list")).not.toContainText("撤销后关闭空窗口");
-  await expect(page.locator(".advanced-select-list .setting-select-row")).toHaveCount(6);
+  await expect(page.locator(".advanced-select-list .setting-select-row")).toHaveCount(5);
   await expect(page.locator("#urlPrivacyMode").locator("xpath=ancestor::*[contains(@class, 'advanced-select-list')]")).toHaveCount(1);
+  await expect(page.locator("#gatewayThinkingIntensity").locator("xpath=ancestor::*[contains(@class, 'advanced-input-list')]")).toHaveCount(1);
   await expect(page.locator("#dissolveExistingGroupsToggle")).toBeVisible();
   await expect(page.locator("#createReviewGroupToggle")).toBeVisible();
   await expect(page.locator("#dissolveExistingGroupsToggle")).not.toBeChecked();
@@ -2896,6 +2907,10 @@ test("side panel guides missing API setup before generation", async ({ page }) =
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await expect(page.locator(".advanced-settings")).toHaveJSProperty("open", true);
+  await expect(page.locator("#gatewaySettingsGroup")).toHaveJSProperty("open", true);
+  await expect(page.locator("#organizeBehaviorGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#analysisOutputGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#localDataGroup")).toHaveJSProperty("open", false);
   await expect(page.locator("#gatewaySetupHintTitle")).toHaveText("完成 AI 接入设置");
   await expect(page.locator("#gatewaySetupHint")).toContainText("先填写 API 地址和主模型 ID");
   await expect(page.locator("#gatewayBaseUrl")).toBeFocused();
@@ -2907,6 +2922,44 @@ test("side panel guides missing API setup before generation", async ({ page }) =
   await expect(page.locator("#gatewaySetupHint")).toBeHidden();
   await expect(page.locator("#gatewayBaseUrl")).toHaveAttribute("aria-invalid", "false");
   await expect(page.getByRole("button", { name: "生成方案" })).toBeEnabled();
+});
+
+test("advanced option groups stay collapsed when API setup is complete", async ({ page }) => {
+  await page.addInitScript(() => {
+    const settings = {
+      plannerProvider: "gateway",
+      gatewayBaseUrl: "https://api.example.test/v1",
+      gatewayModel: "custom",
+      gatewayCustomModel: "test-model",
+      gatewayThinkingIntensity: "high",
+      gatewayApiKey: "",
+      languageMode: "auto"
+    };
+    window.chrome = {
+      runtime: {
+        sendMessage: async (message) => {
+          if (message.type === "settings:get") return { ok: true, result: settings };
+          if (message.type === "settings:save") return { ok: true, result: message.settings };
+          if (message.type === "tabs:getActiveJob") return { ok: true, result: null };
+          if (message.type === "tabs:canUndo") return { ok: true, result: { canUndo: false } };
+          return { ok: true, result: null };
+        }
+      }
+    };
+  });
+
+  await page.goto(`${baseUrl}/src/sidepanel/index.html`);
+  await expect(page.locator(".advanced-settings")).toHaveJSProperty("open", false);
+  await page.locator(".advanced-settings > summary").click();
+  await expect(page.locator(".advanced-group")).toHaveCount(4);
+  await expect(page.locator("#organizeBehaviorGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#analysisOutputGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#gatewaySettingsGroup")).toHaveJSProperty("open", false);
+  await expect(page.locator("#localDataGroup")).toHaveJSProperty("open", false);
+  await expect(page.getByText("整理行为", { exact: true })).toBeVisible();
+  await expect(page.getByText("分析与输出", { exact: true })).toBeVisible();
+  await expect(page.getByText("AI 接入", { exact: true })).toBeVisible();
+  await expect(page.getByText("本机与数据", { exact: true })).toBeVisible();
 });
 
 test("side panel restores a background planning error after reopening", async ({ page }) => {
@@ -3005,6 +3058,7 @@ test("side panel restores a background planning error after reopening", async ({
   await expect(page.locator(".launch-panel")).toBeVisible();
   await expect(page.locator(".error-panel")).toHaveCount(0);
   await expect(page.locator(".advanced-settings")).toHaveJSProperty("open", true);
+  await expect(page.locator("#gatewaySettingsGroup")).toHaveJSProperty("open", true);
   await expect(page.locator("#gatewaySetupHintTitle")).toHaveText("Check AI connection settings");
   await expect(page.locator("#gatewaySetupHint")).toContainText("Path: AI connection · Primary model ID");
   await expect(page.locator("#gatewayCustomModel")).toBeFocused();
