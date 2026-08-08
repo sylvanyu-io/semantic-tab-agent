@@ -28,21 +28,20 @@
         <header class="onboarding-header">
           <div class="onboarding-kicker-row">
             <p id="onboardingEyebrow" class="step-label">首次设置</p>
-            <span id="onboardingProgressText" class="onboarding-progress-text">1 / 3</span>
+            <span id="onboardingProgressText" class="onboarding-progress-text">1 / 2</span>
           </div>
           <div class="onboarding-progress" aria-hidden="true">
             <span data-onboarding-progress="0"></span>
             <span data-onboarding-progress="1"></span>
-            <span data-onboarding-progress="2"></span>
           </div>
           <h2 id="onboardingTitle">先把 TabRecap 配好</h2>
-          <p id="onboardingIntro">先定整理偏好和权限范围，最后连接 AI。完成后会直接进入主界面。</p>
+          <p id="onboardingIntro">先决定权限范围，再连接 AI。完成后可以直接整理，也可以只做回顾。</p>
         </header>
 
         <div class="onboarding-scroll">
-          <section class="onboarding-step" data-onboarding-step="2" aria-labelledby="onboardingStepAiTitle" hidden>
+          <section class="onboarding-step" data-onboarding-step="1" aria-labelledby="onboardingStepAiTitle" hidden>
             <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">03</span>
+              <span class="onboarding-step-number" aria-hidden="true">02</span>
               <div>
                 <h3 id="onboardingStepAiTitle">连接你的 AI</h3>
                 <p>可直接使用已预填的体验配置，也可以换成自己的 OpenAI Chat Completions 兼容接口。</p>
@@ -105,12 +104,12 @@
             </div>
           </section>
 
-          <section class="onboarding-step" data-onboarding-step="1" aria-labelledby="onboardingStepPrivacyTitle" hidden>
+          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepPrivacyTitle">
             <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">02</span>
+              <span class="onboarding-step-number" aria-hidden="true">01</span>
               <div>
                 <h3 id="onboardingStepPrivacyTitle">决定发送什么</h3>
-                <p>基础整理只需要标题和网址。页面正文只有你明确开启并授权后才会读取。</p>
+                <p>整理和回顾可以只使用标题与网址。页面正文只有你明确开启并授权后才会读取。</p>
               </div>
             </div>
 
@@ -144,44 +143,6 @@
             <p id="onboardingContentAccessUnavailable" class="onboarding-note" hidden>
               当前安装包没有页面摘要功能，会继续使用标题和网址。
             </p>
-          </section>
-
-          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepPreferencesTitle">
-            <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">01</span>
-              <div>
-                <h3 id="onboardingStepPreferencesTitle">定好第一次整理</h3>
-                <p>这些选项会直接影响分组结果，之后仍可在“更多选项”里修改。</p>
-              </div>
-            </div>
-
-            <div class="onboarding-field onboarding-select-field">
-              <label for="onboardingAnalysisMode">本次分析</label>
-              <select id="onboardingAnalysisMode">
-                <option value="both">整理 + 清理建议</option>
-                <option value="grouping">仅整理标签页</option>
-                <option value="cleanup">仅清理建议</option>
-              </select>
-            </div>
-
-            <div class="onboarding-preference-list">
-              <label class="onboarding-switch-row">
-                <span><strong>重新整理已有分组</strong><small>已有分组也会纳入这次整理</small></span>
-                <input id="onboardingDissolveExistingGroups" type="checkbox" />
-              </label>
-              <label class="onboarding-switch-row">
-                <span><strong>使用待分类分组</strong><small>拿不准的页面先集中放好</small></span>
-                <input id="onboardingCreateReviewGroup" type="checkbox" />
-              </label>
-              <label class="onboarding-switch-row">
-                <span><strong>包含固定标签页</strong><small>会参与移动和分组</small></span>
-                <input id="onboardingIncludePinnedTabs" type="checkbox" />
-              </label>
-              <label class="onboarding-switch-row">
-                <span><strong>整理后收起分组</strong><small>新分组默认折叠</small></span>
-                <input id="onboardingCollapseGroups" type="checkbox" />
-              </label>
-            </div>
           </section>
 
           <p id="onboardingError" class="onboarding-error" role="alert" hidden></p>
