@@ -47,7 +47,7 @@ Activity is supporting evidence. Titles, page meaning, original order, and user 
 
 ## Page access and privacy
 
-Normal organization uses tab metadata. Page summaries are optional and off by default. When you turn them on, Chrome asks for access to the selected sites before TabRecap reads a small amount of visible text from awake, non-incognito pages. It does not read passwords, form values, cookies, local storage, or full HTML. Pages without permission remain title-and-URL only.
+After AI setup, the first-run guide selects full URLs and Page summary boost for richer organization and recaps, with a red warning before you continue. You can switch to title-only or turn page text off. Chrome asks for permission before TabRecap reads a small amount of visible text from awake, non-incognito pages. Short page summaries are stored only on this computer; selected data is sent to the AI API you configured only when you start an organization or recap. TabRecap does not read passwords, form values, cookies, local storage, or full HTML. Pages without permission remain title-and-URL only.
 
 Tab activity, transitions, settings, and undo data stay in Chrome extension storage. Starting an organization or recap request sends the compact data needed for that job to the selected model service. See the [privacy policy](PRIVACY.md) for retention, gateway rate limiting, and the complete data boundary.
 
@@ -65,7 +65,7 @@ Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, 
 
 ## Connect a model
 
-TabRecap does not ship with a provider key. The first-run guide visibly prefills the optional trial endpoint and model so you can get started, and you can replace both with any OpenAI Chat Completions-compatible Base URL and model ID. The API key is optional for public and local endpoints. **Load models** reads the endpoint's `/models` response; you can still type an ID by hand when an API does not expose model discovery.
+TabRecap does not ship with a provider key. The first-run guide starts with the optional trial endpoint and model, shows a red warning, and lets you replace both with any OpenAI Chat Completions-compatible Base URL and model ID. The API key is optional for public and local endpoints. **Load models** reads the endpoint's `/models` response; you can still type an ID by hand when an API does not expose model discovery.
 
 This works with self-hosted gateways and compatible services from providers such as Volcengine, Alibaba Cloud, Zhipu, DeepSeek, and Moonshot. Provider-specific account setup stays outside the extension.
 
@@ -82,7 +82,7 @@ Auxiliary: leave blank or reuse the primary
 
 Click **Load models** to see the current list. The shared gateway currently exposes `glm-5.2`, `kimi-k3`, `deepseek-v4-pro`, and `deepseek-v4-flash` through [OpenCode Go](https://opencode.ai/docs/go/). It has per-IP, per-day, payload, token, and global limits. It accepts only TabRecap request formats, has no uptime guarantee, and may stop working when the shared subscription quota is exhausted. Switch to your own compatible endpoint when that happens.
 
-The first-run AI step visibly prefills this address and `deepseek-v4-flash`; the API key stays blank because the trial endpoint does not require a client key. You can review or replace the values before continuing. Trial requests pass through the TabRecap Cloudflare Worker and are forwarded only to OpenCode Go. The upstream provider key stays in a Worker Secret and is not included in source code or extension packages.
+The first-run AI step starts with this address and `deepseek-v4-flash` and shows a red trial warning; the API key stays blank because the trial endpoint does not require a client key. You can review or replace the values before continuing. Trial requests pass through the TabRecap Cloudflare Worker and are forwarded only to OpenCode Go. The upstream provider key stays in a Worker Secret and is not included in source code or extension packages.
 
 Do not commit personal API keys. Rotate any key exposed in chat, logs, screenshots, shell history, or test output.
 

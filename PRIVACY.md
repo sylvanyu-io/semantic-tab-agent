@@ -13,13 +13,13 @@ TabRecap can use:
 - settings, analysis state, diagnostics, and rollback snapshots needed to apply and undo organization changes;
 - short visible-text page summaries when you turn that feature on and grant Chrome access to the selected sites.
 
-Page summaries are off by default. TabRecap does not read passwords, form values, cookies, browser local storage, payment information, private messages, or full HTML. Incognito tabs and unsupported Chrome pages are skipped.
+After AI setup, the first-run guide selects full URLs and Page summary boost by default and shows a red warning before requesting access. You can change either choice before continuing. TabRecap does not read page text until Chrome permission is granted. Short page summaries are stored only on your device; selected data is sent to the configured AI API only when you start an organization or recap. TabRecap does not read passwords, form values, cookies, browser local storage, payment information, private messages, or full HTML. Incognito tabs and unsupported Chrome pages are skipped.
 
 Local records are stored in Chrome extension storage on your device. They remain until you clear them in TabRecap, uninstall the extension, or Chrome removes the extension's storage. Turning off activity memory stops future activity capture. Clearing local memory does not close tabs.
 
 ## AI endpoints and requests
 
-TabRecap does not contain a provider API key or silently send data to an AI service. Its first-run guide visibly prefills the optional trial Base URL and model before any request is sent. You can review or replace them with another OpenAI Chat Completions-compatible endpoint and add an API key when that endpoint requires one. API keys are saved locally only when you choose the remember-key option; settings and diagnostics exports omit them.
+TabRecap does not contain a provider API key or silently send data to an AI service. Its first-run guide starts with the optional trial Base URL and model and shows a red warning before any request is sent. You can review or replace them with another OpenAI Chat Completions-compatible endpoint and add an API key when that endpoint requires one. API keys are saved locally only when you choose the remember-key option; settings and diagnostics exports omit them.
 
 Data is sent only after you start an analysis, connection test, model-list request, or recap. An analysis or recap can include compact tab metadata, local activity clues, relevant settings, custom instructions, and page summaries you explicitly enabled. Long-term local URL records omit query strings and fragments where possible.
 
@@ -27,7 +27,7 @@ Requests go to the endpoint you entered. That endpoint and its infrastructure ma
 
 ### Optional shared endpoint
 
-The first-run guide visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash` as a limited trial configuration. The client API-key field stays blank. If you keep this configuration, the request passes through a TabRecap Cloudflare Worker and is forwarded only to OpenCode Go.
+The first-run guide starts with `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash` as a limited trial configuration and shows a red warning. The client API-key field stays blank. If you keep this configuration, the request passes through a TabRecap Cloudflare Worker and is forwarded only to OpenCode Go.
 
 The Worker:
 
@@ -78,13 +78,13 @@ TabRecap 可能使用：
 - 设置、任务状态、诊断信息，以及执行和撤销整理所需的快照；
 - 你主动开启页面摘要并授予站点权限后，从页面可见区域提取的少量文字。
 
-页面摘要默认关闭。TabRecap 不读取密码、表单内容、Cookie、浏览器本地存储、支付信息、私人消息或完整 HTML。无痕标签页和 Chrome 不允许访问的页面会被跳过。
+完成 AI 配置后，首次引导默认选择完整网址和页面摘要增强，并在请求权限前显示红色警示；你可以在继续前修改任一选项。Chrome 授权前 TabRecap 不会读取页面文字。页面短摘要只保存在设备本机，只有开始整理或回顾时，所选数据才会发送到已配置的 AI API。TabRecap 不会读取密码、表单内容、Cookie、浏览器本地存储、支付信息、私人消息或完整 HTML。无痕标签页和 Chrome 不允许访问的页面会被跳过。
 
 本机记录保存在设备上的 Chrome 扩展存储中，直到你在 TabRecap 中清除、卸载扩展，或 Chrome 删除扩展数据。关闭活动记忆后不会继续记录新的活动线索。清除本机记录不会关闭标签页。
 
 ## AI 接口与请求
 
-TabRecap 不包含服务商 API Key，也不会暗中向 AI 服务发送数据。首次配置会在发出任何请求前，明确预填可选的体验 Base URL 和模型；你可以检查或换成其他兼容 OpenAI Chat Completions 的接口，并在该接口需要鉴权时填写 API Key。只有主动开启“记住密钥”后，Key 才会保存在本机；设置与诊断导出不会带出 Key。
+TabRecap 不包含服务商 API Key，也不会暗中向 AI 服务发送数据。首次配置会从可选的体验 Base URL 和模型开始，并在发出任何请求前显示红色警示；你可以检查或换成其他兼容 OpenAI Chat Completions 的接口，并在该接口需要鉴权时填写 API Key。只有主动开启“记住密钥”后，Key 才会保存在本机；设置与诊断导出不会带出 Key。
 
 只有在你主动分析、测试连接、读取模型列表或生成回顾时，扩展才会发出请求。分析和回顾可能包含精简标签页信息、本机活动线索、相关设置、自定义要求，以及你明确开启的页面摘要。长期保存的网址记录会尽量移除查询参数和片段。
 
@@ -92,7 +92,7 @@ TabRecap 不包含服务商 API Key，也不会暗中向 AI 服务发送数据�
 
 ### 可选共享接口
 
-首次配置会明确预填 `https://tab-recap-gateway.sylvanyu.io/v1` 和 `deepseek-v4-flash` 作为限量体验配置，客户端 API Key 默认留空。如果保留这组配置，请求会先经过 TabRecap 的 Cloudflare Worker，并且只转发给 OpenCode Go。
+首次配置会从 `https://tab-recap-gateway.sylvanyu.io/v1` 和 `deepseek-v4-flash` 这组限量体验配置开始，并显示红色警示；客户端 API Key 默认留空。如果保留这组配置，请求会先经过 TabRecap 的 Cloudflare Worker，并且只转发给 OpenCode Go。
 
 Worker 会：
 

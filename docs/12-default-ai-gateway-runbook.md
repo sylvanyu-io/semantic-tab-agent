@@ -1,6 +1,6 @@
 # Shared gateway runbook
 
-The extension's first-run AI step visibly prefills this gateway as an optional trial configuration. Users can review or replace it before any request is sent.
+The extension's first-run AI step starts with this gateway as an optional trial configuration and shows a red warning. Users can review or replace it before any request is sent.
 
 ## Production values
 

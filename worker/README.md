@@ -2,7 +2,7 @@
 
 This Cloudflare Worker backs the optional trial endpoint documented in the project README. It is deliberately narrower than a general OpenAI proxy.
 
-The extension's first-run guide visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash` as an optional trial configuration. It does not contain the upstream provider key, and users can replace the trial values before continuing.
+The extension's first-run guide starts with `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash` as an optional trial configuration and shows a red warning. It does not contain the upstream provider key, and users can replace the trial values before continuing.
 
 ## What the Worker accepts
 

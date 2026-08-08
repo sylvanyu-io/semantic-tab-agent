@@ -47,7 +47,7 @@ Data and control
 - No TabRecap account is required.
 - Settings, activity clues, and undo data stay in Chrome extension storage on this device.
 - Compact tab data is sent to the selected AI endpoint only after you start an analysis or recap.
-- Page summaries are off by default and require a separate Chrome permission prompt.
+- After AI setup, first-run setup selects full URLs and page summaries, shows a red warning, and requires a separate Chrome permission prompt before reading page text. Short summaries stay local; selected data goes to the configured AI API only after the user starts an organization or recap. Users can turn either choice off before continuing.
 
 AI connection
 
@@ -93,7 +93,7 @@ TabRecap
 - 不需要注册 TabRecap 账号。
 - 设置、活动线索和撤销数据保存在本机 Chrome 扩展存储中。
 - 只有主动开始分析或回顾后，精简标签页数据才会发送到所选 AI 接口。
-- 页面摘要默认关闭，开启时 Chrome 会单独询问站点权限。
+- 完成 AI 配置后，首次引导默认选择完整网址和页面摘要，先显示红色警示，并在读取页面文字前由 Chrome 单独询问权限；页面短摘要只存本机，只有用户开始整理或回顾时，所选数据才发送到已配置的 AI API。用户可以在继续前关闭任一选项。
 
 AI 接口
 
@@ -136,8 +136,8 @@ No account or paid subscription is required for the limited shared endpoint.
 
 1. Open several normal `https://` pages in one Chrome window.
 2. Click the TabRecap toolbar icon to open the side panel.
-3. In the first-run guide, review the page-access choice, then continue to the AI step.
-4. Confirm that the AI step visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash`, with API Key blank. Click Test connection, then enter TabRecap.
+3. Confirm that the first AI step starts with `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash`, shows a red trial warning, and leaves API Key blank. Click Test connection, then continue.
+4. Review the full-URL and page-summary defaults, the local-storage/configured-API warning, and the Chrome permission prompt; then enter TabRecap.
 5. Keep the current-window scope and click Analyze.
 6. Review the proposed groups and cleanup suggestions, then apply the organization.
 7. Use Undo to restore the supported tab state.
