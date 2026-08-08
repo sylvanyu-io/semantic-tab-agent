@@ -213,6 +213,478 @@ h2,
   bottom: -18px;
 }
 
+.app-shell[data-onboarding="active"] {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.app-shell[data-onboarding="active"] .mode-tabs,
+.app-shell[data-onboarding="active"] .privacy-disclosure,
+.app-shell[data-onboarding="active"] .scroll-region,
+.app-shell[data-onboarding="active"] .actions {
+  display: none !important;
+}
+
+.onboarding-panel {
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 2px -2px -12px;
+  overflow: hidden;
+}
+
+.onboarding-header {
+  display: grid;
+  gap: 8px;
+  padding: 17px 8px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
+}
+
+.onboarding-kicker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.onboarding-progress-text {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.onboarding-progress span {
+  height: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--line) 16%, transparent);
+  border-radius: 999px;
+}
+
+.onboarding-progress span[data-state="done"],
+.onboarding-progress span[data-state="current"] {
+  background: var(--primary);
+}
+
+.onboarding-progress span[data-state="current"] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.onboarding-header h2 {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.onboarding-header > p:not(.step-label) {
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.48;
+}
+
+.onboarding-scroll {
+  min-height: 0;
+  margin-right: -10px;
+  padding: 0 18px 18px 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--line) 34%, transparent) transparent;
+}
+
+.onboarding-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.onboarding-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--line) 26%, transparent);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.onboarding-step {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding-top: 18px;
+}
+
+.onboarding-step-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+}
+
+.onboarding-step-heading > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.onboarding-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 25px;
+  color: #ffffff;
+  background: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary-hover) 72%, var(--line-strong));
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: inset 0 -1px 0 rgba(28, 25, 20, 0.18);
+}
+
+.onboarding-step h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.onboarding-step-heading p {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.onboarding-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.onboarding-field label,
+.onboarding-choice-list legend {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.onboarding-field label small {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.onboarding-field input,
+.onboarding-field select {
+  min-height: 46px;
+  background-color: color-mix(in srgb, var(--surface) 88%, #ffffff);
+}
+
+.onboarding-field input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--danger) 62%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral-soft) 74%, transparent);
+}
+
+.onboarding-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding-top: 1px;
+}
+
+.onboarding-secondary-action {
+  min-height: 34px;
+  padding: 6px 13px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 46%, transparent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--line) 10%, transparent);
+}
+
+.onboarding-secondary-action:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.onboarding-mini-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.onboarding-mini-check input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+}
+
+.onboarding-mini-check small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.onboarding-select-field {
+  padding-bottom: 2px;
+}
+
+.onboarding-choice-list {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--line) 34%, transparent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+}
+
+.onboarding-choice-list legend {
+  margin-left: 11px;
+  padding: 0 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.onboarding-choice-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-height: 64px;
+  padding: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.onboarding-choice-row + .onboarding-choice-row {
+  border-top: 1px solid color-mix(in srgb, var(--line) 16%, transparent);
+}
+
+.onboarding-choice-row:has(input:checked) {
+  background: color-mix(in srgb, var(--primary-soft) 48%, var(--surface));
+}
+
+.onboarding-choice-row input[type="radio"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+}
+
+.onboarding-choice-row input[type="radio"]:checked {
+  border: 5px solid var(--primary);
+}
+
+.onboarding-choice-row span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.onboarding-choice-row strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.onboarding-choice-row small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.onboarding-choice-row-emphasis strong {
+  color: var(--primary);
+}
+
+.onboarding-preference-list {
+  display: grid;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 34%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.onboarding-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 59px;
+  padding: 10px 12px;
+  color: var(--text);
+}
+
+.onboarding-switch-row + .onboarding-switch-row {
+  border-top: 1px solid color-mix(in srgb, var(--line) 14%, transparent);
+}
+
+.onboarding-switch-row > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.onboarding-switch-row strong {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.onboarding-switch-row small {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.onboarding-switch-row input[type="checkbox"] {
+  flex: 0 0 auto;
+  appearance: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  background: var(--surface-strong);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 160ms var(--ease), border-color 160ms var(--ease);
+}
+
+.onboarding-switch-row input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition: transform 160ms var(--ease), background 160ms var(--ease);
+}
+
+.onboarding-switch-row input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.onboarding-switch-row input[type="checkbox"]:checked::before {
+  transform: translate(19px, -50%);
+}
+
+.onboarding-note,
+.onboarding-error {
+  margin-top: 2px;
+  padding: 9px 10px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-soft) 68%, transparent);
+  border-left: 3px solid var(--muted);
+  font-size: 11px;
+  font-weight: 680;
+  line-height: 1.45;
+}
+
+.onboarding-error {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--coral-soft) 68%, var(--surface));
+  border-left-color: var(--danger);
+}
+
+.onboarding-actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  margin: 0 -10px;
+  padding: 14px 12px 12px;
+  background:
+    linear-gradient(
+      180deg,
+      transparent,
+      color-mix(in srgb, var(--surface) 64%, transparent) 18%,
+      color-mix(in srgb, var(--canvas) 96%, var(--surface)) 100%
+    );
+}
+
+.onboarding-actions::before {
+  content: "";
+  position: absolute;
+  top: -18px;
+  right: 0;
+  left: 0;
+  height: 18px;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--shelf-fade), transparent);
+  transform: rotate(180deg);
+}
+
+.onboarding-actions button {
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.onboarding-back-action {
+  color: var(--muted);
+  background: var(--surface);
+  box-shadow: var(--control-shadow);
+}
+
+.onboarding-next-action {
+  color: #ffffff;
+  background: var(--primary);
+  border-color: color-mix(in srgb, var(--primary-hover) 72%, var(--line-strong)) !important;
+  box-shadow: var(--control-shadow-strong);
+}
+
+.onboarding-back-action[hidden] + .onboarding-next-action {
+  grid-column: 1 / -1;
+}
+
+.onboarding-actions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
 .mode-tabs {
   grid-row: 2;
   display: grid;

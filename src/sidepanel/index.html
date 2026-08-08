@@ -24,6 +24,166 @@
         </button>
       </header>
 
+      <section id="onboardingPanel" class="onboarding-panel" aria-labelledby="onboardingTitle" hidden>
+        <header class="onboarding-header">
+          <div class="onboarding-kicker-row">
+            <p id="onboardingEyebrow" class="step-label">首次设置</p>
+            <span id="onboardingProgressText" class="onboarding-progress-text">1 / 3</span>
+          </div>
+          <div class="onboarding-progress" aria-hidden="true">
+            <span data-onboarding-progress="0"></span>
+            <span data-onboarding-progress="1"></span>
+            <span data-onboarding-progress="2"></span>
+          </div>
+          <h2 id="onboardingTitle">先把 TabRecap 配好</h2>
+          <p id="onboardingIntro">三步完成 AI 接入、权限范围和整理偏好。之后会直接进入主界面。</p>
+        </header>
+
+        <div class="onboarding-scroll">
+          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepAiTitle">
+            <div class="onboarding-step-heading">
+              <span class="onboarding-step-number" aria-hidden="true">01</span>
+              <div>
+                <h3 id="onboardingStepAiTitle">连接你的 AI</h3>
+                <p>兼容 OpenAI Chat Completions。继续时会请求访问这个 API 地址。</p>
+              </div>
+            </div>
+
+            <div class="onboarding-fields">
+              <div class="onboarding-field">
+                <label for="onboardingGatewayBaseUrl">API 地址</label>
+                <input
+                  id="onboardingGatewayBaseUrl"
+                  type="url"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="https://example.com/v1"
+                  required
+                />
+              </div>
+              <div class="onboarding-field">
+                <label for="onboardingGatewayModel">主模型 ID</label>
+                <input
+                  id="onboardingGatewayModel"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  list="gatewayModelOptions"
+                  placeholder="例如：glm-5.2、kimi-k3、qwen-plus"
+                  required
+                />
+              </div>
+              <div class="onboarding-field">
+                <label for="onboardingGatewayApiKey">
+                  <span id="onboardingGatewayApiKeyLabel">API Key</span>
+                  <small id="onboardingGatewayApiKeyOptional">如需要</small>
+                </label>
+                <input
+                  id="onboardingGatewayApiKey"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="公开或本机接口可留空"
+                />
+              </div>
+            </div>
+
+            <div class="onboarding-inline-actions">
+              <button id="onboardingGatewayTestBtn" class="onboarding-secondary-action" type="button">测试连接</button>
+              <label class="onboarding-mini-check">
+                <input id="onboardingRememberProviderKey" type="checkbox" />
+                <span>记住 Key <small>仅保存在这台电脑</small></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="onboarding-step" data-onboarding-step="1" aria-labelledby="onboardingStepPrivacyTitle" hidden>
+            <div class="onboarding-step-heading">
+              <span class="onboarding-step-number" aria-hidden="true">02</span>
+              <div>
+                <h3 id="onboardingStepPrivacyTitle">决定发送什么</h3>
+                <p>基础整理只需要标题和网址。页面正文只有你明确开启并授权后才会读取。</p>
+              </div>
+            </div>
+
+            <div class="onboarding-field onboarding-select-field">
+              <label for="onboardingUrlPrivacyMode">发送给 AI 的网址信息</label>
+              <select id="onboardingUrlPrivacyMode">
+                <option value="title_only">只发标题</option>
+                <option value="sanitized_url">精简网址</option>
+                <option value="full_url">完整网址</option>
+              </select>
+            </div>
+
+            <fieldset id="onboardingPageAccessField" class="onboarding-choice-list">
+              <legend>页面文字权限</legend>
+              <label class="onboarding-choice-row">
+                <input type="radio" name="onboardingPageAccess" value="off" checked />
+                <span>
+                  <strong>暂不读取页面文字</strong>
+                  <small>使用标题和网址，不申请网页读取权限</small>
+                </span>
+              </label>
+              <label class="onboarding-choice-row onboarding-choice-row-emphasis">
+                <input type="radio" name="onboardingPageAccess" value="on" />
+                <span>
+                  <strong>开启页面摘要增强</strong>
+                  <small>读取少量正文并在本机保存短摘要；继续时由浏览器请求权限</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <p id="onboardingContentAccessUnavailable" class="onboarding-note" hidden>
+              当前安装包没有页面摘要功能，会继续使用标题和网址。
+            </p>
+          </section>
+
+          <section class="onboarding-step" data-onboarding-step="2" aria-labelledby="onboardingStepPreferencesTitle" hidden>
+            <div class="onboarding-step-heading">
+              <span class="onboarding-step-number" aria-hidden="true">03</span>
+              <div>
+                <h3 id="onboardingStepPreferencesTitle">定好第一次整理</h3>
+                <p>这些选项会直接影响分组结果，之后仍可在“更多选项”里修改。</p>
+              </div>
+            </div>
+
+            <div class="onboarding-field onboarding-select-field">
+              <label for="onboardingAnalysisMode">本次分析</label>
+              <select id="onboardingAnalysisMode">
+                <option value="both">整理 + 清理建议</option>
+                <option value="grouping">仅整理标签页</option>
+                <option value="cleanup">仅清理建议</option>
+              </select>
+            </div>
+
+            <div class="onboarding-preference-list">
+              <label class="onboarding-switch-row">
+                <span><strong>重新整理已有分组</strong><small>已有分组也会纳入这次整理</small></span>
+                <input id="onboardingDissolveExistingGroups" type="checkbox" />
+              </label>
+              <label class="onboarding-switch-row">
+                <span><strong>使用待分类分组</strong><small>拿不准的页面先集中放好</small></span>
+                <input id="onboardingCreateReviewGroup" type="checkbox" />
+              </label>
+              <label class="onboarding-switch-row">
+                <span><strong>包含固定标签页</strong><small>会参与移动和分组</small></span>
+                <input id="onboardingIncludePinnedTabs" type="checkbox" />
+              </label>
+              <label class="onboarding-switch-row">
+                <span><strong>整理后收起分组</strong><small>新分组默认折叠</small></span>
+                <input id="onboardingCollapseGroups" type="checkbox" />
+              </label>
+            </div>
+          </section>
+
+          <p id="onboardingError" class="onboarding-error" role="alert" hidden></p>
+        </div>
+
+        <footer class="onboarding-actions">
+          <button id="onboardingBackBtn" class="onboarding-back-action" type="button" hidden>上一步</button>
+          <button id="onboardingNextBtn" class="onboarding-next-action" type="button">继续</button>
+        </footer>
+      </section>
+
       <nav class="mode-tabs" aria-label="TabRecap modes">
         <button class="mode-tab" type="button" data-panel-mode="organize" aria-pressed="true" aria-label="整理">
           <span class="mode-tab-glyph" aria-hidden="true"></span>
