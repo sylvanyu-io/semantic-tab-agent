@@ -2916,21 +2916,15 @@ test("side panel guides missing API setup before generation", async ({ page }) =
   await expect(page.locator(".scroll-region")).toBeHidden();
   await expect(page.locator(".actions")).toBeHidden();
   await expect(page.getByRole("heading", { name: "先把 TabRecap 配好" })).toBeVisible();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 3");
-  await expect(page.getByRole("heading", { name: "定好第一次整理" })).toBeVisible();
-  await expect(page.locator("#onboardingAnalysisMode")).toBeFocused();
-  await expect(page.locator("#onboardingCreateReviewGroup")).toBeChecked();
-  await expect(page.locator("#onboardingCollapseGroups")).toBeChecked();
+  await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 2");
+  await expect(page.getByRole("heading", { name: "决定发送什么" })).toBeVisible();
+  await expect(page.locator("#onboardingUrlPrivacyMode")).toBeFocused();
+  await expect(page.getByText("暂不读取页面文字", { exact: true })).toBeVisible();
+  await expect(page.getByText("开启页面摘要增强", { exact: true })).toBeVisible();
   await expect(page.locator("#statusText")).toHaveText("首次设置 · 第 1 步");
 
   await page.getByRole("button", { name: "继续" }).click();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 3");
-  await expect(page.getByRole("heading", { name: "决定发送什么" })).toBeVisible();
-  await expect(page.getByText("暂不读取页面文字", { exact: true })).toBeVisible();
-  await expect(page.getByText("开启页面摘要增强", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "继续" }).click();
-
-  await expect(page.locator("#onboardingProgressText")).toHaveText("3 / 3");
+  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
   await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
   await expect(page.locator(".onboarding-trial-note")).toContainText("只转发给 OpenCode Go");
   await expect(page.locator(".onboarding-trial-note")).toContainText("建议换成自己的 API");
@@ -3008,14 +3002,12 @@ test("onboarding keeps page access explicit and recovers after permission denial
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true);
-  await page.getByRole("button", { name: "继续" }).click();
-  await expect.poll(() => page.evaluate(() => document.querySelector(".onboarding-scroll")?.scrollTop)).toBe(0);
   await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests)).toEqual([]);
-  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 3");
+  await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 2");
 
   await page.locator('input[name="onboardingPageAccess"][value="on"]').check();
   await page.getByRole("button", { name: "继续" }).click();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 3");
+  await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 2");
   await expect(page.locator("#onboardingError")).toContainText("需要授权网页读取权限");
   await expect(page.locator("#ackSampling")).not.toBeChecked();
   await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[0])).toEqual({
@@ -3027,7 +3019,7 @@ test("onboarding keeps page access explicit and recovers after permission denial
     window.__grantOnboardingPageAccess = true;
   });
   await page.getByRole("button", { name: "继续" }).click();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("3 / 3");
+  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
   await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
@@ -4149,8 +4141,6 @@ test("custom provider requires a primary model ID", async ({ page }) => {
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await expect(page.locator("#onboardingPanel")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "定好第一次整理" })).toBeVisible();
-  await page.getByRole("button", { name: "继续" }).click();
   await expect(page.getByRole("heading", { name: "决定发送什么" })).toBeVisible();
   await page.getByRole("button", { name: "继续" }).click();
   await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
