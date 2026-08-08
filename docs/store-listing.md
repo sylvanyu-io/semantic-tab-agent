@@ -136,7 +136,7 @@ No account or paid subscription is required for the limited shared endpoint.
 
 1. Open several normal `https://` pages in one Chrome window.
 2. Click the TabRecap toolbar icon to open the side panel.
-3. In the first-run guide, review the organization preferences and page-access choice, then continue to the AI step.
+3. In the first-run guide, review the page-access choice, then continue to the AI step.
 4. Confirm that the AI step visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash`, with API Key blank. Click Test connection, then enter TabRecap.
 5. Keep the current-window scope and click Analyze.
 6. Review the proposed groups and cleanup suggestions, then apply the organization.
