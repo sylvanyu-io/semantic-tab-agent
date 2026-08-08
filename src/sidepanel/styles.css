@@ -363,66 +363,28 @@ h2,
   line-height: 1.45;
 }
 
-.onboarding-trial-note {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 5px 9px;
-  align-items: start;
-  padding: 9px 8px 10px 11px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--primary-soft) 52%, transparent), transparent 82%);
-  border-left: 3px solid var(--primary);
-}
-
-.onboarding-trial-badge {
-  display: inline-grid;
-  place-items: center;
-  min-height: 21px;
-  padding: 2px 7px;
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary-soft) 72%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
-  border-radius: 999px;
-  font-size: 9.5px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.onboarding-trial-note > div {
+.onboarding-warning {
   display: grid;
   gap: 3px;
   min-width: 0;
+  padding: 9px 10px 10px 11px;
+  color: var(--danger);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--coral-soft) 82%, var(--surface)), transparent 88%);
+  border-left: 3px solid var(--danger);
 }
 
-.onboarding-trial-note strong {
-  color: var(--text);
+.onboarding-warning strong {
+  color: var(--danger);
   font-size: 12px;
   font-weight: 900;
   line-height: 1.35;
 }
 
-.onboarding-trial-note p {
-  color: var(--muted);
+.onboarding-warning p {
+  color: color-mix(in srgb, var(--danger) 74%, var(--text));
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.45;
-}
-
-.onboarding-trial-note button {
-  grid-column: 2;
-  justify-self: start;
-  min-height: 30px;
-  padding: 4px 10px;
-  color: var(--primary);
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--primary) 44%, transparent);
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.onboarding-trial-note button:hover {
-  background: color-mix(in srgb, var(--primary-soft) 68%, transparent);
 }
 
 .onboarding-fields {

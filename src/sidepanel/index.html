@@ -35,26 +35,22 @@
             <span data-onboarding-progress="1"></span>
           </div>
           <h2 id="onboardingTitle">先把 TabRecap 配好</h2>
-          <p id="onboardingIntro">先决定权限范围，再连接 AI。完成后可以直接整理，也可以只做回顾。</p>
+          <p id="onboardingIntro">先连接 AI，再确认发送范围和页面权限。完成后可以直接整理，也可以只做回顾。</p>
         </header>
 
         <div class="onboarding-scroll">
-          <section class="onboarding-step" data-onboarding-step="1" aria-labelledby="onboardingStepAiTitle" hidden>
+          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepAiTitle">
             <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">02</span>
+              <span class="onboarding-step-number" aria-hidden="true">01</span>
               <div>
                 <h3 id="onboardingStepAiTitle">连接你的 AI</h3>
-                <p>可直接使用已预填的体验配置，也可以换成自己的 OpenAI Chat Completions 兼容接口。</p>
+                <p>可直接使用体验接口，也可以换成自己的 OpenAI Chat Completions 兼容接口。</p>
               </div>
             </div>
 
-            <div class="onboarding-trial-note">
-              <span class="onboarding-trial-badge">已预填</span>
-              <div>
-                <strong>没有自己的 API？可以先体验</strong>
-                <p>体验请求会经过 TabRecap 网关，并且只转发给 OpenCode Go。额度有限，长期使用仍建议换成自己的 API。</p>
-              </div>
-              <button id="onboardingUseTrialBtn" type="button">使用体验配置</button>
+            <div class="onboarding-warning onboarding-trial-warning" role="note">
+              <strong>体验接口说明</strong>
+              <p>保留当前体验接口时，请求会经过 TabRecap 网关，并且只转发给 OpenCode Go；改成自己的 API 后，请求直接发送到该 API。体验额度有限，长期使用建议使用自己的 API。</p>
             </div>
 
             <div class="onboarding-fields">
@@ -104,13 +100,18 @@
             </div>
           </section>
 
-          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepPrivacyTitle">
+          <section class="onboarding-step" data-onboarding-step="1" aria-labelledby="onboardingStepPrivacyTitle" hidden>
             <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">01</span>
+              <span class="onboarding-step-number" aria-hidden="true">02</span>
               <div>
                 <h3 id="onboardingStepPrivacyTitle">决定发送什么</h3>
                 <p>整理和回顾可以只使用标题与网址。页面正文只有你明确开启并授权后才会读取。</p>
               </div>
+            </div>
+
+            <div class="onboarding-warning onboarding-privacy-warning" role="note">
+              <strong>确认发送范围和授权后果</strong>
+              <p>页面短摘要只保存在这台电脑；开始整理或回顾时，完整网址和可用页面内容会发送到第一步配置的 API（体验接口或你自己的 API）。继续后浏览器会请求页面读取权限。</p>
             </div>
 
             <div class="onboarding-field onboarding-select-field">
