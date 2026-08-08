@@ -1,6 +1,6 @@
 # TabRecap Privacy Policy
 
-Effective date: August 7, 2026
+Effective date: August 8, 2026
 
 TabRecap organizes open Chrome tabs, shows cleanup candidates, and creates recaps from recent tab activity. This policy describes the data involved in those features.
 
@@ -19,7 +19,7 @@ Local records are stored in Chrome extension storage on your device. They remain
 
 ## AI endpoints and requests
 
-TabRecap does not contain a provider API key or silently select an AI service. You enter an OpenAI Chat Completions-compatible Base URL, model ID, and an API key when the endpoint requires one. API keys are saved locally only when you choose the remember-key option; settings and diagnostics exports omit them.
+TabRecap does not contain a provider API key or silently send data to an AI service. Its first-run guide visibly prefills the optional trial Base URL and model before any request is sent. You can review or replace them with another OpenAI Chat Completions-compatible endpoint and add an API key when that endpoint requires one. API keys are saved locally only when you choose the remember-key option; settings and diagnostics exports omit them.
 
 Data is sent only after you start an analysis, connection test, model-list request, or recap. An analysis or recap can include compact tab metadata, local activity clues, relevant settings, custom instructions, and page summaries you explicitly enabled. Long-term local URL records omit query strings and fragments where possible.
 
@@ -27,7 +27,7 @@ Requests go to the endpoint you entered. That endpoint and its infrastructure ma
 
 ### Optional shared endpoint
 
-The README and Chrome Web Store description document `https://tab-recap-gateway.sylvanyu.io/v1` as a limited trial endpoint. It is not embedded as a hidden default. If you choose it, the request passes through a TabRecap Cloudflare Worker and then OpenCode Go.
+The first-run guide visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash` as a limited trial configuration. The client API-key field stays blank. If you keep this configuration, the request passes through a TabRecap Cloudflare Worker and is forwarded only to OpenCode Go.
 
 The Worker:
 
@@ -65,7 +65,7 @@ For privacy questions, email [me@sylvanyu.io](mailto:me@sylvanyu.io) or open an 
 
 # TabRecap 隐私政策
 
-生效日期：2026 年 8 月 7 日
+生效日期：2026 年 8 月 8 日
 
 TabRecap 用于整理 Chrome 标签页、检查清理候选，并根据近期标签页活动生成回顾。下面说明这些功能会涉及哪些数据。
 
@@ -84,7 +84,7 @@ TabRecap 可能使用：
 
 ## AI 接口与请求
 
-TabRecap 不包含服务商 API Key，也不会暗中选择 AI 服务。你需要填写兼容 OpenAI Chat Completions 的 Base URL、模型 ID；接口要求鉴权时再填写 API Key。只有主动开启“记住密钥”后，Key 才会保存在本机；设置与诊断导出不会带出 Key。
+TabRecap 不包含服务商 API Key，也不会暗中向 AI 服务发送数据。首次配置会在发出任何请求前，明确预填可选的体验 Base URL 和模型；你可以检查或换成其他兼容 OpenAI Chat Completions 的接口，并在该接口需要鉴权时填写 API Key。只有主动开启“记住密钥”后，Key 才会保存在本机；设置与诊断导出不会带出 Key。
 
 只有在你主动分析、测试连接、读取模型列表或生成回顾时，扩展才会发出请求。分析和回顾可能包含精简标签页信息、本机活动线索、相关设置、自定义要求，以及你明确开启的页面摘要。长期保存的网址记录会尽量移除查询参数和片段。
 
@@ -92,7 +92,7 @@ TabRecap 不包含服务商 API Key，也不会暗中选择 AI 服务。你需�
 
 ### 可选共享接口
 
-README 和 Chrome 应用商店简介提供 `https://tab-recap-gateway.sylvanyu.io/v1` 作为限量试用地址。它不是藏在扩展里的默认服务。选择该地址后，请求会先经过 TabRecap 的 Cloudflare Worker，再转发给 OpenCode Go。
+首次配置会明确预填 `https://tab-recap-gateway.sylvanyu.io/v1` 和 `deepseek-v4-flash` 作为限量体验配置，客户端 API Key 默认留空。如果保留这组配置，请求会先经过 TabRecap 的 Cloudflare Worker，并且只转发给 OpenCode Go。
 
 Worker 会：
 

@@ -65,7 +65,7 @@ Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, 
 
 ## Connect a model
 
-TabRecap does not ship with a provider key or a vendor preset list. Enter any OpenAI Chat Completions-compatible Base URL and model ID. The API key is optional for public and local endpoints. **Load models** reads the endpoint's `/models` response; you can still type an ID by hand when an API does not expose model discovery.
+TabRecap does not ship with a provider key. The first-run guide visibly prefills the optional trial endpoint and model so you can get started, and you can replace both with any OpenAI Chat Completions-compatible Base URL and model ID. The API key is optional for public and local endpoints. **Load models** reads the endpoint's `/models` response; you can still type an ID by hand when an API does not expose model discovery.
 
 This works with self-hosted gateways and compatible services from providers such as Volcengine, Alibaba Cloud, Zhipu, DeepSeek, and Moonshot. Provider-specific account setup stays outside the extension.
 
@@ -76,13 +76,13 @@ For a quick trial, use the public TabRecap gateway:
 ```text
 Base URL: https://tab-recap-gateway.sylvanyu.io/v1
 API key:  leave blank
-Primary:  glm-5.2
-Auxiliary: deepseek-v4-flash
+Primary:  deepseek-v4-flash
+Auxiliary: leave blank or reuse the primary
 ```
 
 Click **Load models** to see the current list. The shared gateway currently exposes `glm-5.2`, `kimi-k3`, `deepseek-v4-pro`, and `deepseek-v4-flash` through [OpenCode Go](https://opencode.ai/docs/go/). It has per-IP, per-day, payload, token, and global limits. It accepts only TabRecap request formats, has no uptime guarantee, and may stop working when the shared subscription quota is exhausted. Switch to your own compatible endpoint when that happens.
 
-The public gateway address appears only in this README and the store description; it is not a hidden default in the extension. Requests sent through it pass through the TabRecap Cloudflare Worker and then OpenCode Go. The upstream provider key stays in a Worker Secret and is not included in source code or extension packages.
+The first-run AI step visibly prefills this address and `deepseek-v4-flash`; the API key stays blank because the trial endpoint does not require a client key. You can review or replace the values before continuing. Trial requests pass through the TabRecap Cloudflare Worker and are forwarded only to OpenCode Go. The upstream provider key stays in a Worker Secret and is not included in source code or extension packages.
 
 Do not commit personal API keys. Rotate any key exposed in chat, logs, screenshots, shell history, or test output.
 

@@ -65,7 +65,7 @@ npm run build
 
 ## 接入模型
 
-TabRecap 不内置服务商密钥，也不做服务商预设。设置中填写兼容 OpenAI Chat Completions 的 Base URL 和模型 ID 即可。公开接口或本机接口可以不填 API Key。点 **读取模型** 会请求该地址的 `/models`；接口不支持模型列表时，仍可手动填写。
+TabRecap 不内置服务商密钥。首次配置会明确预填可选的体验接口和模型，方便直接开始；你也可以在继续前换成任意兼容 OpenAI Chat Completions 的 Base URL 和模型 ID。公开接口或本机接口可以不填 API Key。点 **读取模型** 会请求该地址的 `/models`；接口不支持模型列表时，仍可手动填写。
 
 这套方式可以接自建网关，也能用于火山引擎、阿里云、智谱、DeepSeek、Moonshot 等提供的兼容接口。账号开通和服务商配置不塞进扩展里。
 
@@ -76,13 +76,13 @@ TabRecap 不内置服务商密钥，也不做服务商预设。设置中填写�
 ```text
 Base URL: https://tab-recap-gateway.sylvanyu.io/v1
 API Key:  留空
-主要模型: glm-5.2
-次要模型: deepseek-v4-flash
+主要模型: deepseek-v4-flash
+次要模型: 留空或复用主要模型
 ```
 
 点 **读取模型** 可以看到当前列表。共享网关目前通过 [OpenCode Go](https://opencode.ai/docs/go/) 提供 `glm-5.2`、`kimi-k3`、`deepseek-v4-pro` 和 `deepseek-v4-flash`。服务有 IP 小时/每日额度、请求内容、token 和全局额度限制，只接受 TabRecap 的固定请求格式，不保证一直可用。共享订阅额度用完后，请换成自己的兼容接口。
 
-这个地址只写在 README 和商店简介里，不会作为隐藏默认值塞进扩展。选择它后，请求会先经过 TabRecap 的 Cloudflare Worker，再交给 OpenCode Go。上游 Key 只保存在 Worker Secret 中，不进入源码和安装包。
+首次配置的 AI 步骤会明确预填这个地址和 `deepseek-v4-flash`；体验接口不需要客户端 Key，所以 Key 默认留空。继续前可以检查或替换这些值。体验请求会先经过 TabRecap 的 Cloudflare Worker，并且只转发给 OpenCode Go。上游 Key 只保存在 Worker Secret 中，不进入源码和安装包。
 
 个人 API Key 不要提交到仓库。密钥如果出现在聊天、日志、截图、shell history 或测试输出中，应立即轮换。
 

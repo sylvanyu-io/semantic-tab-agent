@@ -2,7 +2,7 @@
 
 This Cloudflare Worker backs the optional trial endpoint documented in the project README. It is deliberately narrower than a general OpenAI proxy.
 
-The extension does not contain this URL as a default and does not contain the upstream provider key. Users who choose the shared endpoint enter `https://tab-recap-gateway.sylvanyu.io/v1` themselves.
+The extension's first-run guide visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash` as an optional trial configuration. It does not contain the upstream provider key, and users can replace the trial values before continuing.
 
 ## What the Worker accepts
 
@@ -42,8 +42,8 @@ These are the Chat Completions models used from [OpenCode Go](https://opencode.a
 Recommended TabRecap settings:
 
 ```text
-Primary model:   glm-5.2
-Auxiliary model: deepseek-v4-flash
+Primary model:   deepseek-v4-flash
+Auxiliary model: leave blank or reuse the primary
 ```
 
 The auxiliary field can be left blank to reuse the primary model.

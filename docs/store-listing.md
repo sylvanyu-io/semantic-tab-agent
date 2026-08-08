@@ -136,8 +136,8 @@ No account or paid subscription is required for the limited shared endpoint.
 
 1. Open several normal `https://` pages in one Chrome window.
 2. Click the TabRecap toolbar icon to open the side panel.
-3. Open advanced settings. Enter `https://tab-recap-gateway.sylvanyu.io/v1` as the Base URL and leave API Key blank.
-4. Click Load models. Use `glm-5.2` as the primary model and `deepseek-v4-flash` as the auxiliary model.
+3. In the first-run guide, review the organization preferences and page-access choice, then continue to the AI step.
+4. Confirm that the AI step visibly prefills `https://tab-recap-gateway.sylvanyu.io/v1` and `deepseek-v4-flash`, with API Key blank. Click Test connection, then enter TabRecap.
 5. Keep the current-window scope and click Analyze.
 6. Review the proposed groups and cleanup suggestions, then apply the organization.
 7. Use Undo to restore the supported tab state.

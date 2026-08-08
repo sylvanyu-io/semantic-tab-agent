@@ -1,15 +1,15 @@
 # Shared gateway runbook
 
-The gateway is no longer an extension default. Its public URL appears only in the README and Chrome Web Store description.
+The extension's first-run AI step visibly prefills this gateway as an optional trial configuration. Users can review or replace it before any request is sent.
 
 ## Production values
 
 - Worker service: `tab-recap-gateway`
 - Public Base URL: `https://tab-recap-gateway.sylvanyu.io/v1`
 - Upstream Base URL: `https://opencode.ai/zen/go/v1`
-- Primary model: `glm-5.2`
-- Auxiliary and health model: `deepseek-v4-flash`
-- Other allowed models: `kimi-k3`, `deepseek-v4-pro`
+- Primary and health model: `deepseek-v4-flash`
+- Auxiliary model: blank / same as primary
+- Other allowed models: `glm-5.2`, `kimi-k3`, `deepseek-v4-pro`
 
 ## Required secrets
 
@@ -36,7 +36,7 @@ curl -fsS https://tab-recap-gateway.sylvanyu.io/readyz
 curl -fsS https://tab-recap-gateway.sylvanyu.io/v1/models
 ```
 
-Then use the extension's **Test connection** action with the shared Base URL, no client key, `glm-5.2` as primary, and `deepseek-v4-flash` as auxiliary.
+Then use the extension's **Test connection** action with the shared Base URL, no client key, and `deepseek-v4-flash` as the primary model. The auxiliary field may stay blank.
 
 Do not test the shared endpoint with generic prompts. It intentionally rejects them.
 
