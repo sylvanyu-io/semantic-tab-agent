@@ -206,217 +206,250 @@
             <option value="leave_empty_target_window">保留空窗口</option>
           </select>
 
-          <div class="advanced-list advanced-switch-list">
-            <div class="setting-toggle-field organize-only-setting">
-              <label class="switch-row compact-switch">
+          <div class="advanced-groups">
+            <details id="organizeBehaviorGroup" class="advanced-group organize-only-setting">
+              <summary>
                 <span>
-                  <strong>重新整理已有分组</strong>
-                  <small>已有分组也会纳入这次整理</small>
+                  <strong>整理行为</strong>
+                  <small>分组、固定页与收起方式</small>
                 </span>
-                <input id="dissolveExistingGroupsToggle" type="checkbox" />
-              </label>
-              <select id="existingGroupMode" class="setting-source" aria-hidden="true" tabindex="-1" hidden>
-                <option value="preserve_existing_groups">保留</option>
-                <option value="dissolve_existing_groups">重新整理</option>
-              </select>
-            </div>
+              </summary>
+              <div class="advanced-group-content">
+                <div class="advanced-option-list advanced-switch-list">
+                  <div class="setting-toggle-field organize-only-setting">
+                    <label class="switch-row compact-switch">
+                      <span>
+                        <strong>重新整理已有分组</strong>
+                        <small>已有分组也会纳入这次整理</small>
+                      </span>
+                      <input id="dissolveExistingGroupsToggle" type="checkbox" />
+                    </label>
+                    <select id="existingGroupMode" class="setting-source" aria-hidden="true" tabindex="-1" hidden>
+                      <option value="preserve_existing_groups">保留</option>
+                      <option value="dissolve_existing_groups">重新整理</option>
+                    </select>
+                  </div>
 
-            <div class="setting-toggle-field organize-only-setting">
-              <label class="switch-row compact-switch">
-                <span>
-                  <strong>使用待分类分组</strong>
-                  <small>拿不准的页面先集中放好</small>
-                </span>
-                <input id="createReviewGroupToggle" type="checkbox" />
-              </label>
-              <select id="reviewGroupMode" class="setting-source" aria-hidden="true" tabindex="-1" hidden>
-                <option value="create_review_group">使用待分类分组</option>
-                <option value="leave_review_ungrouped">放入最接近主题</option>
-              </select>
-            </div>
+                  <div class="setting-toggle-field organize-only-setting">
+                    <label class="switch-row compact-switch">
+                      <span>
+                        <strong>使用待分类分组</strong>
+                        <small>拿不准的页面先集中放好</small>
+                      </span>
+                      <input id="createReviewGroupToggle" type="checkbox" />
+                    </label>
+                    <select id="reviewGroupMode" class="setting-source" aria-hidden="true" tabindex="-1" hidden>
+                      <option value="create_review_group">使用待分类分组</option>
+                      <option value="leave_review_ungrouped">放入最接近主题</option>
+                    </select>
+                  </div>
 
-            <label class="switch-row compact-switch organize-only-setting">
-              <span>
-                <strong>包含固定标签页</strong>
-                <small>会参与移动和分组</small>
-              </span>
-              <input id="includePinnedTabs" type="checkbox" />
-            </label>
-            <label class="switch-row compact-switch">
-              <span>
-                <strong>包含无痕标签页</strong>
-                <small>只在浏览器允许时生效</small>
-              </span>
-              <input id="includeIncognitoTabs" type="checkbox" />
-            </label>
-            <label class="switch-row compact-switch organize-only-setting">
-              <span>
-                <strong>整理后收起分组</strong>
-                <small>新分组默认折叠</small>
-              </span>
-              <input id="collapseGroupsAfterApply" type="checkbox" />
-            </label>
-          </div>
+                  <label class="switch-row compact-switch organize-only-setting">
+                    <span>
+                      <strong>包含固定标签页</strong>
+                      <small>会参与移动和分组</small>
+                    </span>
+                    <input id="includePinnedTabs" type="checkbox" />
+                  </label>
+                  <label class="switch-row compact-switch organize-only-setting">
+                    <span>
+                      <strong>整理后收起分组</strong>
+                      <small>新分组默认折叠</small>
+                    </span>
+                    <input id="collapseGroupsAfterApply" type="checkbox" />
+                  </label>
+                </div>
 
-          <div class="advanced-list advanced-select-list">
-            <div class="field setting-select-row analysis-mode-field organize-only-setting">
-              <label for="analysisModeSelect">本次分析</label>
-              <select id="analysisModeSelect" aria-label="本次分析内容">
-                <option value="both">整理 + 清理建议</option>
-                <option value="grouping">仅整理标签页</option>
-                <option value="cleanup">仅清理建议</option>
-              </select>
-              <p id="analysisModeHint" class="analysis-mode-hint">一次分析，同时给出分组方案和可复查的标签页；关闭由你决定。</p>
-              <input id="analyzeGrouping" type="checkbox" hidden />
-              <input id="analyzeCleanup" type="checkbox" hidden />
-            </div>
-
-            <div class="field setting-select-row">
-              <label for="urlPrivacyMode">发送给 AI 的网址信息</label>
-              <select id="urlPrivacyMode">
-                <option value="title_only">只发标题</option>
-                <option value="sanitized_url">精简网址</option>
-                <option value="full_url">完整网址</option>
-              </select>
-            </div>
-
-            <div class="field setting-select-row content-access-feature">
-              <label for="pageContextMode">页面摘要读取范围</label>
-              <select id="pageContextMode">
-                <option value="off">不补读页面摘要</option>
-                <option value="ambiguous_with_permission">只读拿不准的页面</option>
-                <option value="all_granted_origins">尽量读取已授权页面</option>
-              </select>
-            </div>
-
-            <div id="hostPermissionField" class="field setting-select-row" hidden>
-              <label for="hostPermissionRequestMode">站点授权</label>
-              <select id="hostPermissionRequestMode">
-                <option value="never">整理时不弹授权</option>
-                <option value="ask_per_origin">按站点询问</option>
-                <option value="ask_for_all_visible_origins">一次授权可见站点</option>
-              </select>
-            </div>
-
-            <div class="field setting-select-row">
-              <label for="languageMode">结果语言</label>
-              <select id="languageMode">
-                <option value="auto">自动判断</option>
-                <option value="zh-CN">简体中文</option>
-                <option value="en-US">English</option>
-              </select>
-            </div>
-
-            <input id="gatewayProviderMode" type="hidden" value="custom" />
-            <input id="gatewayModel" type="hidden" value="custom" />
-            <input id="gatewayAuxiliaryModel" type="hidden" value="same_as_primary" />
-
-            <div class="field setting-select-row">
-              <label for="gatewayThinkingIntensity">思考强度</label>
-              <select id="gatewayThinkingIntensity">
-                <option value="low">低</option>
-                <option value="medium">中</option>
-                <option value="high" selected>高</option>
-                <option value="ultra">超高</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="gatewaySectionLabel" class="advanced-section-label">
-            <strong>AI 接入</strong>
-            <span>API 与模型</span>
-          </div>
-
-          <div class="advanced-list advanced-input-list" aria-labelledby="gatewaySectionLabel">
-            <div id="gatewaySetupHint" class="gateway-setup-hint" role="status" hidden>
-              <strong id="gatewaySetupHintTitle">完成 AI 接入设置</strong>
-              <span id="gatewaySetupHintText">先填写 API 地址和主模型 ID，再生成方案。</span>
-            </div>
-            <div id="gatewayCustomModelField" class="field setting-input-row">
-              <label for="gatewayCustomModel">主模型 ID</label>
-              <input
-                id="gatewayCustomModel"
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                list="gatewayModelOptions"
-                placeholder="例如：glm-5.2、kimi-k3、qwen-plus"
-                required
-              />
-            </div>
-
-            <div class="field setting-input-row">
-              <label for="gatewayCustomAuxiliaryModel">辅助模型 ID（可选）</label>
-              <input
-                id="gatewayCustomAuxiliaryModel"
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                list="gatewayModelOptions"
-                placeholder="留空则使用主模型"
-              />
-            </div>
-            <datalist id="gatewayModelOptions"></datalist>
-
-            <div class="field setting-input-row">
-              <label for="gatewayBaseUrl">API 地址</label>
-              <input id="gatewayBaseUrl" type="url" autocomplete="off" placeholder="https://example.com/v1" required />
-            </div>
-
-            <div class="field setting-input-row">
-              <label for="gatewayApiKey">API Key（如需要）</label>
-              <input id="gatewayApiKey" type="password" autocomplete="off" placeholder="公开或本机接口可留空" />
-            </div>
-            <div class="gateway-test-row">
-              <button id="gatewayModelsBtn" type="button" class="gateway-test-button">读取模型</button>
-              <button id="gatewayTestBtn" type="button" class="gateway-test-button">测试连接</button>
-              <span id="gatewayTestHint">兼容 OpenAI Chat Completions</span>
-            </div>
-            <label class="mini-check secret-remember-row">
-              <input id="rememberProviderKeys" type="checkbox" />
-              <span>
-                <strong>记住 API Key</strong>
-                <small>只保存在这台电脑</small>
-              </span>
-            </label>
-            <div class="local-memory-row">
-              <span>
-                <strong>本机记录</strong>
-                <small>清空活动记录、页面摘要和时间线记录，不会关闭标签页</small>
-              </span>
-              <button id="clearLocalMemoryBtn" type="button">清空</button>
-            </div>
-            <div class="settings-transfer-row">
-              <span>
-                <strong>设置迁移</strong>
-                <small>导出偏好和模型配置，不包含自定义密钥</small>
-              </span>
-              <div class="settings-transfer-actions">
-                <button id="settingsExportBtn" type="button">导出</button>
-                <button id="settingsImportBtn" type="button">导入</button>
+                <div class="number-grid advanced-number-grid organize-only-setting">
+                  <div class="field">
+                    <label for="minConfidenceToApply">最低置信度</label>
+                    <input id="minConfidenceToApply" type="number" min="0" max="1" step="0.05" />
+                  </div>
+                  <div class="field">
+                    <label for="maxTabsPerGroup">单组最大数量</label>
+                    <input id="maxTabsPerGroup" type="number" min="1" max="500" step="1" />
+                  </div>
+                </div>
               </div>
-              <input id="settingsImportFile" type="file" accept="application/json,.json" hidden />
-              <small id="settingsTransferStatus" class="settings-transfer-status" aria-live="polite"></small>
-            </div>
-            <div class="diagnostics-row">
-              <span>
-                <strong>诊断包</strong>
-                <small>导出本机状态摘要，不包含密钥、页面网址或页面正文</small>
-              </span>
-              <button id="diagnosticsExportBtn" type="button">下载诊断包</button>
-            </div>
-          </div>
+            </details>
 
-        <div class="number-grid organize-only-setting">
-          <div class="field">
-            <label for="minConfidenceToApply">最低置信度</label>
-            <input id="minConfidenceToApply" type="number" min="0" max="1" step="0.05" />
+            <details id="analysisOutputGroup" class="advanced-group">
+              <summary>
+                <span>
+                  <strong>分析与输出</strong>
+                  <small>分析范围、隐私与结果语言</small>
+                </span>
+              </summary>
+              <div class="advanced-group-content advanced-option-list advanced-select-list">
+                <div class="field setting-select-row analysis-mode-field organize-only-setting">
+                  <label for="analysisModeSelect">本次分析</label>
+                  <select id="analysisModeSelect" aria-label="本次分析内容">
+                    <option value="both">整理 + 清理建议</option>
+                    <option value="grouping">仅整理标签页</option>
+                    <option value="cleanup">仅清理建议</option>
+                  </select>
+                  <p id="analysisModeHint" class="analysis-mode-hint">一次分析，同时给出分组方案和可复查的标签页；关闭由你决定。</p>
+                  <input id="analyzeGrouping" type="checkbox" hidden />
+                  <input id="analyzeCleanup" type="checkbox" hidden />
+                </div>
+
+                <div class="field setting-select-row">
+                  <label for="urlPrivacyMode">发送给 AI 的网址信息</label>
+                  <select id="urlPrivacyMode">
+                    <option value="title_only">只发标题</option>
+                    <option value="sanitized_url">精简网址</option>
+                    <option value="full_url">完整网址</option>
+                  </select>
+                </div>
+
+                <div class="field setting-select-row content-access-feature">
+                  <label for="pageContextMode">页面摘要读取范围</label>
+                  <select id="pageContextMode">
+                    <option value="off">不补读页面摘要</option>
+                    <option value="ambiguous_with_permission">只读拿不准的页面</option>
+                    <option value="all_granted_origins">尽量读取已授权页面</option>
+                  </select>
+                </div>
+
+                <label class="switch-row compact-switch">
+                  <span>
+                    <strong>包含无痕标签页</strong>
+                    <small>只在浏览器允许时生效</small>
+                  </span>
+                  <input id="includeIncognitoTabs" type="checkbox" />
+                </label>
+
+                <div id="hostPermissionField" class="field setting-select-row" hidden>
+                  <label for="hostPermissionRequestMode">站点授权</label>
+                  <select id="hostPermissionRequestMode">
+                    <option value="never">整理时不弹授权</option>
+                    <option value="ask_per_origin">按站点询问</option>
+                    <option value="ask_for_all_visible_origins">一次授权可见站点</option>
+                  </select>
+                </div>
+
+                <div class="field setting-select-row">
+                  <label for="languageMode">结果语言</label>
+                  <select id="languageMode">
+                    <option value="auto">自动判断</option>
+                    <option value="zh-CN">简体中文</option>
+                    <option value="en-US">English</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
+            <details id="gatewaySettingsGroup" class="advanced-group">
+              <summary>
+                <span>
+                  <strong>AI 接入</strong>
+                  <small>API、模型与思考强度</small>
+                </span>
+              </summary>
+              <input id="gatewayProviderMode" type="hidden" value="custom" />
+              <input id="gatewayModel" type="hidden" value="custom" />
+              <input id="gatewayAuxiliaryModel" type="hidden" value="same_as_primary" />
+              <div class="advanced-group-content advanced-option-list advanced-input-list">
+                <div id="gatewaySetupHint" class="gateway-setup-hint" role="status" hidden>
+                  <strong id="gatewaySetupHintTitle">完成 AI 接入设置</strong>
+                  <span id="gatewaySetupHintText">先填写 API 地址和主模型 ID，再生成方案。</span>
+                </div>
+                <div class="field setting-select-row">
+                  <label for="gatewayThinkingIntensity">思考强度</label>
+                  <select id="gatewayThinkingIntensity">
+                    <option value="low">低</option>
+                    <option value="medium">中</option>
+                    <option value="high" selected>高</option>
+                    <option value="ultra">超高</option>
+                  </select>
+                </div>
+                <div id="gatewayCustomModelField" class="field setting-input-row">
+                  <label for="gatewayCustomModel">主模型 ID</label>
+                  <input
+                    id="gatewayCustomModel"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    list="gatewayModelOptions"
+                    placeholder="例如：glm-5.2、kimi-k3、qwen-plus"
+                    required
+                  />
+                </div>
+
+                <div class="field setting-input-row">
+                  <label for="gatewayCustomAuxiliaryModel">辅助模型 ID（可选）</label>
+                  <input
+                    id="gatewayCustomAuxiliaryModel"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    list="gatewayModelOptions"
+                    placeholder="留空则使用主模型"
+                  />
+                </div>
+                <datalist id="gatewayModelOptions"></datalist>
+
+                <div class="field setting-input-row">
+                  <label for="gatewayBaseUrl">API 地址</label>
+                  <input id="gatewayBaseUrl" type="url" autocomplete="off" placeholder="https://example.com/v1" required />
+                </div>
+
+                <div class="field setting-input-row">
+                  <label for="gatewayApiKey">API Key（如需要）</label>
+                  <input id="gatewayApiKey" type="password" autocomplete="off" placeholder="公开或本机接口可留空" />
+                </div>
+                <div class="gateway-test-row">
+                  <button id="gatewayModelsBtn" type="button" class="gateway-test-button">读取模型</button>
+                  <button id="gatewayTestBtn" type="button" class="gateway-test-button">测试连接</button>
+                  <span id="gatewayTestHint">兼容 OpenAI Chat Completions</span>
+                </div>
+                <label class="mini-check secret-remember-row">
+                  <input id="rememberProviderKeys" type="checkbox" />
+                  <span>
+                    <strong>记住 API Key</strong>
+                    <small>只保存在这台电脑</small>
+                  </span>
+                </label>
+              </div>
+            </details>
+
+            <details id="localDataGroup" class="advanced-group">
+              <summary>
+                <span>
+                  <strong>本机与数据</strong>
+                  <small>记录、设置迁移与诊断</small>
+                </span>
+              </summary>
+              <div class="advanced-group-content advanced-option-list advanced-data-list">
+                <div class="local-memory-row">
+                  <span>
+                    <strong>本机记录</strong>
+                    <small>清空活动记录、页面摘要和时间线记录，不会关闭标签页</small>
+                  </span>
+                  <button id="clearLocalMemoryBtn" type="button">清空</button>
+                </div>
+                <div class="settings-transfer-row">
+                  <span>
+                    <strong>设置迁移</strong>
+                    <small>导出偏好和模型配置，不包含自定义密钥</small>
+                  </span>
+                  <div class="settings-transfer-actions">
+                    <button id="settingsExportBtn" type="button">导出</button>
+                    <button id="settingsImportBtn" type="button">导入</button>
+                  </div>
+                  <input id="settingsImportFile" type="file" accept="application/json,.json" hidden />
+                  <small id="settingsTransferStatus" class="settings-transfer-status" aria-live="polite"></small>
+                </div>
+                <div class="diagnostics-row">
+                  <span>
+                    <strong>诊断包</strong>
+                    <small>导出本机状态摘要，不包含密钥、页面网址或页面正文</small>
+                  </span>
+                  <button id="diagnosticsExportBtn" type="button">下载诊断包</button>
+                </div>
+              </div>
+            </details>
           </div>
-          <div class="field">
-            <label for="maxTabsPerGroup">单组最大数量</label>
-            <input id="maxTabsPerGroup" type="number" min="1" max="500" step="1" />
-          </div>
-        </div>
         </details>
 
         <section id="previewSection" class="preview" aria-live="polite" hidden>

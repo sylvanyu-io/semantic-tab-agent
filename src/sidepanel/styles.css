@@ -975,33 +975,6 @@ h2 {
   padding: 0 2px 4px;
 }
 
-.advanced-section-label {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  margin: 1px 4px -2px;
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.advanced-section-label::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
-}
-
-.advanced-section-label strong {
-  font-size: 12px;
-  font-weight: 820;
-}
-
-.advanced-section-label span {
-  color: var(--muted);
-  font-size: 10.5px;
-  font-weight: 680;
-}
-
 .gateway-setup-hint {
   display: grid;
   gap: 1px;
@@ -1597,42 +1570,7 @@ button:focus-visible {
   display: grid;
 }
 
-.advanced-list {
-  display: grid;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  border: 1px solid color-mix(in srgb, var(--line) 38%, transparent);
-  border-radius: var(--radius-md);
-  box-shadow: var(--control-shadow);
-}
-
-.advanced-select-list,
-.advanced-input-list {
-  box-shadow: none;
-}
-
-.advanced-select-list {
-  overflow: visible;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-}
-
-.advanced-input-list {
-  background: color-mix(in srgb, var(--surface) 76%, transparent);
-  border-color: color-mix(in srgb, var(--line) 30%, transparent);
-}
-
-.advanced-select-list .setting-select-row {
-  padding-right: 4px;
-  padding-left: 4px;
-}
-
-.advanced-select-list > :not([hidden]) + :not([hidden]) {
-  border-top-color: color-mix(in srgb, var(--line) 18%, transparent);
-}
-
-.advanced-list > :not([hidden]) + :not([hidden]) {
+.advanced-option-list > :not([hidden]) + :not([hidden]) {
   border-top: 1px solid color-mix(in srgb, var(--line) 12%, transparent);
 }
 
@@ -1834,6 +1772,72 @@ summary::before {
 
 details[open] > summary::before {
   transform: rotate(90deg);
+}
+
+.advanced-groups {
+  display: grid;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 38%, transparent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--control-shadow);
+}
+
+.advanced-group {
+  min-width: 0;
+}
+
+.advanced-group + .advanced-group {
+  border-top: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
+}
+
+.advanced-group > summary {
+  min-height: 54px;
+  padding: 8px 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.advanced-group > summary:hover {
+  background: color-mix(in srgb, var(--primary-soft) 34%, var(--surface));
+}
+
+.advanced-group > summary span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.advanced-group > summary strong {
+  font-size: 13px;
+  font-weight: 820;
+  line-height: 1.25;
+}
+
+.advanced-group > summary small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 680;
+  line-height: 1.3;
+}
+
+.advanced-group[open] > summary {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 42%, var(--surface));
+}
+
+.advanced-group-content {
+  display: grid;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--line) 16%, transparent);
+}
+
+.advanced-group-content > * + * {
+  border-top: 1px solid color-mix(in srgb, var(--line) 12%, transparent);
+}
+
+.advanced-number-grid {
+  padding: 10px 12px 12px;
 }
 
 .toggles {

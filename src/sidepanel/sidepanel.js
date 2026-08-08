@@ -207,8 +207,14 @@ const UI_COPY = Object.freeze({
     "customPrompt.label": "自定义要求",
     "customPrompt.placeholder": "例如：找工作、AI 论文、当前项目分开；拿不准的先放到待分类。",
     "advanced.summary": "更多选项",
+    "advanced.behaviorTitle": "整理行为",
+    "advanced.behaviorSubtitle": "分组、固定页与收起方式",
+    "advanced.analysisTitle": "分析与输出",
+    "advanced.analysisSubtitle": "分析范围、隐私与结果语言",
     "advanced.gatewayTitle": "AI 接入",
-    "advanced.gatewaySubtitle": "API 与模型",
+    "advanced.gatewaySubtitle": "API、模型与思考强度",
+    "advanced.dataTitle": "本机与数据",
+    "advanced.dataSubtitle": "记录、设置迁移与诊断",
     "switch.dissolve.title": "重新整理已有分组",
     "switch.dissolve.subtitle": "已有分组也会纳入这次整理",
     "switch.review.title": "使用待分类分组",
@@ -499,8 +505,14 @@ const UI_COPY = Object.freeze({
     "customPrompt.label": "Custom instructions",
     "customPrompt.placeholder": "Example: keep job search, AI papers, and current projects separate; put uncertain pages in review.",
     "advanced.summary": "More options",
+    "advanced.behaviorTitle": "Organization behavior",
+    "advanced.behaviorSubtitle": "Groups, pinned tabs, and collapse behavior",
+    "advanced.analysisTitle": "Analysis and output",
+    "advanced.analysisSubtitle": "Scope, privacy, and result language",
     "advanced.gatewayTitle": "AI connection",
-    "advanced.gatewaySubtitle": "API and models",
+    "advanced.gatewaySubtitle": "API, models, and thinking intensity",
+    "advanced.dataTitle": "Local data",
+    "advanced.dataSubtitle": "Records, settings transfer, and diagnostics",
     "switch.dissolve.title": "Regroup existing groups",
     "switch.dissolve.subtitle": "Existing groups are included in this run",
     "switch.review.title": "Use Needs Review group",
@@ -701,6 +713,7 @@ const nodes = {
   gatewaySetupHintTitle: document.querySelector("#gatewaySetupHintTitle"),
   gatewaySetupHintText: document.querySelector("#gatewaySetupHintText"),
   advancedSettings: document.querySelector(".advanced-settings"),
+  gatewaySettingsGroup: document.querySelector("#gatewaySettingsGroup"),
   clearLocalMemoryBtn: document.querySelector("#clearLocalMemoryBtn"),
   settingsExportBtn: document.querySelector("#settingsExportBtn"),
   settingsImportBtn: document.querySelector("#settingsImportBtn"),
@@ -942,8 +955,14 @@ function applyUiLanguage() {
   setText('label[for="customPrompt"]', t("customPrompt.label"));
   setAttribute("#customPrompt", "placeholder", t("customPrompt.placeholder"));
   setText(".advanced-settings > summary", t("advanced.summary"));
-  setText("#gatewaySectionLabel strong", t("advanced.gatewayTitle"));
-  setText("#gatewaySectionLabel span", t("advanced.gatewaySubtitle"));
+  setText("#organizeBehaviorGroup > summary strong", t("advanced.behaviorTitle"));
+  setText("#organizeBehaviorGroup > summary small", t("advanced.behaviorSubtitle"));
+  setText("#analysisOutputGroup > summary strong", t("advanced.analysisTitle"));
+  setText("#analysisOutputGroup > summary small", t("advanced.analysisSubtitle"));
+  setText("#gatewaySettingsGroup > summary strong", t("advanced.gatewayTitle"));
+  setText("#gatewaySettingsGroup > summary small", t("advanced.gatewaySubtitle"));
+  setText("#localDataGroup > summary strong", t("advanced.dataTitle"));
+  setText("#localDataGroup > summary small", t("advanced.dataSubtitle"));
 
   setSwitchText("#dissolveExistingGroupsToggle", "switch.dissolve.title", "switch.dissolve.subtitle");
   setSwitchText("#createReviewGroupToggle", "switch.review.title", "switch.review.subtitle");
@@ -1535,6 +1554,7 @@ function guideGatewayRecovery(error, options = {}) {
   if (!target) return false;
   gatewayRecoveryTarget = target;
   if (nodes.advancedSettings) nodes.advancedSettings.open = true;
+  if (nodes.gatewaySettingsGroup) nodes.gatewaySettingsGroup.open = true;
   updateGatewaySetupGuidance();
   setStatus(t(gatewayRecoveryCopyKey()), true);
   const field = gatewayRecoveryField();
@@ -1552,6 +1572,7 @@ function guideMissingGatewaySetup(options = {}) {
   const missingField = updateGatewaySetupGuidance();
   if (!missingField) return false;
   if (nodes.advancedSettings) nodes.advancedSettings.open = true;
+  if (nodes.gatewaySettingsGroup) nodes.gatewaySettingsGroup.open = true;
   setStatusKey(missingField === fields.gatewayBaseUrl ? "status.gatewayTestUrlMissing" : "status.customModelMissing", {}, true);
   if (options.focus) {
     requestAnimationFrame(() => {
