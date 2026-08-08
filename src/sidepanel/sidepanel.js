@@ -17,6 +17,8 @@ import { isGenericRecapThemeTitle, stripCleanupRecommendationsFromRecapText } fr
 const UI_LANGUAGE_STORAGE_KEY = "tabRecap.uiLanguage";
 const UI_LANGUAGES = Object.freeze(["zh-CN", "en-US"]);
 const CLEANUP_PRIORITY_ORDER = Object.freeze(["high", "medium", "low"]);
+const TRIAL_GATEWAY_BASE_URL = "https://tab-recap-gateway.sylvanyu.io/v1";
+const TRIAL_GATEWAY_MODEL = "deepseek-v4-flash";
 const UI_COPY = Object.freeze({
   "zh-CN": {
     "document.title": "TabRecap",
@@ -106,13 +108,19 @@ const UI_COPY = Object.freeze({
     "onboarding.eyebrow": "首次设置",
     "onboarding.progress": "{current} / {total}",
     "onboarding.title": "先把 TabRecap 配好",
-    "onboarding.intro": "三步完成 AI 接入、权限范围和整理偏好。之后会直接进入主界面。",
+    "onboarding.intro": "先定整理偏好和权限范围，最后连接 AI。完成后会直接进入主界面。",
     "onboarding.aiTitle": "连接你的 AI",
-    "onboarding.aiBody": "兼容 OpenAI Chat Completions。继续时会请求访问这个 API 地址。",
+    "onboarding.aiBody": "可直接使用已预填的体验配置，也可以换成自己的 OpenAI Chat Completions 兼容接口。",
+    "onboarding.trialBadge": "已预填",
+    "onboarding.trialTitle": "没有自己的 API？可以先体验",
+    "onboarding.trialBody": "体验请求会经过 TabRecap 网关，并且只转发给 OpenCode Go。额度有限，长期使用仍建议换成自己的 API。",
+    "onboarding.useTrial": "使用体验配置",
+    "onboarding.trialApplied": "已恢复体验配置",
     "onboarding.urlLabel": "API 地址",
     "onboarding.modelLabel": "主模型 ID",
     "onboarding.keyLabel": "API Key",
-    "onboarding.optional": "如需要",
+    "onboarding.optional": "体验接口无需 Key",
+    "onboarding.keyPlaceholder": "体验接口留空；自己的接口按需填写",
     "onboarding.rememberKey": "记住 Key",
     "onboarding.rememberKeyHint": "仅保存在这台电脑",
     "onboarding.privacyTitle": "决定发送什么",
@@ -433,13 +441,19 @@ const UI_COPY = Object.freeze({
     "onboarding.eyebrow": "First-time setup",
     "onboarding.progress": "{current} / {total}",
     "onboarding.title": "Set up TabRecap",
-    "onboarding.intro": "Connect AI, choose access, and set the preferences that shape your first result.",
+    "onboarding.intro": "Choose organization preferences and access first, then connect AI. You will enter the main view when setup is complete.",
     "onboarding.aiTitle": "Connect your AI",
-    "onboarding.aiBody": "Works with OpenAI Chat Completions. Continuing requests access to this API address.",
+    "onboarding.aiBody": "Use the prefilled trial configuration or replace it with your own OpenAI Chat Completions-compatible endpoint.",
+    "onboarding.trialBadge": "Prefilled",
+    "onboarding.trialTitle": "No API yet? Start with the trial",
+    "onboarding.trialBody": "Trial requests pass through the TabRecap gateway and are forwarded only to OpenCode Go. Quota is limited, so your own API is recommended for ongoing use.",
+    "onboarding.useTrial": "Use trial settings",
+    "onboarding.trialApplied": "Trial settings restored",
     "onboarding.urlLabel": "API URL",
     "onboarding.modelLabel": "Primary model ID",
     "onboarding.keyLabel": "API key",
-    "onboarding.optional": "if required",
+    "onboarding.optional": "Not needed for trial",
+    "onboarding.keyPlaceholder": "Leave blank for trial; add one if your endpoint requires it",
     "onboarding.rememberKey": "Remember key",
     "onboarding.rememberKeyHint": "This computer only",
     "onboarding.privacyTitle": "Choose what gets sent",
@@ -761,6 +775,7 @@ const nodes = {
   onboardingPageAccessField: document.querySelector("#onboardingPageAccessField"),
   onboardingContentAccessUnavailable: document.querySelector("#onboardingContentAccessUnavailable"),
   onboardingError: document.querySelector("#onboardingError"),
+  onboardingUseTrialBtn: document.querySelector("#onboardingUseTrialBtn"),
   onboardingGatewayTestBtn: document.querySelector("#onboardingGatewayTestBtn"),
   onboardingBackBtn: document.querySelector("#onboardingBackBtn"),
   onboardingNextBtn: document.querySelector("#onboardingNextBtn"),
@@ -959,6 +974,7 @@ function bindEvents() {
   nodes.undoBtn.addEventListener("click", undoLastApply);
   nodes.gatewayTestBtn?.addEventListener("click", handleGatewayTestClick);
   nodes.gatewayModelsBtn?.addEventListener("click", handleGatewayModelsClick);
+  nodes.onboardingUseTrialBtn?.addEventListener("click", () => applyOnboardingTrialConfig());
   nodes.onboardingGatewayTestBtn?.addEventListener("click", handleOnboardingGatewayTestClick);
   nodes.onboardingBackBtn?.addEventListener("click", handleOnboardingBackClick);
   nodes.onboardingNextBtn?.addEventListener("click", handleOnboardingNextClick);
@@ -1001,7 +1017,22 @@ function syncOnboardingFromSettings() {
   const pageAccessValue = hasContentAccessFeature() && fields.ackSampling.checked ? "on" : "off";
   const pageAccessInput = document.querySelector(`input[name="onboardingPageAccess"][value="${pageAccessValue}"]`);
   if (pageAccessInput) pageAccessInput.checked = true;
+  if (!onboardingFields.gatewayBaseUrl.value.trim() && !onboardingFields.gatewayModel.value.trim()) {
+    applyOnboardingTrialConfig({ silent: true });
+  }
   updateOnboardingRememberKeyState();
+}
+
+function applyOnboardingTrialConfig(options = {}) {
+  onboardingFields.gatewayBaseUrl.value = TRIAL_GATEWAY_BASE_URL;
+  onboardingFields.gatewayModel.value = TRIAL_GATEWAY_MODEL;
+  onboardingFields.gatewayApiKey.value = "";
+  onboardingFields.rememberProviderKey.checked = false;
+  onboardingFields.gatewayBaseUrl.removeAttribute("aria-invalid");
+  onboardingFields.gatewayModel.removeAttribute("aria-invalid");
+  updateOnboardingRememberKeyState();
+  clearOnboardingError();
+  if (!options.silent) setStatusKey("onboarding.trialApplied");
 }
 
 function setOnboardingActive(active, options = {}) {
@@ -1036,10 +1067,14 @@ function renderOnboardingStep(options = {}) {
   if (nodes.onboardingScroll) nodes.onboardingScroll.scrollTop = 0;
   if (!options.focus) return;
   const focusTarget = current === 0
-    ? (!onboardingFields.gatewayBaseUrl.value.trim() ? onboardingFields.gatewayBaseUrl : onboardingFields.gatewayModel)
+    ? onboardingFields.analysisMode
     : current === 1
       ? onboardingFields.urlPrivacyMode
-      : onboardingFields.analysisMode;
+      : !onboardingFields.gatewayBaseUrl.value.trim()
+        ? onboardingFields.gatewayBaseUrl
+        : !onboardingFields.gatewayModel.value.trim()
+          ? onboardingFields.gatewayModel
+          : onboardingFields.gatewayBaseUrl;
   requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
 }
 
@@ -1128,9 +1163,7 @@ async function handleOnboardingNextClick() {
   nodes.onboardingNextBtn.disabled = true;
   try {
     if (onboardingStep === 0) {
-      if (!validateOnboardingGateway()) return;
-      copyOnboardingGatewayToSettings();
-      await ensurePlannerHostPermission(readSettings({ effectiveForAnalysis: true }));
+      copyOnboardingPreferencesToSettings();
       await persistSettings();
       onboardingStep = 1;
       renderOnboardingStep();
@@ -1164,7 +1197,9 @@ async function handleOnboardingNextClick() {
       return;
     }
 
-    copyOnboardingPreferencesToSettings();
+    if (!validateOnboardingGateway()) return;
+    copyOnboardingGatewayToSettings();
+    await ensurePlannerHostPermission(readSettings({ effectiveForAnalysis: true }));
     privacyDisclosureDismissed = true;
     updatePrivacyDisclosure();
     await persistSettings();
@@ -1258,11 +1293,16 @@ function applyUiLanguage() {
   setText("#onboardingTitle", t("onboarding.title"));
   setText("#onboardingIntro", t("onboarding.intro"));
   setText("#onboardingStepAiTitle", t("onboarding.aiTitle"));
-  setText('[data-onboarding-step="0"] .onboarding-step-heading p', t("onboarding.aiBody"));
+  setText('[data-onboarding-step="2"] .onboarding-step-heading p', t("onboarding.aiBody"));
+  setText(".onboarding-trial-badge", t("onboarding.trialBadge"));
+  setText(".onboarding-trial-note strong", t("onboarding.trialTitle"));
+  setText(".onboarding-trial-note div p", t("onboarding.trialBody"));
+  setText("#onboardingUseTrialBtn", t("onboarding.useTrial"));
   setText('label[for="onboardingGatewayBaseUrl"]', t("onboarding.urlLabel"));
   setText('label[for="onboardingGatewayModel"]', t("onboarding.modelLabel"));
   setText("#onboardingGatewayApiKeyLabel", t("onboarding.keyLabel"));
   setText("#onboardingGatewayApiKeyOptional", t("onboarding.optional"));
+  setAttribute("#onboardingGatewayApiKey", "placeholder", t("onboarding.keyPlaceholder"));
   setText("#onboardingRememberProviderKey + span", t("onboarding.rememberKey"));
   const onboardingRememberHint = document.createElement("small");
   onboardingRememberHint.textContent = t("onboarding.rememberKeyHint");
@@ -1276,7 +1316,7 @@ function applyUiLanguage() {
   setText('.onboarding-choice-row input[value="on"] + span small', t("onboarding.pageAccessOnHint"));
   setText("#onboardingContentAccessUnavailable", t("onboarding.contentUnavailable"));
   setText("#onboardingStepPreferencesTitle", t("onboarding.preferencesTitle"));
-  setText('[data-onboarding-step="2"] .onboarding-step-heading p', t("onboarding.preferencesBody"));
+  setText('[data-onboarding-step="0"] .onboarding-step-heading p', t("onboarding.preferencesBody"));
   setText('label[for="onboardingUrlPrivacyMode"]', t("field.urlPrivacy"));
   setText('label[for="onboardingAnalysisMode"]', t("analysis.mode.label"));
   setSwitchText("#onboardingDissolveExistingGroups", "switch.dissolve.title", "switch.dissolve.subtitle");

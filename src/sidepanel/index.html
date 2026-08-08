@@ -36,17 +36,26 @@
             <span data-onboarding-progress="2"></span>
           </div>
           <h2 id="onboardingTitle">先把 TabRecap 配好</h2>
-          <p id="onboardingIntro">三步完成 AI 接入、权限范围和整理偏好。之后会直接进入主界面。</p>
+          <p id="onboardingIntro">先定整理偏好和权限范围，最后连接 AI。完成后会直接进入主界面。</p>
         </header>
 
         <div class="onboarding-scroll">
-          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepAiTitle">
+          <section class="onboarding-step" data-onboarding-step="2" aria-labelledby="onboardingStepAiTitle" hidden>
             <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">01</span>
+              <span class="onboarding-step-number" aria-hidden="true">03</span>
               <div>
                 <h3 id="onboardingStepAiTitle">连接你的 AI</h3>
-                <p>兼容 OpenAI Chat Completions。继续时会请求访问这个 API 地址。</p>
+                <p>可直接使用已预填的体验配置，也可以换成自己的 OpenAI Chat Completions 兼容接口。</p>
               </div>
+            </div>
+
+            <div class="onboarding-trial-note">
+              <span class="onboarding-trial-badge">已预填</span>
+              <div>
+                <strong>没有自己的 API？可以先体验</strong>
+                <p>体验请求会经过 TabRecap 网关，并且只转发给 OpenCode Go。额度有限，长期使用仍建议换成自己的 API。</p>
+              </div>
+              <button id="onboardingUseTrialBtn" type="button">使用体验配置</button>
             </div>
 
             <div class="onboarding-fields">
@@ -137,9 +146,9 @@
             </p>
           </section>
 
-          <section class="onboarding-step" data-onboarding-step="2" aria-labelledby="onboardingStepPreferencesTitle" hidden>
+          <section class="onboarding-step" data-onboarding-step="0" aria-labelledby="onboardingStepPreferencesTitle">
             <div class="onboarding-step-heading">
-              <span class="onboarding-step-number" aria-hidden="true">03</span>
+              <span class="onboarding-step-number" aria-hidden="true">01</span>
               <div>
                 <h3 id="onboardingStepPreferencesTitle">定好第一次整理</h3>
                 <p>这些选项会直接影响分组结果，之后仍可在“更多选项”里修改。</p>
