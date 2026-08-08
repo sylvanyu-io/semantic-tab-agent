@@ -2917,29 +2917,29 @@ test("side panel guides missing API setup before generation", async ({ page }) =
   await expect(page.locator(".actions")).toBeHidden();
   await expect(page.getByRole("heading", { name: "先把 TabRecap 配好" })).toBeVisible();
   await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 2");
-  await expect(page.getByRole("heading", { name: "决定发送什么" })).toBeVisible();
-  await expect(page.locator("#onboardingUrlPrivacyMode")).toBeFocused();
-  await expect(page.getByText("暂不读取页面文字", { exact: true })).toBeVisible();
-  await expect(page.getByText("开启页面摘要增强", { exact: true })).toBeVisible();
-  await expect(page.locator("#statusText")).toHaveText("首次设置 · 第 1 步");
-
-  await page.getByRole("button", { name: "继续" }).click();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
   await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
-  await expect(page.locator(".onboarding-trial-note")).toContainText("只转发给 OpenCode Go");
-  await expect(page.locator(".onboarding-trial-note")).toContainText("建议换成自己的 API");
+  await expect(page.locator(".onboarding-trial-warning")).toContainText("只转发给 OpenCode Go");
+  await expect(page.locator(".onboarding-trial-warning")).toContainText("请求直接发送到该 API");
+  await expect(page.locator(".onboarding-trial-warning")).toHaveCSS("border-left-color", "rgb(180, 56, 44)");
+  await expect(page.getByText("已预填", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "使用体验配置" })).toHaveCount(0);
   await expect(page.locator("#onboardingGatewayBaseUrl")).toHaveValue("https://tab-recap-gateway.sylvanyu.io/v1");
   await expect(page.locator("#onboardingGatewayModel")).toHaveValue("deepseek-v4-flash");
   await expect(page.locator("#onboardingGatewayApiKey")).toHaveValue("");
   await expect(page.locator("#onboardingGatewayApiKeyOptional")).toHaveText("体验接口无需 Key");
+  await expect(page.locator("#statusText")).toHaveText("首次设置 · 第 1 步");
 
-  await page.locator("#onboardingGatewayBaseUrl").fill("https://api.example.test/v1");
-  await page.locator("#onboardingGatewayModel").fill("my-model");
-  await page.locator("#onboardingGatewayApiKey").fill("temporary-key");
-  await page.getByRole("button", { name: "使用体验配置" }).click();
-  await expect(page.locator("#onboardingGatewayBaseUrl")).toHaveValue("https://tab-recap-gateway.sylvanyu.io/v1");
-  await expect(page.locator("#onboardingGatewayModel")).toHaveValue("deepseek-v4-flash");
-  await expect(page.locator("#onboardingGatewayApiKey")).toHaveValue("");
+  await page.getByRole("button", { name: "继续" }).click();
+  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
+  await expect(page.getByRole("heading", { name: "决定发送什么" })).toBeVisible();
+  await expect(page.locator("#onboardingUrlPrivacyMode")).toHaveValue("full_url");
+  await expect(page.locator('input[name="onboardingPageAccess"][value="on"]')).toBeChecked();
+  await expect(page.getByText("暂不读取页面文字", { exact: true })).toBeVisible();
+  await expect(page.getByText("开启页面摘要增强", { exact: true })).toBeVisible();
+  await expect(page.locator(".onboarding-privacy-warning")).toContainText("页面短摘要只保存在这台电脑");
+  await expect(page.locator(".onboarding-privacy-warning")).toContainText("发送到第一步配置的 API");
+  await expect(page.locator(".onboarding-privacy-warning")).toHaveCSS("border-left-color", "rgb(180, 56, 44)");
+
   await page.getByRole("button", { name: "进入 TabRecap" }).click();
 
   await expect(page.locator("#onboardingPanel")).toBeHidden();
@@ -2950,6 +2950,8 @@ test("side panel guides missing API setup before generation", async ({ page }) =
   await expect(page.locator("#gatewayBaseUrl")).toHaveValue("https://tab-recap-gateway.sylvanyu.io/v1");
   await expect(page.locator("#gatewayCustomModel")).toHaveValue("deepseek-v4-flash");
   await expect(page.locator("#gatewayApiKey")).toHaveValue("");
+  await expect(page.locator("#urlPrivacyMode")).toHaveValue("full_url");
+  await expect(page.locator("#ackSampling")).toBeChecked();
   await expect(page.locator("#privacyDisclosure")).toBeHidden();
   await expect(page.locator("#statusText")).toHaveText("首次设置已完成");
   await expect(page.getByRole("button", { name: "生成方案" })).toBeEnabled();
@@ -3004,13 +3006,21 @@ test("onboarding keeps page access explicit and recovers after permission denial
     .toBe(true);
   await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests)).toEqual([]);
   await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 2");
+  await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
 
-  await page.locator('input[name="onboardingPageAccess"][value="on"]').check();
   await page.getByRole("button", { name: "继续" }).click();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("1 / 2");
+  await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[0])).toEqual({
+    origins: ["https://tab-recap-gateway.sylvanyu.io/*"]
+  });
+  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
+  await expect(page.locator("#onboardingUrlPrivacyMode")).toHaveValue("full_url");
+  await expect(page.locator('input[name="onboardingPageAccess"][value="on"]')).toBeChecked();
+
+  await page.getByRole("button", { name: "进入 TabRecap" }).click();
+  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
   await expect(page.locator("#onboardingError")).toContainText("需要授权网页读取权限");
   await expect(page.locator("#ackSampling")).not.toBeChecked();
-  await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[0])).toEqual({
+  await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[1])).toEqual({
     permissions: ["scripting"],
     origins: ["https://*/*", "http://*/*"]
   });
@@ -3018,22 +3028,15 @@ test("onboarding keeps page access explicit and recovers after permission denial
   await page.evaluate(() => {
     window.__grantOnboardingPageAccess = true;
   });
-  await page.getByRole("button", { name: "继续" }).click();
-  await expect(page.locator("#onboardingProgressText")).toHaveText("2 / 2");
-  await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
+  await page.getByRole("button", { name: "进入 TabRecap" }).click();
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true);
   await expect(page.locator("#ackSampling")).toBeChecked();
   await expect(page.locator("#pageContextMode")).toHaveValue("ambiguous_with_permission");
-  await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[1])).toEqual({
+  await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[2])).toEqual({
     permissions: ["scripting"],
     origins: ["https://*/*", "http://*/*"]
-  });
-
-  await page.getByRole("button", { name: "进入 TabRecap" }).click();
-  await expect.poll(() => page.evaluate(() => window.__onboardingPermissionRequests[2])).toEqual({
-    origins: ["https://tab-recap-gateway.sylvanyu.io/*"]
   });
   await expect(page.locator("#onboardingPanel")).toBeHidden();
 });
@@ -4141,13 +4144,11 @@ test("custom provider requires a primary model ID", async ({ page }) => {
 
   await page.goto(`${baseUrl}/src/sidepanel/index.html`);
   await expect(page.locator("#onboardingPanel")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "决定发送什么" })).toBeVisible();
-  await page.getByRole("button", { name: "继续" }).click();
   await expect(page.getByRole("heading", { name: "连接你的 AI" })).toBeVisible();
   await expect(page.locator("#onboardingGatewayBaseUrl")).toHaveValue("https://proxy.example.test/v1");
   await expect(page.locator("#onboardingGatewayModel")).toHaveValue("");
   await expect(page.locator(".actions")).toBeHidden();
-  await page.getByRole("button", { name: "进入 TabRecap" }).click();
+  await page.getByRole("button", { name: "继续" }).click();
   await expect(page.locator("#onboardingGatewayModel")).toHaveAttribute("aria-invalid", "true");
   await expect(page.locator("#onboardingGatewayModel")).toBeFocused();
   await expect(page.locator("#onboardingError")).toHaveText("请填写主模型 ID。");
